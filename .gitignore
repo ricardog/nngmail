@@ -1,0 +1,5 @@
+.python-version
+__pycache__/
+client_secret.json
+credentials.json
+storage.sqlite3
