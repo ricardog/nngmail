@@ -18,7 +18,8 @@ class Gmail:
     CLIENT_SECRETS_FILE = 'client_secret.json'
     MIN_BATCH_REQUEST_SIZE = 50
     BATCH_REQUEST_SIZE = 100
-
+    MAX_CONNECTION_ERRORS = 3
+    
     service = None
     credentials_path = None
     query = '-in:chats'
@@ -95,33 +96,24 @@ class Gmail:
     @authorized
     def list_messages(self, limit=1):
         "Returns a list of messages (max = limit)."
-        results = self.service.users().messages().list(userId='me',
-                                                       q=self.query,
-                                                       maxResults=limit,
-                                                       includeSpamTrash=True).\
-                                                       execute()
+        total = 0
+        pt = None
+        while pt is None or 'nextPageToken' in results:
+            results = self.service.users().messages().list(userId='me',
+                                                           pageToken=pt,
+                                                           q=self.query,
+                                                           maxResults=limit,
+                                                           includeSpamTrash=True).\
+                                                           execute()
 
-        if 'messages' in results:
-            yield (results['resultSizeEstimate'], results['messages'])
-
-        # no messages field presumably means no messages
-
-        while 'nextPageToken' in results:
-            pt = results['nextPageToken']
-            _results = self.service.users().messages().list(userId='me',
-                                                            pageToken=pt,
-                                                            q=self.query,
-                                                            maxResults=limit,
-                                                            includeSpamTrash=True).\
-                                                            execute()
-
-            if 'messages' in _results:
-                results = _results
+            if 'messages' in results:
+                total += results['resultSizeEstimate']
                 yield (results['resultSizeEstimate'], results['messages'])
-            else:
-                print("remote: warning: no messages when several pages were indicated.")
+            if 'nextPageToken' in results:
+                pt = results['nextPageToken']
+            if limit is not None and total >= limit:
                 break
-
+            
     @authorized
     def get_message(self, id, format='minimal'):
         try:
@@ -138,7 +130,7 @@ class Gmail:
 
 
     @authorized
-    def get_messages(self, ids, cb, format):
+    def get_messages(self, ids, format):
         "Get a collection of messages."
 
         # FIXME: support adaptive batch sizes
@@ -174,9 +166,7 @@ class Gmail:
                 elif ex_is_error(excep, 400):
                     # message id invalid, probably caused by stray files
                     # in the mail repo
-                    print ("remote: message id: %s is invalid! " +
-                           "are there any non-gmailieer files created " +
-                           "in the gmailieer repository?" % rid)
+                    print("remote: message id: %s is invalid! "  % rid)
                     return
 
                 elif ex_is_error(excep, 403):
@@ -194,7 +184,7 @@ class Gmail:
         for chunk in chunks(ids, self.BATCH_REQUEST_SIZE):
             batch = self.service.new_batch_http_request(callback=_cb)
             for id in chunk:
-                batch.add(self.service.users().messages().get(userId=me,
+                batch.add(self.service.users().messages().get(userId='me',
                                                               id=id,
                                                               format=format))
 
@@ -238,7 +228,7 @@ class Gmail:
             finally:
                 # handle batch
                 if len(msg_batch) > 0:
-                    cb(msg_batch)
+                    yield(msg_batch)
                     msg_batch.clear()
 
 
@@ -253,3 +243,25 @@ if __name__ == '__main__':
             print(label['name'], ' -- ', label['id'])
 
     print('Current historyId: %d' % gmail.get_history_id())
+
+    first = True
+    for mset in gmail.list_messages(limit=None):
+        (total, gids) = mset
+        print("total %d in %d messages" % (total, len(gids)))
+        if first:
+            print("Getting messages")
+            first = False
+            gids = tuple(map(lambda m: m['id'], gids))
+            for msg_set in gmail.get_messages(gids, 'metadata'):
+                print(len(msg_set))
+                for msg in (): #msg_set:
+                    print('---')
+                    for header in msg['payload']['headers']:
+                        print("  %22s: %s" % (header['name'], header['value'][0:80]))
+            for gid in gids:
+                data = gmail.get_message(gid, format='full')
+                print("%s" % gid)
+                #pdb.set_trace()
+                if 'parts' in data['payload']:
+                    print([part['mimeType'] for part in data['payload']['parts']])
+
