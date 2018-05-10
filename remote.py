@@ -128,6 +128,19 @@ class Gmail:
             else:
                 raise ex
 
+    @authorized
+    def get_thread(self, id, format='metadata'):
+        try:
+            return self.service.users().threads().get(userId='me',
+                                                      id=id,
+                                                      format=format).\
+                                                      execute()
+
+        except googleapiclient.errors.HttpError as ex:
+            if ex.resp.status == 403 or ex.resp.status == 500:
+                return self.get_thread(id, format)
+            else:
+                raise ex
 
     @authorized
     def get_messages(self, ids, format):
@@ -258,10 +271,13 @@ if __name__ == '__main__':
                     print('---')
                     for header in msg['payload']['headers']:
                         print("  %22s: %s" % (header['name'], header['value'][0:80]))
-            for gid in gids:
+            for i, gid in enumerate(gids):
                 data = gmail.get_message(gid, format='full')
                 print("%s" % gid)
-                #pdb.set_trace()
+                pdb.set_trace()
                 if 'parts' in data['payload']:
                     print([part['mimeType'] for part in data['payload']['parts']])
+                if i == 0:
+                    thread = gmail.get_thread(gid)
+                    print(thread.keys())
 
