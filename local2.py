@@ -1,66 +1,118 @@
 #!/usr/bin/env python
 
+import datetime
+
 import enum
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Date, Integer, String, ForeignKey
+from sqlalchemy import create_engine
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
+from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
+from sqlalchemy.orm import validates, relationship, sessionmaker
+from sqlalchemy.sql import select, bindparam, literal, exists
 
 Base = declarative_base()
+
+def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
+    cache = getattr(session, '_unique_cache', None)
+    if cache is None:
+        session._unique_cache = cache = {}
+
+    key = (cls, hashfunc(*arg, **kw))
+    if key in cache:
+        return cache[key]
+    else:
+        with session.no_autoflush:
+            q = session.query(cls)
+            q = queryfunc(q, *arg, **kw)
+            obj = q.first()
+            if not obj:
+                obj = constructor(*arg, **kw)
+                session.add(obj)
+        cache[key] = obj
+        return obj
 
 class AddresseeEnum(enum.Enum):
     to = 1
     cc = 2
     bcc = 3
 
+class UniqueMixin(object):
+    
+    @classmethod
+    def unique_hash(cls, *arg, **kw):
+        raise NotImplementedError()
 
-class Address(Base):
-    __tablename__ = 'address'
+    @classmethod
+    def unique_filter(cls, query, *arg, **kw):
+        raise NotImplementedError()
 
+    @classmethod
+    def as_unique(cls, session, *arg, **kw):
+        return _unique(
+                    session,
+                    cls,
+                    cls.unique_hash,
+                    cls.unique_filter,
+                    cls,
+                    arg, kw
+               )
+
+class Contact(UniqueMixin, Base):
+    __tablename__ = 'contact'
     id = Column(Integer, primary_key=True)
-    email = Column(String)
-    name = Column(String)
+    name = Column('name', String)
+    email = Column('email', String, unique=True)
 
     @validates('email')
-    def validates_email(self, key, address):
-      assert '@' in address.email
-      return address
+    def validates_email(self, key, email):
+        assert '@' in email
+        return email
 
-      
+    @classmethod
+    def unique_hash(cls, email, name=None):
+        return email
+
+    @classmethod
+    def unique_filter(cls, query, email, name=None):
+        return query.filter(Contact.email == email)
+    
+    def __repr__(self):
+        return '%s <%s>' % (self.name, self.email)
+
+
+association_table = Table('assoc', Base.metadata,
+                        Column('contact_id', Integer, ForeignKey('contact.id')),
+                        Column('message_id', Integer, ForeignKey('message.id')),
+                        Column('type_', Enum(AddresseeEnum)))
+
 class Addressee(Base):
     __tablename__ = 'addressee_association'
-    address_id = Column(Integer, ForeignKey('address.id'))
-    message_id = Column(Integer, ForeignKey('message.id'))
-    discriminator = Column(String(5))
-    __mapper_args__ = {"polymorphic_on": discriminator}
+    id = Column(Integer, primary_key=True)
+    contact_id = Column('contact_id', Integer, ForeignKey('contact.id'))
+    message_id = Column('message_id', Integer, ForeignKey('message.id'))
+    type_ = Column('type_', Enum(AddresseeEnum))
 
+    contact = relationship('Contact')
+    message = relationship('Message', backref='addressees')
 
-class HasAddressee(object):
-    """HasAddressee mixin, creates a relationship to
-    the addressee_association table for each parent.
+    __mapper_args__ = {
+        'polymorphic_on': type_
+      }
 
-    """
-    @declared_attr
-    def addressee_association_id(cls):
-        return Column(Integer, ForeignKey("addressee_association.id"))
+class ToAddressee(Addressee):
+    __mapper_args__ = {
+        'polymorphic_identity': AddresseeEnum.to
+    }
 
-    @declared_attr
-    def addressee_association(cls):
-        name = cls.__name__
-        discriminator = name.lower()
+class CcAddressee(Addressee):
+    __mapper_args__ = {
+        'polymorphic_identity': AddresseeEnum.cc
+      }
 
-        assoc_cls = type("%sAddresseeAssociation" % name,
-                         (AddresseeAssociation, ),
-                         dict(__tablename__=None,
-                              __mapper_args__={
-                                "polymorphic_identity": discriminator
-                              }
-                         )
-        )
-
-        cls.addresses = association_proxy(
-                    "addressee_association", "addressee",
-                    creator=lambda addressee: assoc_cls(addressee=addressee)
-                )
-        return relationship(assoc_cls)
+class BccAddressee(Addressee):
+    __mapper_args__ = {
+        'polymorphic_identity': AddresseeEnum.bcc
+      }
 
 
 class Message(Base):
@@ -70,9 +122,78 @@ class Message(Base):
     google_id = Column(String)
     subject = Column(String)
     date = Column(DateTime)
-    from_id = Column(Integer, ForeignKey('address.id'))
-    sender = relationship(Address, foreign_keys=[from_id], backref='messages')
-    to_ = relationship('Address', secondary=association_table)
-    cc = relationship('Address', secondary=association_table)
-    bcc = relationship('Address', secondary=association_table)
+    from_id = Column(Integer, ForeignKey('contact.id'))
+    sender = relationship(Contact, foreign_keys=[from_id], backref='sent')
+    deleted = Column(Boolean, default=False)
+    to_ = relationship('ToAddressee', cascade='all', backref='received')
+    cc = relationship('CcAddressee', cascade='all', backref='cced')
+    bcc = relationship('BccAddressee', cascade='all', backref='bcced')
+    
+
+if __name__ == '__main__':
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    r = Contact.as_unique(session, name='Ricardo', email='ricardog@ricardog.com')
+    d = Contact.as_unique(session, name='Debby', email='dshepard@gmail.com')
+    j = Contact.as_unique(session, name='jax', email='jax@itinerisinc.com')
+
+    r = session.query(Contact).filter(Contact.name == 'Ricardo').first()
+    d = session.query(Contact).filter(Contact.name == 'Debby').first()
+    j = session.query(Contact).filter(Contact.name == 'Jax').first()
+    
+    session.add(Message(google_id='0xdeadcafe',
+                        subject="Let's got for a picnic!",
+                        date=datetime.datetime.now(),
+                        sender=r,
+                        to_=[ToAddressee(contact_id=r.id)],
+                        cc=[CcAddressee(contact_id=d.id)]
+    ))
+    session.commit()
+
+    conn = engine.connect()
+
+    contact = Contact.__table__
+    inserter = contact.insert().prefix_with("OR REPLACE")
+    result = conn.execute(inserter, [{'email':'ricardog@ricardog.com', 'name': 'Ricardo'},
+                            {'email':'dshepard@gmail.com', 'name': 'Debby'},
+                            {'email': 'jax@itinerisinc.com', 'name': 'jax'}
+    ])
+
+
+    email_select = select([contact.c.id]).where(
+        contact.c.email==bindparam('sender'))
+
+    sender_sel = select([literal("1"), literal("John")]).where(
+        ~exists([contact.c.id]).where(contact.c.email == bindparam('sender')))
+
+    message = Message.__table__
+    insert = message.insert({'from_id': email_select})
+
+    conn.execute(insert, [
+        {'google_id': '0xcafebabe',
+         'data': datetime.datetime.now(),
+         'sender': 'ricardog@ricardog.com',
+         'subject': "Let's go to the beach!"
+        },
+        {'google_id': '0xcafebabf',
+         'data': datetime.datetime.now(),
+         'sender': 'dshepard@gmail.com',
+         'subject': "Need to make a budget!"
+        },
+        {'google_id': '0xcafed0e',
+         'data': datetime.datetime.now(),
+         'sender': 'jax@itinerisinc.com',
+         'subject': "Squirrel!!!!"
+        },
+    ])
+    import pdb; pdb.set_trace()
+    pass
+
+def insert_if_not_exists():
+    sel = select([literal("1"), literal("John")]).where(
+        ~exists([example_table.c.id]).where(example_table.c.id == 1)
+    )
     
