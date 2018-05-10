@@ -79,12 +79,6 @@ class Contact(UniqueMixin, Base):
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
 
-
-association_table = Table('assoc', Base.metadata,
-                        Column('contact_id', Integer, ForeignKey('contact.id')),
-                        Column('message_id', Integer, ForeignKey('message.id')),
-                        Column('type_', Enum(AddresseeEnum)))
-
 class Addressee(Base):
     __tablename__ = 'addressee_association'
     id = Column(Integer, primary_key=True)
@@ -114,21 +108,85 @@ class BccAddressee(Addressee):
         'polymorphic_identity': AddresseeEnum.bcc
       }
 
+class Label(Base):
+    __tablename__ = 'label'
+    id = Column(Integer, primary_key=True)
+    name = Column('name', String, unique=True)
+    gid = Column('gid', String, unique=True)
 
+    @classmethod
+    def unique_hash(cls, gid):
+        return gid
+
+    @classmethod
+    def unique_filter(cls, query, gid):
+        return query.filter(Thread.gid == gid)
+
+    def __repr__(self):
+        return '%s: %s' % (self.name, self.gid)
+
+class Labels(Base):
+    __tablename__ = 'label_association'
+    id = Column(Integer, primary_key=True)
+    label_id = Column('label_id', Integer, ForeignKey('label.id'))
+    message_id = Column('message_id', Integer, ForeignKey('message.id'))
+
+    label = relationship('Label', backref='messages')
+    message = relationship('Message', backref='labels')
+    
+class Thread(UniqueMixin, Base):
+    __tablename__ = 'thread'
+    id = Column(Integer, primary_key=True)
+    gid = Column('gid', String, unique=True)
+
+    @classmethod
+    def unique_hash(cls, gid):
+        return gid
+
+    @classmethod
+    def unique_filter(cls, query, gid):
+        return query.filter(Thread.gid == gid)
+
+    def __repr__(self):
+        return '%s' % self.gid
+    
 class Message(Base):
     __tablename__ = 'message'
 
     id = Column(Integer, primary_key=True)
     google_id = Column(String)
-    subject = Column(String)
     date = Column(DateTime)
+    subject = Column(String)
+    snippet = Column(String(200))
+    deleted = Column(Boolean, default=False)
+
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent')
-    deleted = Column(Boolean, default=False)
+    thread_id = Column(Integer, ForeignKey('thread.id'))
+    thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
+                          
     to_ = relationship('ToAddressee', cascade='all', backref='received')
     cc = relationship('CcAddressee', cascade='all', backref='cced')
     bcc = relationship('BccAddressee', cascade='all', backref='bcced')
-    
+
+class Sqlite3():
+    def __init__(self, fname):
+        self.engine = create_engine("sqlite:///%s" % fname)
+        self.conn = engine.connect()
+        Base.metadata.create_all(self.engine)
+        sessionmaker = sessionmaker(bind=self.engine)
+        self.session = sessionmaker()
+
+    def __build_label_map(self):
+        self.label_map = {}
+        for label in self.session.query(Label).all():
+            self.label_map[label.gid] = label
+        
+    def get_label(self, name):
+        
+        
+    def add_message(self, gid, tid, labels, date, sender, subject, snippet):
+        
 
 if __name__ == '__main__':
     engine = create_engine("sqlite:///:memory:")
@@ -174,7 +232,7 @@ if __name__ == '__main__':
 
     conn.execute(insert, [
         {'google_id': '0xcafebabe',
-         'data': datetime.datetime.now(),
+         'data': 1525920588,
          'sender': 'ricardog@ricardog.com',
          'subject': "Let's go to the beach!"
         },
