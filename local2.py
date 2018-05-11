@@ -150,7 +150,7 @@ class Thread(UniqueMixin, Base):
         return query.filter(Thread.tid == tid)
 
     def __repr__(self):
-        return '%s' % self.tid
+        return '%d: %s' % (self.id, self.tid)
     
 class Message(Base):
     __tablename__ = 'message'
@@ -198,15 +198,13 @@ class Sqlite3():
     def store(self, gid, thread_id, label_ids, date, headers, snippet):
         keepers = ['From', 'Subject', 'To', 'Cc', 'Bcc']
         lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
-#        lids = [Label.as_unique(self.session,
-#                                self.get_label_id(lid)) for lid in label_ids]
         thread = Thread.as_unique(self.session, tid=thread_id)
         headers = dict((hh['name'], hh['value']) for hh in
                        filter(lambda h: h['name'] in keepers, headers))
         name, addr = email.utils.parseaddr(headers['From'])
         sender = Contact.as_unique(self.session, name=name, email=addr)
         self.session.add(Message(google_id=gid,
-                                 thread_id=thread.id,
+                                 thread=thread,
                                  subject=headers['Subject'],
                                  date=datetime.datetime.fromtimestamp(date),
                                  sender=sender,
