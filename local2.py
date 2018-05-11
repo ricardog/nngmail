@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import collections
 import datetime
-
+import email
 import enum
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
@@ -108,19 +110,19 @@ class BccAddressee(Addressee):
         'polymorphic_identity': AddresseeEnum.bcc
       }
 
-class Label(Base):
+class Label(UniqueMixin, Base):
     __tablename__ = 'label'
     id = Column(Integer, primary_key=True)
     name = Column('name', String, unique=True)
     gid = Column('gid', String, unique=True)
 
     @classmethod
-    def unique_hash(cls, gid):
+    def unique_hash(cls, gid, name=None):
         return gid
 
     @classmethod
-    def unique_filter(cls, query, gid):
-        return query.filter(Thread.gid == gid)
+    def unique_filter(cls, query, gid, name=None):
+        return query.filter(Label.gid == gid)
 
     def __repr__(self):
         return '%s: %s' % (self.name, self.gid)
@@ -131,24 +133,24 @@ class Labels(Base):
     label_id = Column('label_id', Integer, ForeignKey('label.id'))
     message_id = Column('message_id', Integer, ForeignKey('message.id'))
 
-    label = relationship('Label', backref='messages')
-    message = relationship('Message', backref='labels')
+    label = relationship('Label', backref='labels')
+    message = relationship('Message', backref='messages')
     
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
     id = Column(Integer, primary_key=True)
-    gid = Column('gid', String, unique=True)
+    tid = Column('gid', String, unique=True)
 
     @classmethod
-    def unique_hash(cls, gid):
-        return gid
+    def unique_hash(cls, tid):
+        return tid
 
     @classmethod
-    def unique_filter(cls, query, gid):
-        return query.filter(Thread.gid == gid)
+    def unique_filter(cls, query, tid):
+        return query.filter(Thread.tid == tid)
 
     def __repr__(self):
-        return '%s' % self.gid
+        return '%s' % self.tid
     
 class Message(Base):
     __tablename__ = 'message'
@@ -168,26 +170,68 @@ class Message(Base):
     to_ = relationship('ToAddressee', cascade='all', backref='received')
     cc = relationship('CcAddressee', cascade='all', backref='cced')
     bcc = relationship('BccAddressee', cascade='all', backref='bcced')
-
+    labels = relationship('Labels', cascade='all', backref='messages')
+    
 class Sqlite3():
     def __init__(self, fname):
         self.engine = create_engine("sqlite:///%s" % fname)
-        self.conn = engine.connect()
+        self.conn = self.engine.connect()
         Base.metadata.create_all(self.engine)
-        sessionmaker = sessionmaker(bind=self.engine)
-        self.session = sessionmaker()
-
+        sessionmk = sessionmaker(bind=self.engine)
+        self.session = sessionmk()
+        self.label_map = {}
+        
     def __build_label_map(self):
         self.label_map = {}
         for label in self.session.query(Label).all():
             self.label_map[label.gid] = label
         
-    def get_label(self, name):
-        
-        
-    def add_message(self, gid, tid, labels, date, sender, subject, snippet):
-        
+    def get_label_id(self, name):
+        if name not in self.label_map:
+            self.__build_label_map()
+        return self.label_map[name]
+                               
+    def new_label(self, name, gid):
+        Label.as_unique(self.session, name=name, gid=gid)
+        self.label_map[name] = gid
 
+    def store(self, gid, thread_id, label_ids, date, headers, snippet):
+        keepers = ['From', 'Subject', 'To', 'Cc', 'Bcc']
+        lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
+#        lids = [Label.as_unique(self.session,
+#                                self.get_label_id(lid)) for lid in label_ids]
+        thread = Thread.as_unique(self.session, tid=thread_id)
+        headers = dict((hh['name'], hh['value']) for hh in
+                       filter(lambda h: h['name'] in keepers, headers))
+        name, addr = email.utils.parseaddr(headers['From'])
+        sender = Contact.as_unique(self.session, name=name, email=addr)
+        self.session.add(Message(google_id=gid,
+                                 thread_id=thread.id,
+                                 subject=headers['Subject'],
+                                 date=datetime.datetime.fromtimestamp(date),
+                                 sender=sender,
+                                 snippet=snippet,
+                                 labels=[Labels(label_id=l.id) for l in lids]))
+        self.session.commit()
+        
+    def find(self, ids):
+        if type(ids) is not collections.Iterable:
+            return self.session.query(Message).filter(Message.id == ids).first()
+        return self.session.query(Message).filter(Message.id.in_(ids)).all()
+
+    def find2(self, gid):
+        return self.session.query(Message).filter(Message.google_id == gid).first()
+    
+    def delete(self, gid):
+        pass
+
+    def add_label(self, gid, lid):
+        pass
+
+    def rm_label(self, gid, lid):
+        pass
+
+    
 if __name__ == '__main__':
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -201,11 +245,14 @@ if __name__ == '__main__':
     r = session.query(Contact).filter(Contact.name == 'Ricardo').first()
     d = session.query(Contact).filter(Contact.name == 'Debby').first()
     j = session.query(Contact).filter(Contact.name == 'Jax').first()
+
+    pers = Label.as_unique(session, gid='personal', name='PERSONAL')
     
     session.add(Message(google_id='0xdeadcafe',
                         subject="Let's got for a picnic!",
                         date=datetime.datetime.now(),
                         sender=r,
+                        labels=[Labels(label_id=pers.id)],
                         to_=[ToAddressee(contact_id=r.id)],
                         cc=[CcAddressee(contact_id=d.id)]
     ))

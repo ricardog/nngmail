@@ -15,7 +15,7 @@ import pdb
 
 class Gmail:
     SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
-    CLIENT_SECRETS_FILE = 'client_secret.json'
+    CLIENT_SECRET_FILE = 'client_secret.json'
     MIN_BATCH_REQUEST_SIZE = 50
     BATCH_REQUEST_SIZE = 100
     MAX_CONNECTION_ERRORS = 3
@@ -35,14 +35,14 @@ class Gmail:
 
     def __init__(self):
         "Object for accessing gmail via http API."
-        self.credentials_path  = 'credentials.json'
+        self.credentials_path = 'credentials.json'
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
         store = file.Storage(self.credentials_path)
         creds = store.get()
         if not creds or creds.invalid:
-            flow = client.flow_from_clientsecrets(self.CLIENT_SECRETS_FILE,
+            flow = client.flow_from_clientsecrets(self.CLIENT_SECRET_FILE,
                                                   self.SCOPES)
             creds = tools.run_flow(flow, store)
         return creds
@@ -271,13 +271,33 @@ if __name__ == '__main__':
                     print('---')
                     for header in msg['payload']['headers']:
                         print("  %22s: %s" % (header['name'], header['value'][0:80]))
-            for i, gid in enumerate(gids):
-                data = gmail.get_message(gid, format='full')
-                print("%s" % gid)
-                pdb.set_trace()
-                if 'parts' in data['payload']:
-                    print([part['mimeType'] for part in data['payload']['parts']])
-                if i == 0:
-                    thread = gmail.get_thread(gid)
-                    print(thread.keys())
+            if None:
+                for i, gid in enumerate(gids):
+                    data = gmail.get_message(gid, format='full')
+                    print("%s" % gid)
+                    if 'parts' in data['payload']:
+                        print([part['mimeType'] for part in data['payload']['parts']])
+                    if i == 0:
+                        thread = gmail.get_thread(gid)
+                        print(thread.keys())
 
+            msg = gmail.get_message('1548e8329572f23d', 'full')
+
+            import local2
+            sql3 = local2.Sqlite3(':memory:')
+            gid = msg['id']
+            tid = msg['threadId']
+            lids = msg['labelIds']
+            date = int(msg['internalDate']) / 1000
+            headers = msg['payload']['headers']
+            snippet = msg['snippet']
+
+            labels = gmail.get_labels()
+            if labels:
+                for label in labels:
+                    sql3.new_label(name=label['name'], gid=label['id'])
+
+            pdb.set_trace()
+            sql3.store(gid, tid, lids, date, headers, snippet)
+            pass
+        
