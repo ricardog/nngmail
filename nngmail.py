@@ -73,7 +73,7 @@ class NnGmail():
             self.delete(gid)
 
 def main():
-    me = NnGmail({'db_file': 'nngmail.sqlite'})
+    me = NnGmail({'db_file': 'nngmail.sqlite3'})
     me.full_sync()
 
 if __name__ == '__main__':
