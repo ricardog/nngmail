@@ -91,7 +91,18 @@ class Gmail:
 
     @authorized
     def get_history_since(self, start=0):
-        pass
+        pt = None
+        while pt is None or 'nextPageToken' in results:
+            results = self.service.users().messages().history().\
+                      list(userId='me',
+                           pageToken=pt,
+                           q=self.query,
+                           includeSpamTrash=True).execute()
+
+            if 'history' in results:
+                yield (results['history'])
+            if 'nextPageToken' in results:
+                pt = results['nextPageToken']
 
     @authorized
     def list_messages(self, limit=1):
@@ -158,6 +169,9 @@ class Gmail:
         # queue up received batch and send in one go to content / db
         # routine
         msg_batch = [] 
+
+        if '__getitem__' not in dir(ids):
+            ids = tuple(ids)
 
         def ex_is_error(ex, code):
             "Check if exception is error code 'code'."
@@ -260,6 +274,7 @@ if __name__ == '__main__':
     first = True
     for mset in gmail.list_messages(limit=None):
         (total, gids) = mset
+        pdb.set_trace()
         print("total %d in %d messages" % (total, len(gids)))
         if first:
             print("Getting messages")
@@ -285,6 +300,9 @@ if __name__ == '__main__':
 
             import local2
             sql3 = local2.Sqlite3(':memory:')
+            sql3.set_history_id(gmail.get_history_id())
+            print('Current historyId: %d' % sql3.get_history_id())
+            
             gid = msg['id']
             tid = msg['threadId']
             lids = msg['labelIds']
@@ -299,5 +317,6 @@ if __name__ == '__main__':
 
             pdb.set_trace()
             sql3.store(gid, tid, lids, date, headers, snippet)
+            all_ids = sql3.all_ids()
             pass
         

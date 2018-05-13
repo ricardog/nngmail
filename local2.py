@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-import collections
+from collections import Iterable
 import datetime
 import email
 import enum
+import re
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
@@ -11,6 +12,10 @@ from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
 from sqlalchemy.orm import validates, relationship, sessionmaker
 from sqlalchemy.sql import select, bindparam, literal, exists
+
+import pdb
+
+RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 Base = declarative_base()
 
@@ -32,14 +37,13 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
                 session.add(obj)
         cache[key] = obj
         return obj
-
+    
 class AddresseeEnum(enum.Enum):
     to = 1
     cc = 2
     bcc = 3
 
 class UniqueMixin(object):
-    
     @classmethod
     def unique_hash(cls, *arg, **kw):
         raise NotImplementedError()
@@ -59,11 +63,17 @@ class UniqueMixin(object):
                     arg, kw
                )
 
+class KeyValue(Base):
+    __tablename__ = 'kv'
+    id = Column(Integer, primary_key=True)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(String, nullable=False)
+
 class Contact(UniqueMixin, Base):
     __tablename__ = 'contact'
     id = Column(Integer, primary_key=True)
-    name = Column('name', String)
-    email = Column('email', String, unique=True)
+    name = Column(String)
+    email = Column(String, unique=True, index=True)
 
     @validates('email')
     def validates_email(self, key, email):
@@ -84,8 +94,8 @@ class Contact(UniqueMixin, Base):
 class Addressee(Base):
     __tablename__ = 'addressee_association'
     id = Column(Integer, primary_key=True)
-    contact_id = Column('contact_id', Integer, ForeignKey('contact.id'))
-    message_id = Column('message_id', Integer, ForeignKey('message.id'))
+    contact_id = Column(Integer, ForeignKey('contact.id'))
+    message_id = Column(Integer, ForeignKey('message.id'))
     type_ = Column('type_', Enum(AddresseeEnum))
 
     contact = relationship('Contact')
@@ -113,8 +123,8 @@ class BccAddressee(Addressee):
 class Label(UniqueMixin, Base):
     __tablename__ = 'label'
     id = Column(Integer, primary_key=True)
-    name = Column('name', String, unique=True)
-    gid = Column('gid', String, unique=True)
+    name = Column(String, unique=True)
+    gid = Column(String, unique=True)
 
     @classmethod
     def unique_hash(cls, gid, name=None):
@@ -130,8 +140,8 @@ class Label(UniqueMixin, Base):
 class Labels(Base):
     __tablename__ = 'label_association'
     id = Column(Integer, primary_key=True)
-    label_id = Column('label_id', Integer, ForeignKey('label.id'))
-    message_id = Column('message_id', Integer, ForeignKey('message.id'))
+    label_id = Column(Integer, ForeignKey('label.id'))
+    message_id = Column(Integer, ForeignKey('message.id'), index=True)
 
     label = relationship('Label', backref='labels')
     message = relationship('Message', backref='messages')
@@ -139,7 +149,7 @@ class Labels(Base):
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
     id = Column(Integer, primary_key=True)
-    tid = Column('gid', String, unique=True)
+    tid = Column('gid', String, unique=True, index=True)
 
     @classmethod
     def unique_hash(cls, tid):
@@ -156,7 +166,7 @@ class Message(Base):
     __tablename__ = 'message'
 
     id = Column(Integer, primary_key=True)
-    google_id = Column(String)
+    google_id = Column(String, index=True, unique=True)
     date = Column(DateTime)
     subject = Column(String)
     snippet = Column(String(200))
@@ -164,7 +174,7 @@ class Message(Base):
 
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent')
-    thread_id = Column(Integer, ForeignKey('thread.id'))
+    thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
     thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
                           
     to_ = relationship('ToAddressee', cascade='all', backref='received')
@@ -192,36 +202,63 @@ class Sqlite3():
         return self.label_map[name]
                                
     def new_label(self, name, gid):
+        m = RE_CATEGORY.match(name)
+        if m:
+            name = 'Inbox:%s' % m.group(1).capitalize()
         Label.as_unique(self.session, name=name, gid=gid)
         self.label_map[name] = gid
 
-    def store(self, gid, thread_id, label_ids, date, headers, snippet):
-        keepers = ['From', 'Subject', 'To', 'Cc', 'Bcc']
+    def store(self, gid, thread_id, label_ids, date, headers, snippet,
+              commit=True):
+        keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc']
         lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
         thread = Thread.as_unique(self.session, tid=thread_id)
         headers = dict((hh['name'], hh['value']) for hh in
                        filter(lambda h: h['name'] in keepers, headers))
+        if 'From' not in headers and 'from' in headers:
+            headers['From'] = headers['from']
+        if 'Subject' not in headers and 'subject' in headers:
+            headers['Subject'] = headers['subject']
         name, addr = email.utils.parseaddr(headers['From'])
         sender = Contact.as_unique(self.session, name=name, email=addr)
         self.session.add(Message(google_id=gid,
                                  thread=thread,
-                                 subject=headers['Subject'],
+                                 subject=headers.get('Subject', ''),
                                  date=datetime.datetime.fromtimestamp(date),
                                  sender=sender,
                                  snippet=snippet,
                                  labels=[Labels(label_id=l.id) for l in lids]))
+        if commit:
+            self.session.commit()
+
+    def commit(self):
+        self.session.commit()
+
+    def update(self, gid, label_ids):
+        msg = self.session.query(Message).filter(Message.google_id == gid).\
+              first()
+        lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
+        msg.labels = [Labels(label_id=l.id) for l in lids]
         self.session.commit()
         
+    def all_ids(self):
+        return [m.id for m in
+                self.session.query(Message).add_column('id').all()]
+    
     def find(self, ids):
-        if type(ids) is not collections.Iterable:
+        if not isinstance(ids, Iterable):
             return self.session.query(Message).filter(Message.id == ids).first()
         return self.session.query(Message).filter(Message.id.in_(ids)).all()
 
-    def find2(self, gid):
-        return self.session.query(Message).filter(Message.google_id == gid).first()
+    def find2(self, gids):
+        if not isinstance(gids, Iterable):
+            return self.session.query(Message).filter(Message.google_id == gids).first()
+        return self.session.query(Message).filter(Message.google_id.in_(gids)).all()
     
-    def delete(self, gid):
-        pass
+    def delete(self, gids):
+        msgs = self.find(gids)
+        self.session.delete(msgs)
+        self.session.commit()
 
     def add_label(self, gid, lid):
         pass
@@ -229,6 +266,29 @@ class Sqlite3():
     def rm_label(self, gid, lid):
         pass
 
+    def __set_kv(self, key, value):
+        kv = self.session.query(KeyValue).filter(KeyValue.key == key).first()
+        if kv:
+            kv.value = value
+        else:
+            kv = KeyValue(key=key, value=value)
+        self.session.add(kv)
+        self.session.commit()
+
+    def __get_kv(self, key):
+        kv = self.session.query(KeyValue).filter(KeyValue.key == key).first()
+        if kv:
+            return kv.value
+        return None
+
+    def set_history_id(self, value):
+        self.__set_kv('history_id', value)
+
+    def get_history_id(self):
+        hid = self.__get_kv('history_id')
+        if hid is not None:
+            return int(hid)
+        return 0
     
 if __name__ == '__main__':
     engine = create_engine("sqlite:///:memory:")
