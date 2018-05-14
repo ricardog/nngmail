@@ -36,8 +36,8 @@ class Sqlite3():
         m = RE_CATEGORY.match(name)
         if m:
             name = 'Inbox:%s' % m.group(1).capitalize()
-        Label.as_unique(self.session, name=name, gid=gid)
-        self.label_map[name] = gid
+        label = Label.as_unique(self.session, name=name, gid=gid)
+        self.label_map[name] = label
 
     def store(self, gid, thread_id, label_ids, date, headers, snippet,
               commit=True):
@@ -50,7 +50,7 @@ class Sqlite3():
             headers['Subject'] = headers['subject']
         name, addr = email.utils.parseaddr(headers['From'])
         sender = Contact.as_unique(self.session, name=name, email=addr)
-        labels = [self.get_label(gid) for gid in label_ids]
+        labels = (self.get_label(gid) for gid in label_ids)
         thread = Thread.as_unique(self.session, tid=thread_id)
         self.session.add(Message(google_id=gid,
                                  thread=thread,
@@ -67,7 +67,6 @@ class Sqlite3():
 
     def update(self, gid, label_ids, commit=True):
         msg = self.session.query(Message).filter(Message.google_id == gid).\
-              add_columns('id', 'google_id').\
               first()
         labels = [self.get_label(gid) for gid in label_ids]
         if tuple(filter(lambda x: not isinstance(x, Label), labels)) is ():
