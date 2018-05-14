@@ -58,7 +58,7 @@ class Sqlite3():
             headers['Subject'] = headers['subject']
         name, addr = email.utils.parseaddr(headers['From'])
         sender = Contact.as_unique(self.session, name=name, email=addr)
-        labels = (self.get_label(gid) for gid in label_ids)
+        labels = [self.get_label(gid) for gid in label_ids]
         thread = Thread.as_unique(self.session, tid=thread_id)
         self.session.add(Message(google_id=gid,
                                  thread=thread,
