@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import Iterable
+import logging
 
 from tqdm import tqdm
 
@@ -24,6 +25,8 @@ class NnGmail():
         self.sql3.set_history_id(self.gmail.get_history_id(history_id))
         
     def store(self, gids, sync_labels=False):
+        if not gids:
+            return
         if sync_labels:
             self.sync_labels()
         if not isinstance(gids, Iterable):
@@ -35,20 +38,29 @@ class NnGmail():
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
-                    print(msg['id'])
+                    if msg['id'] in('15c677afd6ef4607', '1574e5d1d2c37ffa'):
+                        pdb.set_trace()
+                        pass
                     self.sql3.store(msg['id'], msg['threadId'], msg['labelIds'],
                                     int(msg['internalDate']) / 1000,
                                     msg['payload']['headers'], msg['snippet'],
                                     False)
             self.sql3.commit()
             
-    def update(self, gid, sync_labels=False):
-        if not gid:
+    def update(self, gids, sync_labels=False):
+        if not gids:
             return
         if sync_labels:
             self.sync_labels()
-        msg = self.gmail.get_message(gid, 'metadata')
-        self.sql3.update(msg['id'], msg['labelIds'])
+        if not isinstance(gids, Iterable):
+            msg = self.gmail.get_message(gid, 'metadata')
+            self.sql3.update(msg['id'], msg['labelIds'])
+        else:
+            results = self.gmail.get_messages(gids, 'metadata')
+            for batch in results:
+                for msg in batch:
+                    self.sql3.update(msg['id'], msg['labelIds'], commit=True)
+            self.sql3.commit()
 
     def delete(self, gids):
         self.sql3.delete(gids)
@@ -73,6 +85,10 @@ class NnGmail():
             self.delete(gid)
 
 def main():
+    logging.basicConfig(filename='sql.log')
+    logger = logging.getLogger('sqlalchemy.engine')
+    logger.setLevel(logging.DEBUG)
+
     me = NnGmail({'db_file': 'nngmail.sqlite3'})
     me.full_sync()
 

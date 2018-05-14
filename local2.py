@@ -27,7 +27,7 @@ class Sqlite3():
         for label in self.session.query(Label).all():
             self.label_map[label.gid] = label
         
-    def get_label_id(self, name):
+    def get_label(self, name):
         if name not in self.label_map:
             self.__build_label_map()
         return self.label_map[name]
@@ -42,8 +42,6 @@ class Sqlite3():
     def store(self, gid, thread_id, label_ids, date, headers, snippet,
               commit=True):
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc']
-        lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
-        thread = Thread.as_unique(self.session, tid=thread_id)
         headers = dict((hh['name'], hh['value']) for hh in
                        filter(lambda h: h['name'] in keepers, headers))
         if 'From' not in headers and 'from' in headers:
@@ -52,29 +50,35 @@ class Sqlite3():
             headers['Subject'] = headers['subject']
         name, addr = email.utils.parseaddr(headers['From'])
         sender = Contact.as_unique(self.session, name=name, email=addr)
+        labels = [self.get_label(gid) for gid in label_ids]
+        thread = Thread.as_unique(self.session, tid=thread_id)
         self.session.add(Message(google_id=gid,
                                  thread=thread,
                                  subject=headers.get('Subject', ''),
                                  date=datetime.datetime.fromtimestamp(date),
                                  sender=sender,
                                  snippet=snippet,
-                                 labels=[Labels(label_id=l.id) for l in lids]))
+                                 labels=labels))
         if commit:
             self.session.commit()
 
     def commit(self):
         self.session.commit()
 
-    def update(self, gid, label_ids):
+    def update(self, gid, label_ids, commit=True):
         msg = self.session.query(Message).filter(Message.google_id == gid).\
+              add_columns('id', 'google_id').\
               first()
-        lids = self.session.query(Label).filter(Label.gid.in_(label_ids)).all()
-        msg.labels = [Labels(label_id=l.id) for l in lids]
-        self.session.commit()
+        labels = [self.get_label(gid) for gid in label_ids]
+        if tuple(filter(lambda x: not isinstance(x, Label), labels)) is ():
+            pdb.set_trace()
+        msg.labels = labels
+        if commit:
+            self.session.commit()
         
     def all_ids(self):
-        return [m.id for m in
-                self.session.query(Message).add_column('id').all()]
+        return [m.google_id for m in
+                self.session.query(Message).add_column('google_id').all()]
     
     def find(self, ids):
         if not isinstance(ids, Iterable):

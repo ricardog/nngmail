@@ -2,9 +2,13 @@
 import enum
 
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import inspect
 from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
 from sqlalchemy.orm import validates, relationship, sessionmaker
+from sqlalchemy.ext.associationproxy import association_proxy
+
+from sqlalchemy.orm import joinedload, Load
 
 Base = declarative_base()
 
@@ -124,17 +128,22 @@ class Label(UniqueMixin, Base):
         return query.filter(Label.gid == gid)
 
     def __repr__(self):
-        return '%s: %s' % (self.name, self.gid)
-
+        return '%s' % self.name
+        
 class Labels(Base):
     __tablename__ = 'label_association'
     id = Column(Integer, primary_key=True)
     label_id = Column(Integer, ForeignKey('label.id'))
     message_id = Column(Integer, ForeignKey('message.id'), index=True)
 
-    label = relationship('Label', backref='labels')
-    message = relationship('Message', backref='messages')
-    
+    label = relationship('Label', backref='messages')
+    message = relationship('Message', backref='message_labels')
+
+    def __init__(self, label=None, message=None):
+        assert isinstance(label, Label)
+        self.label = label
+        self.message = message
+        
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
     id = Column(Integer, primary_key=True)
@@ -162,12 +171,28 @@ class Message(Base):
     deleted = Column(Boolean, default=False)
 
     from_id = Column(Integer, ForeignKey('contact.id'))
-    sender = relationship(Contact, foreign_keys=[from_id], backref='sent')
+    sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
+                          innerjoin=True)
     thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
     thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
                           
-    to_ = relationship('ToAddressee', cascade='all', backref='received')
-    cc = relationship('CcAddressee', cascade='all', backref='cced')
-    bcc = relationship('BccAddressee', cascade='all', backref='bcced')
-    labels = relationship('Labels', cascade='all', backref='messages')
-    
+    to_ = relationship('ToAddressee', cascade='all, delete-orphan',
+                       backref='received')
+    cc = relationship('CcAddressee', cascade='all, delete-orphan',
+                      backref='cced')
+    bcc = relationship('BccAddressee', cascade='all, delete-orphan',
+                       backref='bcced')
+    _labels = relationship('Labels', cascade='all, delete-orphan',
+                           backref='messages')
+    labels = association_proxy('message_labels', 'label')
+
+def init(fname):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker, Load, joinedload
+    engine = create_engine("sqlite:///%s" % fname)
+    conn = engine.connect()
+    Base.metadata.create_all(engine)
+    sessionmk = sessionmaker(bind=engine)
+    session = sessionmk()
+    return (engine, session)
+
