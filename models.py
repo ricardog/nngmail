@@ -5,8 +5,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import inspect
 from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
-from sqlalchemy.orm import validates, relationship, sessionmaker
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import validates, relationship, sessionmaker
+from sqlalchemy.sql import and_, or_, not_
 
 from sqlalchemy.orm import joinedload, Load
 
@@ -131,8 +132,9 @@ class Label(UniqueMixin, Base):
         return '%s' % self.name
 
 label_association = Table('label_association', Base.metadata,
-                          Column('label_id', Integer, ForeignKey('label.id')),
-                          Column('message_gid', Integer, ForeignKey('message.google_id'))
+    Column('label_gid', Integer, ForeignKey('label.gid'), nullable=False),
+    Column('message_gid', Integer, ForeignKey('message.google_id'),
+           index=True, nullable=False)
 )
         
 class Thread(UniqueMixin, Base):
@@ -176,6 +178,31 @@ class Message(Base):
     labels = relationship('Label', secondary=lambda: label_association,
                            cascade='all', backref='messages')
     label_names = association_proxy('labels', 'name')
+
+    @staticmethod
+    def find_labels(session, gid):
+        # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
+        # table itself since updating labels only requires reading the
+        # association table.
+        return session.query(label_association).filter_by(message_gid=gid).all()
+
+    @staticmethod
+    def rem_labels(conn, gid, label_ids):
+        if not label_ids:
+            return
+        q = label_association.delete();
+        q = q.where(and_(label_association.c.label_gid.in_(label_ids),
+                         label_association.c.message_gid == gid))
+        return conn.execute(q)
+
+    @staticmethod
+    def add_labels(conn, gid, label_ids):
+        if not label_ids:
+            return
+        values = [(lid, gid) for lid in label_ids]
+        q = label_association.insert();
+        q = q.values(values)
+        return conn.execute(q)
 
 def init(fname):
     from sqlalchemy import create_engine

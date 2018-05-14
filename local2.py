@@ -83,21 +83,30 @@ class Sqlite3():
         if commit:
             self.session.commit()
 
-    def update2(self, gid, label_ids, commit=True):
-        labels = self.session.query(Labels).filter_by(message_gid=gid).all()
-        cur = set([self.get_label_gid(l.label_id) for l in labels])
+    def update2(self, gid, label_ids):
+        labels = Message.find_labels(self.session, gid)
+        cur = set([l.label_gid for l in labels])
         new = set(label_ids)
-        to_delete = tuple(filter(lambda label: self.get_label_gid(label.label_id)
-                                 in cur - new, labels))
-        to_add = tuple(filter(lambda lid: Labels(label_id=self.get_label(lid).id,
-                                                 message_gid=gid), new - cur))
-        if to_delete:
-            self.session.delete(to_delete)
+        Message.rem_labels(self.session.connection(), gid, list(cur - new))
+        Message.add_labels(self.session.connection(), gid, list(new - cur))
+        
+    def update3(self, gid, label_ids, commit=True):
+        labels = Message.find_labels(self.session, gid)
+        cur = set([l.label_gid for l in labels])
+        new = set(label_ids)
+        ids_to_rem = cur - new
+        to_rem = tuple(filter(lambda label: label.label_gid in ids_to_rem,
+                                 labels))
+        to_add = tuple(filter(lambda lid: Labels(label_gid=lid,
+                                                 message_gid=gid),
+                              new - cur))
+        if to_rem:
+            self.session.delete(to_rem)
         if to_add:
             self.session.add(to_add)
         if commit:
             self.session.commit()
-        
+
     def all_ids(self):
         return [m.google_id for m in
                 self.session.query(Message).add_column('google_id').all()]
