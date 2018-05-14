@@ -73,39 +73,12 @@ class Sqlite3():
     def commit(self):
         self.session.commit()
 
-    def update(self, gid, label_ids, commit=True):
-        msg = self.session.query(Message).filter(Message.google_id == gid).\
-              first()
-        labels = [self.get_label(gid) for gid in label_ids]
-        if tuple(filter(lambda x: not isinstance(x, Label), labels)) is ():
-            pdb.set_trace()
-        msg.labels = labels
-        if commit:
-            self.session.commit()
-
-    def update2(self, gid, label_ids):
+    def update(self, gid, label_ids):
         labels = Message.find_labels(self.session, gid)
         cur = set([l.label_gid for l in labels])
         new = set(label_ids)
         Message.rem_labels(self.session.connection(), gid, list(cur - new))
         Message.add_labels(self.session.connection(), gid, list(new - cur))
-        
-    def update3(self, gid, label_ids, commit=True):
-        labels = Message.find_labels(self.session, gid)
-        cur = set([l.label_gid for l in labels])
-        new = set(label_ids)
-        ids_to_rem = cur - new
-        to_rem = tuple(filter(lambda label: label.label_gid in ids_to_rem,
-                                 labels))
-        to_add = tuple(filter(lambda lid: Labels(label_gid=lid,
-                                                 message_gid=gid),
-                              new - cur))
-        if to_rem:
-            self.session.delete(to_rem)
-        if to_add:
-            self.session.add(to_add)
-        if commit:
-            self.session.commit()
 
     def all_ids(self):
         return [m.google_id for m in

@@ -55,13 +55,13 @@ class NnGmail():
             self.sync_labels()
         if not isinstance(gids, Iterable):
             msg = self.gmail.get_message(gid, 'metadata')
-            self.sql3.update2(msg['id'], msg['labelIds'])
+            self.sql3.update(msg['id'], msg['labelIds'])
         else:
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
-                    self.sql3.update2(msg['id'], msg.get('labelIds', []))
-            #self.sql3.commit()
+                    self.sql3.update(msg['id'], msg.get('labelIds', []))
+            self.sql3.session.flush()
 
     def delete(self, gids):
         self.sql3.delete(gids)
