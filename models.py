@@ -129,12 +129,14 @@ class Label(UniqueMixin, Base):
 
     def __repr__(self):
         return '%s' % self.name
-        
+
 class Labels(Base):
     __tablename__ = 'label_association'
     id = Column(Integer, primary_key=True)
     label_id = Column(Integer, ForeignKey('label.id'))
-    message_id = Column(Integer, ForeignKey('message.id'), index=True)
+    # Use google_id as the foreign key so we can query the labels
+    # of a message without having to query for the message itself.
+    message_gid = Column(Integer, ForeignKey('message.google_id'), index=True)
 
     label = relationship('Label', backref='messages')
     message = relationship('Message', backref='message_labels')
