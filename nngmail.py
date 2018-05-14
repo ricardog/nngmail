@@ -41,7 +41,8 @@ class NnGmail():
                     if msg['id'] in('15c677afd6ef4607', '1574e5d1d2c37ffa'):
                         pdb.set_trace()
                         pass
-                    self.sql3.store(msg['id'], msg['threadId'], msg['labelIds'],
+                    self.sql3.store(msg['id'], msg['threadId'],
+                                    msg.get('labelIds', []),
                                     int(msg['internalDate']) / 1000,
                                     msg['payload']['headers'], msg['snippet'],
                                     False)
@@ -59,7 +60,8 @@ class NnGmail():
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
-                    self.sql3.update(msg['id'], msg['labelIds'], commit=True)
+                    self.sql3.update(msg['id'],
+                                     msg.get('labelIds', []), commit=True)
             self.sql3.commit()
 
     def delete(self, gids):
@@ -67,7 +69,7 @@ class NnGmail():
 
     def full_sync(self):
         total = 1
-        #bar = tqdm(leave=True, total=total, desc='fetching metadata')
+        bar = tqdm(leave=True, total=total, desc='fetching metadata')
         self.sync_history_id()
         self.sync_labels()
         local_gids = set(self.sql3.all_ids())
@@ -75,14 +77,15 @@ class NnGmail():
         for results in self.gmail.list_messages(limit=None):
             (total, msgs) = results
             gids = set([msg['id'] for msg in msgs])
-            #bar.total = total
+            bar.total = total
             self.store(gids - local_gids)
             self.update(local_gids.intersection(gids))
             local_gids = local_gids - gids
-            #bar.update(len(msgs))
+            bar.update(len(msgs))
 
         for gid in local_gids:
             self.delete(gid)
+        bar.close()
 
 def main():
     logging.basicConfig(filename='sql.log')
