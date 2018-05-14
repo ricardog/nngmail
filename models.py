@@ -130,21 +130,10 @@ class Label(UniqueMixin, Base):
     def __repr__(self):
         return '%s' % self.name
 
-class Labels(Base):
-    __tablename__ = 'label_association'
-    id = Column(Integer, primary_key=True)
-    label_id = Column(Integer, ForeignKey('label.id'))
-    # Use google_id as the foreign key so we can query the labels
-    # of a message without having to query for the message itself.
-    message_gid = Column(Integer, ForeignKey('message.google_id'), index=True)
-
-    label = relationship('Label', backref='messages')
-    message = relationship('Message', backref='message_labels')
-
-    def __init__(self, label=None, message=None):
-        assert isinstance(label, Label)
-        self.label = label
-        self.message = message
+label_association = Table('label_association', Base.metadata,
+                          Column('label_id', Integer, ForeignKey('label.id')),
+                          Column('message_gid', Integer, ForeignKey('message.google_id'))
+)
         
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
@@ -184,9 +173,9 @@ class Message(Base):
                       backref='cced')
     bcc = relationship('BccAddressee', cascade='all, delete-orphan',
                        backref='bcced')
-    _labels = relationship('Labels', cascade='all, delete-orphan',
-                           backref='messages')
-    labels = association_proxy('message_labels', 'label')
+    labels = relationship('Label', secondary=lambda: label_association,
+                           cascade='all', backref='messages')
+    label_names = association_proxy('labels', 'name')
 
 def init(fname):
     from sqlalchemy import create_engine
@@ -197,4 +186,3 @@ def init(fname):
     sessionmk = sessionmaker(bind=engine)
     session = sessionmk()
     return (engine, session)
-

@@ -6,7 +6,7 @@ import email
 import re
 
 from sqlalchemy import create_engine
-from models import Base, KeyValue, Contact, Label, Labels, Thread, Message
+from models import Base, KeyValue, Contact, Label, Thread, Message
 from sqlalchemy.orm import sessionmaker
 
 import pdb
@@ -21,17 +21,25 @@ class Sqlite3():
         sessionmk = sessionmaker(bind=self.engine)
         self.session = sessionmk()
         self.label_map = {}
+        self.label_imap = {}
         
     def __build_label_map(self):
         self.label_map = {}
+        self.label_imap = {}
         for label in self.session.query(Label).all():
             self.label_map[label.gid] = label
-        
+            self.label_imap[label.id] = label.gid
+
     def get_label(self, name):
         if name not in self.label_map:
             self.__build_label_map()
         return self.label_map[name]
                                
+    def get_label_gid(self, id):
+        if id not in self.label_imap:
+            self.__build_label_map()
+        return self.label_imap[id]
+
     def new_label(self, name, gid):
         m = RE_CATEGORY.match(name)
         if m:
@@ -72,6 +80,21 @@ class Sqlite3():
         if tuple(filter(lambda x: not isinstance(x, Label), labels)) is ():
             pdb.set_trace()
         msg.labels = labels
+        if commit:
+            self.session.commit()
+
+    def update2(self, gid, label_ids, commit=True):
+        labels = self.session.query(Labels).filter_by(message_gid=gid).all()
+        cur = set([self.get_label_gid(l.label_id) for l in labels])
+        new = set(label_ids)
+        to_delete = tuple(filter(lambda label: self.get_label_gid(label.label_id)
+                                 in cur - new, labels))
+        to_add = tuple(filter(lambda lid: Labels(label_id=self.get_label(lid).id,
+                                                 message_gid=gid), new - cur))
+        if to_delete:
+            self.session.delete(to_delete)
+        if to_add:
+            self.session.add(to_add)
         if commit:
             self.session.commit()
         
