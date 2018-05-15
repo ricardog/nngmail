@@ -3,10 +3,10 @@ import enum
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import inspect
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer
+from sqlalchemy import BLOB, Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import validates, relationship, sessionmaker
+from sqlalchemy.orm import deferred, relationship, sessionmaker, validates
 from sqlalchemy.sql import and_, or_, not_
 
 from sqlalchemy.orm import joinedload, Load
@@ -158,11 +158,13 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True)
     google_id = Column(String, index=True, unique=True)
+    message_id = Column(String(100), index=True, unique=True, nullable=False)
     date = Column(DateTime)
     subject = Column(String)
     snippet = Column(String(200))
     deleted = Column(Boolean, default=False)
     size = Column(Integer, default=0)
+    raw = deferred(Column(BLOB))
     
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
