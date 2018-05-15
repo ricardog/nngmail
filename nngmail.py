@@ -151,9 +151,7 @@ class NnGmail():
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
         new_gids = set(added.keys())
-        local_gids = set(map(lambda mm: mm.google_id,
-                             self.sql3.find_by_gid(new_gids)))
-        _ = self.create(new_gids - local_gids)
+        _ = self.create(new_gids)
         bar.update(len(added))
         self.update2(updated)
         bar.close()
