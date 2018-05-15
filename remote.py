@@ -96,10 +96,12 @@ class Gmail:
     def get_history_since(self, start=0):
         hist = self.service.users().history()
         try:
+            print('fetch history starting at %d' % start)
             results = hist.list(userId='me', startHistoryId=start).execute()
             if 'history' in results:
                 yield (results['history'])
             while 'nextPageToken' in results:
+                print('fetch page starting at %d' % start)
                 results = hist.list(userId='me',
                                     pageToken=results['nextPageToken'],
                                     startHistoryId=start).execute()
@@ -112,7 +114,7 @@ class Gmail:
             elif ex.resp.status == 403:
                 raise Gmail.UserRateException(excep)
             else:
-                print("unhandled istory exception")
+                print("unhandled history exception")
                 raise Gmail.GenericException(excep)
 
     @authorized
