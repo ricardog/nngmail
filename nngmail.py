@@ -150,8 +150,7 @@ class NnGmail():
         bar = tqdm(leave=True, total=total, desc='applying changes')
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
-        new_gids = set(added.keys())
-        _ = self.create(new_gids)
+        self.create(tuple(added.keys()))
         bar.update(len(added))
         self.update2(updated)
         bar.close()
@@ -166,7 +165,7 @@ class NnGmail():
         for results in self.gmail.list_messages(limit=None):
             (total, msgs) = results
             gids = set([msg['id'] for msg in msgs])
-            bar.total = total
+            bar.total = len(msgs)
             hid1 = self.create(gids - local_gids)
             hid2 = self.update(local_gids.intersection(gids))
             history_id = max(hid1, hid2, history_id)
