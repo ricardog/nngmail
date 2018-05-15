@@ -162,8 +162,7 @@ class NnGmail():
         local_gids = set(self.sql3.all_ids())
         
         bar = tqdm(leave=True, total=total, desc='fetching metadata')
-        for results in self.gmail.list_messages(limit=None):
-            (total, msgs) = results
+        for (total, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
             bar.total = len(msgs)
             hid1 = self.create(gids - local_gids)
