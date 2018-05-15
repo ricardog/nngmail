@@ -13,6 +13,8 @@ import pdb
 class NnGmail():
     def __init__(self, opts):
         self.db_file = opts['db_file']
+        self.max_payload = opts['max_payload']
+        self.cache_lifetime = opts['cache_lifetime']
         self.sql3 = local2.Sqlite3(self.db_file)
         self.gmail = remote.Gmail()
 
@@ -192,7 +194,9 @@ def main():
         logger = logging.getLogger('sqlalchemy.engine')
         logger.setLevel(logging.DEBUG)
 
-    me = NnGmail({'db_file': 'nngmail.sqlite3'})
+    me = NnGmail({'db_file': 'nngmail.sqlite3',
+                  'max_payload': 1024*1024,
+                  'cache_lifetime': 31})
     me.pull()
 
 if __name__ == '__main__':
