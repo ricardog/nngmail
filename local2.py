@@ -86,19 +86,20 @@ class Sqlite3():
                 self.session.query(Message).add_column('google_id').all()]
     
     def find(self, ids):
-        if not isinstance(ids, Iterable):
-            return self.session.query(Message).filter(Message.id == ids).first()
+        if isinstance(gids, str) or not isinstance(ids, Iterable):
+            ids = [ids]
         return self.session.query(Message).filter(Message.id.in_(ids)).all()
 
-    def find2(self, gids):
-        if not isinstance(gids, Iterable):
-            return self.session.query(Message).filter(Message.google_id == gids).first()
+    def find_by_gid(self, gids):
+        if isinstance(gids, str) or not isinstance(gids, Iterable):
+            gids = [gids]
         return self.session.query(Message).filter(Message.google_id.in_(gids)).all()
     
     def delete(self, gids):
-        msgs = self.find(gids)
-        self.session.delete(msgs)
-        self.session.commit()
+        msgs = self.find_by_gid(gids)
+        if msgs:
+            self.session.delete(msgs)
+            self.session.commit()
 
     def add_label(self, gid, lid):
         pass
