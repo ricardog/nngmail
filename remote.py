@@ -112,7 +112,6 @@ class Gmail:
             elif ex.resp.status == 403:
                 raise Gmail.UserRateException(excep)
             else:
-                print("unhandled history exception")
                 raise Gmail.GenericException(excep)
 
     @authorized
@@ -210,7 +209,6 @@ class Gmail:
                 elif ex_is_error(excep, 403):
                     raise Gmail.UserRateException(excep)
                 else:
-                    print("unhandled batch exception")
                     raise Gmail.BatchException(excep)
             msg_batch.append(resp)
 
