@@ -33,6 +33,9 @@ class Gmail:
     class BatchException(Exception):
         pass
 
+    class NoHistoryException(Exception):
+        pass
+
     def __init__(self):
         "Object for accessing gmail via http API."
         self.credentials_path = 'credentials.json'
@@ -91,18 +94,26 @@ class Gmail:
 
     @authorized
     def get_history_since(self, start=0):
-        pt = None
-        while pt is None or 'nextPageToken' in results:
-            results = self.service.users().messages().history().\
-                      list(userId='me',
-                           pageToken=pt,
-                           q=self.query,
-                           includeSpamTrash=True).execute()
-
+        hist = self.service.users().history()
+        try:
+            results = hist.list(userId='me', startHistoryId=start).execute()
             if 'history' in results:
                 yield (results['history'])
-            if 'nextPageToken' in results:
-                pt = results['nextPageToken']
+            while 'nextPageToken' in results:
+                results = hist.list(userId='me',
+                                    pageToken=results['nextPageToken'],
+                                    startHistoryId=start).execute()
+                if 'history' in results:
+                    yield (results['history'])
+
+        except googleapiclient.errors.HttpError as ex:
+            if ex.resp.status == 404:
+                raise Gmail.NoHistoryException
+            elif ex.resp.status == 403:
+                raise Gmail.UserRateException(excep)
+            else:
+                print("unhandled istory exception")
+                raise Gmail.GenericException(excep)
 
     @authorized
     def list_messages(self, limit=1):
