@@ -170,9 +170,10 @@ class NnGmail():
         self.sql3.set_history_id(history_id)
         
 def main():
-    logging.basicConfig(filename='sql.log')
-    logger = logging.getLogger('sqlalchemy.engine')
-    logger.setLevel(logging.DEBUG)
+    if None:
+        logging.basicConfig(filename='sql.log')
+        logger = logging.getLogger('sqlalchemy.engine')
+        logger.setLevel(logging.DEBUG)
 
     me = NnGmail({'db_file': 'nngmail.sqlite3'})
     me.pull()
