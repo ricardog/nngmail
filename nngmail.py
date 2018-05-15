@@ -24,7 +24,7 @@ class NnGmail():
         history_id = self.sql3.get_history_id()
         self.sql3.set_history_id(self.gmail.get_history_id(history_id))
         
-    def store(self, gids, sync_labels=False):
+    def create(self, gids, sync_labels=False):
         history_id = 0
         if not gids:
             return self.sql3.get_history_id()
@@ -32,21 +32,21 @@ class NnGmail():
             self.sync_labels()
         if isinstance(gids, str) or not isinstance(gids, Iterable):
             msg = self.gmail.get_message(gids, 'metadata')
-            self.sql3.store(msg['id'], msg['threadId'], msg['labelIds'],
-                            int(msg['internalDate']) / 1000,
-                            msg['sizeEstimate'],
-                            msg['payload']['headers'], msg['snippet'])
+            self.sql3.create(msg['id'], msg['threadId'], msg['labelIds'],
+                             int(msg['internalDate']) / 1000,
+                             msg['sizeEstimate'],
+                             msg['payload']['headers'], msg['snippet'])
             history_id = max(history_id, int(msg['historyId']))
         else:
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
-                    self.sql3.store(msg['id'], msg['threadId'],
-                                    msg.get('labelIds', []),
-                                    int(msg['internalDate']) / 1000,
-                                    msg['sizeEstimate'],
-                                    msg['payload']['headers'], msg['snippet'],
-                                    False)
+                    self.sql3.create(msg['id'], msg['threadId'],
+                                     msg.get('labelIds', []),
+                                     int(msg['internalDate']) / 1000,
+                                     msg['sizeEstimate'],
+                                     msg['payload']['headers'], msg['snippet'],
+                                     False)
                     history_id = max(history_id, int(msg['historyId']))
             self.sql3.commit()
         return history_id
@@ -153,7 +153,7 @@ class NnGmail():
         new_gids = set(added.keys())
         local_gids = set(map(lambda mm: mm.google_id,
                              self.sql3.find_by_gid(new_gids)))
-        _ = self.store(new_gids - local_gids)
+        _ = self.create(new_gids - local_gids)
         bar.update(len(added))
         self.update2(updated)
         bar.close()
@@ -169,7 +169,7 @@ class NnGmail():
             (total, msgs) = results
             gids = set([msg['id'] for msg in msgs])
             bar.total = total
-            hid1 = self.store(gids - local_gids)
+            hid1 = self.create(gids - local_gids)
             hid2 = self.update(local_gids.intersection(gids))
             history_id = max(hid1, hid2, history_id)
             local_gids = local_gids - gids

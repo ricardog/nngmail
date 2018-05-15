@@ -47,8 +47,8 @@ class Sqlite3():
         label = Label.as_unique(self.session, name=name, gid=gid)
         self.label_map[name] = label
 
-    def store(self, gid, thread_id, label_ids, date, size,headers, snippet,
-              commit=True):
+    def create(self, gid, thread_id, label_ids, date, size,headers, snippet,
+               commit=True):
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc']
         headers = dict((hh['name'], hh['value']) for hh in
                        filter(lambda h: h['name'] in keepers, headers))
