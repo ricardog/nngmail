@@ -25,17 +25,18 @@ class NnGmail():
         self.sql3.set_history_id(self.gmail.get_history_id(history_id))
         
     def store(self, gids, sync_labels=False):
+        history_id = 0
         if not gids:
             return self.sql3.get_history_id()
         if sync_labels:
             self.sync_labels()
-        if not isinstance(gids, Iterable):
+        if isinstance(gids, str) or not isinstance(gids, Iterable):
             msg = self.gmail.get_message(gids, 'metadata')
             self.sql3.store(msg['id'], msg['threadId'], msg['labelIds'],
                             int(msg['internalDate']) / 1000,
                             msg['sizeEstimate'],
                             msg['payload']['headers'], msg['snippet'])
-            history_id = int(msg['historyId'])
+            history_id = max(history_id, int(msg['historyId']))
         else:
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
@@ -46,26 +47,27 @@ class NnGmail():
                                     msg['sizeEstimate'],
                                     msg['payload']['headers'], msg['snippet'],
                                     False)
-                history_id = int(batch[-1]['historyId'])
+                    history_id = max(history_id, int(msg['historyId']))
             self.sql3.commit()
         return history_id
 
     def update(self, gids, sync_labels=False):
+        history_id = 0
         if not gids:
             return self.sql3.get_history_id()
         if sync_labels:
             self.sync_labels()
         history_id = 0
-        if not isinstance(gids, Iterable):
+        if isinstance(gids, str) or not isinstance(gids, Iterable):
             msg = self.gmail.get_message(gid, 'metadata')
             self.sql3.update(msg['id'], msg['labelIds'])
-            history_id = int(msg['historyId'])
+            history_id = max(history_id, int(msg['historyId']))
         else:
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
                     self.sql3.update(msg['id'], msg.get('labelIds', []))
-                history_id = int(batch[-1]['historyId'])
+                    history_id = max(history_id, int(msg['historyId']))
             self.sql3.session.flush()
         return history_id
 
@@ -77,6 +79,27 @@ class NnGmail():
     def delete(self, gids):
         self.sql3.delete(gids)
 
+    def get_history(self):
+        history = []
+        no_history = False
+        history_id = self.sql3.get_history_id()
+        
+        bar = tqdm(leave=True, total=10, desc='fetching changes')
+        pages = 0
+        try:
+            for results in self.gmail.get_history_since(history_id):
+                history += results
+                pages += 1
+                bar.update(1)
+        except remote.Gmail.NoHistoryException as ex:
+            no_history = True
+        for _ in range(pages, 10):
+            bar.update(1)
+        bar.close()
+        if no_history:
+            return None
+        return history
+        
     def merge_history(self, history):
         deleted = {}
         added = {}
@@ -107,22 +130,13 @@ class NnGmail():
         return(int(history[-1]['id']), deleted, added, updated)
 
     def pull(self):
-        need_full = False
-        history_id = self.sql3.get_history_id()
         self.sync_labels()
-        history = []
-        print('history id: %d' % history_id)
-        
-        bar = tqdm(leave=True, total=10, desc='fetching changes')
-        try:
-            for results in self.gmail.get_history_since(history_id):
-                history += results
-                bar.update(1)
-        except remote.Gmail.NoHistoryException as ex:
-            need_full = True
-        bar.close()
 
-        if need_full:
+        if self.sql3.get_history_id() == 0:
+            history = None
+        else:
+            history = self.get_history()
+        if history is None:
             print('No history available; attempting full pull')
             self.full_pull()
             return
@@ -132,7 +146,6 @@ class NnGmail():
             return
 
         hid, deleted, added, updated = self.merge_history(history)
-        assert hid >= history_id
         total = len(deleted) + len(added) + len(updated)
         bar = tqdm(leave=True, total=total, desc='applying changes')
         self.delete(tuple(deleted.keys()))
@@ -148,11 +161,10 @@ class NnGmail():
                   
     def full_pull(self):
         total = 1
-        bar = tqdm(leave=True, total=total, desc='fetching metadata')
         history_id = 0
-        self.sync_labels()
         local_gids = set(self.sql3.all_ids())
         
+        bar = tqdm(leave=True, total=total, desc='fetching metadata')
         for results in self.gmail.list_messages(limit=None):
             (total, msgs) = results
             gids = set([msg['id'] for msg in msgs])
