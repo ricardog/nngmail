@@ -33,6 +33,7 @@ class NnGmail():
             msg = self.gmail.get_message(gids, 'metadata')
             self.sql3.store(msg['id'], msg['threadId'], msg['labelIds'],
                             int(msg['internalDate']) / 1000,
+                            msg['sizeEstimate'],
                             msg['payload']['headers'], msg['snippet'])
             history_id = int(msg['historyId'])
         else:
@@ -44,6 +45,7 @@ class NnGmail():
                     self.sql3.store(msg['id'], msg['threadId'],
                                     msg.get('labelIds', []),
                                     int(msg['internalDate']) / 1000,
+                                    msg['sizeEstimate'],
                                     msg['payload']['headers'], msg['snippet'],
                                     False)
                 history_id = int(batch[-1]['historyId'])

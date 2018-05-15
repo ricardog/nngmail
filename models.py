@@ -162,7 +162,8 @@ class Message(Base):
     subject = Column(String)
     snippet = Column(String(200))
     deleted = Column(Boolean, default=False)
-
+    size = Column(Integer, default=0)
+    
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
                           innerjoin=True)

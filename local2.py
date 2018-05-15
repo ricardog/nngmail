@@ -47,7 +47,7 @@ class Sqlite3():
         label = Label.as_unique(self.session, name=name, gid=gid)
         self.label_map[name] = label
 
-    def store(self, gid, thread_id, label_ids, date, headers, snippet,
+    def store(self, gid, thread_id, label_ids, date, size,headers, snippet,
               commit=True):
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc']
         headers = dict((hh['name'], hh['value']) for hh in
@@ -63,6 +63,7 @@ class Sqlite3():
         self.session.add(Message(google_id=gid,
                                  thread=thread,
                                  subject=headers.get('Subject', ''),
+                                 size=size,
                                  date=datetime.datetime.fromtimestamp(date),
                                  sender=sender,
                                  snippet=snippet,
