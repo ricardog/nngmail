@@ -107,7 +107,7 @@ class NnGmail():
         
         bar = tqdm(leave=True, total=len(history) - 1, desc='merging changes')
         for item in map(lambda i: history[i],
-                        range(len(history) - 1, 0, -1)):
+                        range(len(history) - 1, -1, -1)):
             if 'messagesDeleted' in item:
                 for msg in map(lambda m: m['message'],
                                item['messagesDeleted']):
