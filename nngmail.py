@@ -38,17 +38,20 @@ class NnGmail():
                              msg['payload']['headers'], msg['snippet'])
             history_id = max(history_id, int(msg['historyId']))
         else:
+            bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
-                for msg in batch:
+                for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
                     self.sql3.create(msg['id'], msg['threadId'],
                                      msg.get('labelIds', []),
                                      int(msg['internalDate']) / 1000,
                                      msg['sizeEstimate'],
                                      msg['payload']['headers'], msg['snippet'],
                                      False)
+                    bar.update(1)
                     history_id = max(history_id, int(msg['historyId']))
             self.sql3.commit()
+            bar.close()
         return history_id
 
     def update(self, gids, sync_labels=False):
@@ -63,12 +66,15 @@ class NnGmail():
             self.sql3.update(msg['id'], msg['labelIds'])
             history_id = max(history_id, int(msg['historyId']))
         else:
+            bar = tqdm(leave=True, total=len(gids), desc='updating messages')
             results = self.gmail.get_messages(gids, 'metadata')
             for batch in results:
                 for msg in batch:
                     self.sql3.update(msg['id'], msg.get('labelIds', []))
                     history_id = max(history_id, int(msg['historyId']))
+                    bar.update(1)
             self.sql3.session.flush()
+            bar.close()
         return history_id
 
     def update2(self, updated):
@@ -160,20 +166,23 @@ class NnGmail():
         total = 1
         history_id = 0
         local_gids = set(self.sql3.all_ids())
-        
-        bar = tqdm(leave=True, total=total, desc='fetching metadata')
+        created = []
+        updated = []
+
+        print('counting messages', end='\r')
         for (total, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
-            bar.total = len(msgs)
-            hid1 = self.create(gids - local_gids)
-            hid2 = self.update(local_gids.intersection(gids))
-            history_id = max(hid1, hid2, history_id)
+            created.extend(gids - local_gids)
+            updated.extend(local_gids.intersection(gids))
             local_gids = local_gids - gids
-            bar.update(len(msgs))
+        print('')
+        
+        created = sorted(created, key=lambda a: int(a, 16))
+        hid1 = self.create(created)
+        hid2 = self.update(updated)
+        self.delete(local_gids)
 
-        for gid in local_gids:
-            self.delete(gid)
-        bar.close()
+        history_id = max(hid1, hid2, history_id)
         print('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
         
