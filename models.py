@@ -1,11 +1,13 @@
 
 import enum
+import zlib
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import inspect
 from sqlalchemy import BLOB, Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import synonym_for
 from sqlalchemy.orm import deferred, relationship, sessionmaker, validates
 from sqlalchemy.sql import and_, or_, not_
 
@@ -164,7 +166,7 @@ class Message(Base):
     snippet = Column(String(200))
     deleted = Column(Boolean, default=False)
     size = Column(Integer, default=0)
-    raw = deferred(Column(BLOB))
+    _raw = deferred(Column(BLOB))
     
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
@@ -181,7 +183,23 @@ class Message(Base):
     labels = relationship('Label', secondary=lambda: label_association,
                            cascade='all', backref='messages')
     label_names = association_proxy('labels', 'name')
+        
+    @property
+    def __raw(self):
+        if self._raw is None:
+            return None
+        if 'raw2' in dir(self):
+            return self.raw2
+        self.raw2 = zlib.decompress(self._raw)
+        return self.raw2
 
+    @__raw.setter
+    def __raw(self, raw):
+        self.raw2 = raw
+        self._raw = zlib.compress(raw)
+
+    raw = synonym("_raw", descriptor=__raw)
+        
     @staticmethod
     def find_labels(session, gid):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message

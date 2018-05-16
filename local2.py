@@ -89,10 +89,13 @@ class Sqlite3():
         return [m.google_id for m in
                 self.session.query(Message).add_column('google_id').all()]
     
-    def find(self, ids):
-        if isinstance(gids, str) or not isinstance(ids, Iterable):
+    def find(self, ids, undefer=False):
+        if isinstance(ids, str) or not isinstance(ids, Iterable):
             ids = [ids]
-        return self.session.query(Message).filter(Message.id.in_(ids)).all()
+        query = self.session.query(Message).filter(Message.id.in_(ids))
+        if undefer:
+            query = query.undefer('raw')
+        return query.all()
 
     def find_by_gid(self, gids):
         if isinstance(gids, str) or not isinstance(gids, Iterable):

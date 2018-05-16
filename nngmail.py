@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 from collections import Iterable
 import logging
 
@@ -57,6 +58,25 @@ class NnGmail():
             bar.close()
         return history_id
 
+    def cacheable(self, msg):
+        return True
+    
+    def read(self, ids):
+        msgs = self.sql3.find(ids)
+        id_map = dict(((m.google_id, m) for m in msgs))
+        assert len(msgs) == len(ids)
+        needed = tuple(map(lambda m: m.google_id,
+                           filter(lambda m: m.raw is None, msgs)))
+        raw = {}
+        for batch in self.gmail.get_messages(needed, format='raw'):
+            for msg in batch:
+                blob = base64.b64decode(msg['raw'], altchars='-_')
+                id_map[msg['id']].raw = blob
+        # Store raw message data fetch during read
+        self.sql3.commit()
+        return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
+        
+            
     def update(self, gids, sync_labels=False):
         history_id = 0
         if not gids:
@@ -200,6 +220,8 @@ def main():
                        'max_payload': 1024*1024,
                        'cache_lifetime': 31})
     nngmail.pull()
-
+    msgs = nngmail.read(range(2140, 2150))
+    #print(msgs)
+    
 if __name__ == '__main__':
     main()
