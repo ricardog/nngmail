@@ -115,12 +115,22 @@ class BccAddressee(Addressee):
         'polymorphic_identity': AddresseeEnum.bcc
       }
 
+label_association = Table('label_association', Base.metadata,
+    Column('label_gid', Integer, ForeignKey('label.gid'), nullable=False),
+    Column('message_gid', Integer, ForeignKey('message.google_id'),
+           index=True, nullable=False)
+)
+
 class Label(UniqueMixin, Base):
     __tablename__ = 'label'
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
     gid = Column(String, unique=True)
 
+    messages = relationship('Message', secondary=label_association,
+                            lazy='selectin', passive_deletes=True,
+                            back_populates='labels')
+    
     @classmethod
     def unique_hash(cls, gid, name=None):
         return gid
@@ -131,12 +141,6 @@ class Label(UniqueMixin, Base):
 
     def __repr__(self):
         return '%s' % self.name
-
-label_association = Table('label_association', Base.metadata,
-    Column('label_gid', Integer, ForeignKey('label.gid'), nullable=False),
-    Column('message_gid', Integer, ForeignKey('message.google_id'),
-           index=True, nullable=False)
-)
         
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
@@ -173,23 +177,20 @@ class Message(Base):
     deleted = Column(Boolean, default=False)
     size = Column(Integer, default=0)
     _raw = deferred(Column(BLOB))
-    
+
     from_id = Column(Integer, ForeignKey('contact.id'))
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
                           innerjoin=True)
     thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
-    #thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
-                          
-    to_ = relationship('ToAddressee', cascade='all, delete-orphan',
-                       backref='received')
-    cc = relationship('CcAddressee', cascade='all, delete-orphan',
-                      backref='cced')
-    bcc = relationship('BccAddressee', cascade='all, delete-orphan',
-                       backref='bcced')
-    labels = relationship('Label', secondary=lambda: label_association,
-                           cascade='all, delete', backref='messages')
+
+    to_ = relationship('ToAddressee', backref='received', passive_deletes=True)
+    cc = relationship('CcAddressee', backref='cced', passive_deletes=True)
+    bcc = relationship('BccAddressee', backref='bcced', passive_deletes=True)
+    labels = relationship('Label', secondary=label_association,
+                          passive_deletes=True,
+                          back_populates='messages')
     label_names = association_proxy('labels', 'name')
-        
+
     @property
     def __raw(self):
         if self._raw is None:
