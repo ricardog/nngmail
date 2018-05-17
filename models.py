@@ -3,12 +3,11 @@ import enum
 import zlib
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import inspect
 from sqlalchemy import BLOB, Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import synonym_for
 from sqlalchemy.orm import deferred, relationship, sessionmaker, validates
+from sqlalchemy.orm import synonym
 from sqlalchemy.sql import and_, or_, not_
 
 from sqlalchemy.orm import joinedload, Load
@@ -144,6 +143,13 @@ class Thread(UniqueMixin, Base):
     id = Column(Integer, primary_key=True)
     tid = Column('gid', String, unique=True, index=True)
 
+    messages = relationship('Message', backref='thread', cascade='all, delete')
+    senders = association_proxy('messages', 'sender')
+    subjects = association_proxy('messages', 'subject')
+    dates = association_proxy('messages', 'date')
+    sizes = association_proxy('messages', 'size')
+    labels = association_proxy('messages', 'labels')
+
     @classmethod
     def unique_hash(cls, tid):
         return tid
@@ -172,7 +178,7 @@ class Message(Base):
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
                           innerjoin=True)
     thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
-    thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
+    #thread = relationship(Thread, foreign_keys=[thread_id], backref='messages')
                           
     to_ = relationship('ToAddressee', cascade='all, delete-orphan',
                        backref='received')
@@ -181,7 +187,7 @@ class Message(Base):
     bcc = relationship('BccAddressee', cascade='all, delete-orphan',
                        backref='bcced')
     labels = relationship('Label', secondary=lambda: label_association,
-                           cascade='all', backref='messages')
+                           cascade='all, delete', backref='messages')
     label_names = association_proxy('labels', 'name')
         
     @property
