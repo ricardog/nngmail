@@ -54,13 +54,13 @@ class NnGmail():
                                      False)
                     bar.update(1)
                     history_id = max(history_id, int(msg['historyId']))
-            self.sql3.commit()
+                self.sql3.commit()
             bar.close()
         return history_id
 
     def cacheable(self, msg):
         return True
-    
+
     def read(self, ids):
         msgs = self.sql3.find(ids)
         id_map = dict(((m.google_id, m) for m in msgs))
@@ -75,8 +75,8 @@ class NnGmail():
         # Store raw message data fetch during read
         self.sql3.commit()
         return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
-        
-            
+
+
     def update(self, gids, sync_labels=False):
         history_id = 0
         if not gids:
@@ -96,7 +96,7 @@ class NnGmail():
                     self.sql3.update(msg['id'], msg.get('labelIds', []))
                     history_id = max(history_id, int(msg['historyId']))
                     bar.update(1)
-            self.sql3.session.flush()
+                self.sql3.session.flush()
             bar.close()
         return history_id
 
