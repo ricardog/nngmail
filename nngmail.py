@@ -3,6 +3,7 @@
 import base64
 from collections import Iterable
 import logging
+import sys
 
 from tqdm import tqdm
 
@@ -191,12 +192,13 @@ class NnGmail():
         created = []
         updated = []
 
-        print('counting messages', end='\r')
+        print('counting messages', end='', flush=True)
         for (total, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
             created.extend(gids - local_gids)
             updated.extend(local_gids.intersection(gids))
             local_gids = local_gids - gids
+            print('.', end='', flush=True)
         print('')
         
         created = sorted(created, key=lambda a: int(a, 16))
