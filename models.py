@@ -70,13 +70,13 @@ class Contact(UniqueMixin, Base):
     name = Column(String)
     email = Column(String, unique=True, index=True)
 
-    received = relationship('ToAddressee')
-    cced = relationship('CcAddressee')
-    bcced = relationship('CcAddressee')
+    _received = relationship('ToAddressee')
+    _cced = relationship('CcAddressee')
+    _bcced = relationship('BccAddressee')
 
-    received_msgs = association_proxy('received', 'message')
-    cced_msgs = association_proxy('cced', 'message')
-    bcced_msgs = association_proxy('bcced', 'message')
+    received = association_proxy('_received', 'message')
+    cced = association_proxy('_cced', 'message')
+    bcced = association_proxy('_bcced', 'message')
     
     @validates('email')
     def validates_email(self, key, email):
@@ -107,35 +107,22 @@ class Addressee(Base):
 
     name = association_proxy('contact', 'name')
     email = association_proxy('contact', 'email')
-    
-    def __init__(self, session, type_, email, name):
-        self.type_ = type_
-        self.contact = Contact.as_unique(session, email=email, name=name)
 
     __mapper_args__ = {
         'polymorphic_on': type_
       }
 
 class ToAddressee(Addressee):
-    def __init__(self, session, email, name):
-        Addressee.__init__(self, session, AddresseeEnum.to, email, name)
-
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.to
     }
 
 class CcAddressee(Addressee):
-    def __init__(self, session, email, name):
-        Addressee.__init__(self, session, AddresseeEnum.cc, email, name)
-
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.cc
       }
 
 class BccAddressee(Addressee):
-    def __init__(self, session, email, name):
-        Addressee.__init__(self, session, AddresseeEnum.bcc, email, name)
-
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.bcc
       }
@@ -215,9 +202,12 @@ class Message(Base):
                           passive_deletes=True,
                           back_populates='messages')
     label_names = association_proxy('labels', 'name')
-    tos = association_proxy('to_', 'contact')
-    ccs = association_proxy('cc', 'contact')
-    bccs = association_proxy('bcc', 'contact')
+    tos = association_proxy('to_', 'contact',
+                            creator=lambda c: ToAddressee(contact=c))
+    ccs = association_proxy('cc', 'contact',
+                            creator=lambda c: CcAddressee(contact=c))
+    bccs = association_proxy('bcc', 'contact',
+                            creator=lambda c: BccAddressee(contact=c))
 
     @property
     def __raw(self):

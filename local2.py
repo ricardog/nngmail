@@ -7,7 +7,6 @@ import re
 
 from sqlalchemy import create_engine
 from models import Base, KeyValue, Contact, Label, Thread, Message
-from models import ToAddressee, CcAddressee, BccAddressee
 from sqlalchemy.orm import sessionmaker
 
 import pdb
@@ -65,23 +64,23 @@ class Sqlite3():
         else:
             sender = None
         if 'To' in headers:
-            to_ = [ToAddressee(self.session, email=e, name=n) for
+            tos = [Contact.as_unique(self.session, email=e, name=n) for
                    n, e in map(lambda xx: email.utils.parseaddr(xx),
                               headers['To'].split(','))]
         else:
-            to_ = []
+            tos = []
         if 'CC' in headers:
-            cc = [CcAddressee(self.session, email=e, name=n) for
-                  n, e in map(lambda xx: email.utils.parseaddr(xx),
+            ccs = [Contact.as_unique(self.session, email=e, name=n) for
+                   n, e in map(lambda xx: email.utils.parseaddr(xx),
                              headers['CC'].split(','))]
         else:
-            cc = []
+            ccs = []
         if 'BCC' in headers:
-            bcc = [BccAddressee(self.session, email=e, name=n) for
+            bccs = [Contact.as_unique(self.session, email=e, name=n) for
                    n, e in map(lambda xx: email.utils.parseaddr(xx),
                               headers['BCC'].split(','))]
         else:
-            bcc = []
+            bccs = []
         labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
         thread = Thread.as_unique(self.session, tid=thread_id)
         if 'date' in kwargs:
@@ -98,7 +97,7 @@ class Sqlite3():
                                  sender=sender,
                                  snippet=kwargs.get('snippet', ''),
                                  labels=labels,
-                                 to_=to_, cc=cc, bcc=bcc))
+                                 tos=tos, ccs=ccs, bccs=bccs))
         if commit:
             self.session.commit()
 
