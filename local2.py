@@ -63,24 +63,15 @@ class Sqlite3():
             sender = Contact.as_unique(self.session, name=name, email=addr)
         else:
             sender = None
-        if 'To' in headers:
-            tos = [Contact.as_unique(self.session, email=e, name=n) for
-                   n, e in map(lambda xx: email.utils.parseaddr(xx),
-                              headers['To'].split(','))]
-        else:
-            tos = []
-        if 'CC' in headers:
-            ccs = [Contact.as_unique(self.session, email=e, name=n) for
-                   n, e in map(lambda xx: email.utils.parseaddr(xx),
-                             headers['CC'].split(','))]
-        else:
-            ccs = []
-        if 'BCC' in headers:
-            bccs = [Contact.as_unique(self.session, email=e, name=n) for
-                   n, e in map(lambda xx: email.utils.parseaddr(xx),
-                              headers['BCC'].split(','))]
-        else:
-            bccs = []
+        adds = {}
+        for hdr in ('To', 'CC', 'BCC'):
+            if hdr in headers:
+                adds[hdr] = [Contact.as_unique(self.session, email=e,
+                                               name=n) for
+                             n, e in map(lambda xx: email.utils.parseaddr(xx),
+                                         headers[hdr].split(','))]
+            else:
+                adds[hdr] = []
         labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
         thread = Thread.as_unique(self.session, tid=thread_id)
         if 'date' in kwargs:
@@ -97,7 +88,8 @@ class Sqlite3():
                                  sender=sender,
                                  snippet=kwargs.get('snippet', ''),
                                  labels=labels,
-                                 tos=tos, ccs=ccs, bccs=bccs))
+                                 tos=adds['To'], ccs=adds['CC'],
+                                 bccs=adds['BCC']))
         if commit:
             self.session.commit()
 
