@@ -37,21 +37,24 @@ class NnGmail():
             self.sync_labels()
         if isinstance(gids, str) or not isinstance(gids, Iterable):
             msg = self.gmail.get_message(gids, 'metadata')
-            self.sql3.create(msg['id'], msg['threadId'], msg['labelIds'],
-                             int(msg['internalDate']) / 1000,
-                             msg['sizeEstimate'],
-                             msg['payload']['headers'], msg['snippet'])
+            self.sql3.create(msg['id'], msg['threadId'],
+                             label_ids=msg['labelIds'],
+                             date=int(msg['internalDate']) / 1000,
+                             size=msg['sizeEstimate'],
+                             headers=msg['payload']['headers'],
+                             snippet=msg['snippet'])
             history_id = max(history_id, int(msg['historyId']))
         else:
             bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
             for batch in self.gmail.get_messages(gids, 'metadata'):
                 for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
                     self.sql3.create(msg['id'], msg['threadId'],
-                                     msg.get('labelIds', []),
-                                     int(msg['internalDate']) / 1000,
-                                     msg['sizeEstimate'],
-                                     msg['payload']['headers'], msg['snippet'],
-                                     False)
+                                     commit=False,
+                                     label_ids=msg.get('labelIds', []),
+                                     date=int(msg['internalDate']) / 1000,
+                                     size=msg['sizeEstimate'],
+                                     headers=msg['payload']['headers'],
+                                     snippet=msg['snippet'])
                     bar.update(1)
                     history_id = max(history_id, int(msg['historyId']))
                 self.sql3.commit()

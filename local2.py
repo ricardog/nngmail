@@ -47,30 +47,37 @@ class Sqlite3():
         label = Label.as_unique(self.session, name=name, gid=gid)
         self.label_map[name] = label
 
-    def create(self, gid, thread_id, label_ids, date, size,headers, snippet,
-               commit=True):
+    def create(self, google_id, thread_id, commit=True, **kwargs):
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc',
                    'Message-ID']
         headers = dict((hh['name'], hh['value']) for hh in
-                       filter(lambda h: h['name'] in keepers, headers))
-        default_id = '<%s@mail.gmail.com>' % gid
+                       filter(lambda h: h['name'] in keepers,
+                              kwargs.get('headers', [])))
+        default_id = '<%s@mail.gmail.com>' % google_id
         if 'From' not in headers and 'from' in headers:
             headers['From'] = headers['from']
         if 'Subject' not in headers and 'subject' in headers:
             headers['Subject'] = headers['subject']
-        name, addr = email.utils.parseaddr(headers['From'])
-        sender = Contact.as_unique(self.session, name=name, email=addr)
-        labels = [self.get_label(gid) for gid in label_ids]
+        if headers['From']:
+            name, addr = email.utils.parseaddr(headers['From'])
+            sender = Contact.as_unique(self.session, name=name, email=addr)
+        else:
+            sender = None
+        labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
         thread = Thread.as_unique(self.session, tid=thread_id)
-        self.session.add(Message(google_id=gid,
+        if 'date' in kwargs:
+            timestamp = datetime.datetime.fromtimestamp(kwargs.get('date'))
+        else:
+            timestamp = datetime.satetime.now()
+        self.session.add(Message(google_id=google_id,
                                  thread=thread,
                                  message_id=headers.get('Message-ID',
                                                         default_id),
                                  subject=headers.get('Subject', ''),
-                                 size=size,
-                                 date=datetime.datetime.fromtimestamp(date),
+                                 size=kwargs.get('size', 0),
+                                 date=timestamp,
                                  sender=sender,
-                                 snippet=snippet,
+                                 snippet=kwargs.get('snippet', ''),
                                  labels=labels))
         if commit:
             self.session.commit()
