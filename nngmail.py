@@ -43,8 +43,7 @@ class NnGmail():
             history_id = max(history_id, int(msg['historyId']))
         else:
             bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
-            results = self.gmail.get_messages(gids, 'metadata')
-            for batch in results:
+            for batch in self.gmail.get_messages(gids, 'metadata'):
                 for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
                     self.sql3.create(msg['id'], msg['threadId'],
                                      msg.get('labelIds', []),
