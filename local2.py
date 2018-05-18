@@ -7,6 +7,7 @@ import re
 
 from sqlalchemy import create_engine
 from models import Base, KeyValue, Contact, Label, Thread, Message
+from models import ToAddressee, CcAddressee, BccAddressee
 from sqlalchemy.orm import sessionmaker
 
 import pdb
@@ -48,7 +49,7 @@ class Sqlite3():
         self.label_map[name] = label
 
     def create(self, google_id, thread_id, commit=True, **kwargs):
-        keepers = ['From', 'from', 'Subject', 'subject', 'To', 'Cc', 'Bcc',
+        keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID']
         headers = dict((hh['name'], hh['value']) for hh in
                        filter(lambda h: h['name'] in keepers,
@@ -63,6 +64,24 @@ class Sqlite3():
             sender = Contact.as_unique(self.session, name=name, email=addr)
         else:
             sender = None
+        if 'To' in headers:
+            to_ = [ToAddressee(self.session, email=e, name=n) for
+                   n, e in map(lambda xx: email.utils.parseaddr(xx),
+                              headers['To'].split(','))]
+        else:
+            to_ = []
+        if 'CC' in headers:
+            cc = [CcAddressee(self.session, email=e, name=n) for
+                  n, e in map(lambda xx: email.utils.parseaddr(xx),
+                             headers['CC'].split(','))]
+        else:
+            cc = []
+        if 'BCC' in headers:
+            bcc = [BccAddressee(self.session, email=e, name=n) for
+                   n, e in map(lambda xx: email.utils.parseaddr(xx),
+                              headers['BCC'].split(','))]
+        else:
+            bcc = []
         labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
         thread = Thread.as_unique(self.session, tid=thread_id)
         if 'date' in kwargs:
@@ -78,7 +97,8 @@ class Sqlite3():
                                  date=timestamp,
                                  sender=sender,
                                  snippet=kwargs.get('snippet', ''),
-                                 labels=labels))
+                                 labels=labels,
+                                 to_=to_, cc=cc, bcc=bcc))
         if commit:
             self.session.commit()
 

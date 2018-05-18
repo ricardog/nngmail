@@ -72,7 +72,8 @@ class Contact(UniqueMixin, Base):
 
     @validates('email')
     def validates_email(self, key, email):
-        assert '@' in email
+        if '@' not in email:
+            print("WARNING: '%s' in email field." % email)
         return email
 
     @classmethod
@@ -96,21 +97,34 @@ class Addressee(Base):
     contact = relationship('Contact')
     message = relationship('Message', backref='addressees')
 
+    def __init__(self, session, type_, email, name):
+        self.type_ = type_
+        self.contact = Contact.as_unique(session, email=email, name=name)
+
     __mapper_args__ = {
         'polymorphic_on': type_
       }
 
 class ToAddressee(Addressee):
+    def __init__(self, session, email, name):
+        Addressee.__init__(self, session, AddresseeEnum.to, email, name)
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.to
     }
 
 class CcAddressee(Addressee):
+    def __init__(self, session, email, name):
+        Addressee.__init__(self, session, AddresseeEnum.cc, email, name)
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.cc
       }
 
 class BccAddressee(Addressee):
+    def __init__(self, session, email, name):
+        Addressee.__init__(self, session, AddresseeEnum.bcc, email, name)
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.bcc
       }
@@ -190,6 +204,7 @@ class Message(Base):
                           passive_deletes=True,
                           back_populates='messages')
     label_names = association_proxy('labels', 'name')
+    to_names = association_proxy('to_', 'name')
 
     @property
     def __raw(self):
