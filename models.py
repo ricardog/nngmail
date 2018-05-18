@@ -70,6 +70,14 @@ class Contact(UniqueMixin, Base):
     name = Column(String)
     email = Column(String, unique=True, index=True)
 
+    received = relationship('ToAddressee')
+    cced = relationship('CcAddressee')
+    bcced = relationship('CcAddressee')
+
+    received_msgs = association_proxy('received', 'message')
+    cced_msgs = association_proxy('cced', 'message')
+    bcced_msgs = association_proxy('bcced', 'message')
+    
     @validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
@@ -97,6 +105,9 @@ class Addressee(Base):
     contact = relationship('Contact')
     message = relationship('Message', backref='addressees')
 
+    name = association_proxy('contact', 'name')
+    email = association_proxy('contact', 'email')
+    
     def __init__(self, session, type_, email, name):
         self.type_ = type_
         self.contact = Contact.as_unique(session, email=email, name=name)
@@ -197,14 +208,16 @@ class Message(Base):
                           innerjoin=True)
     thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
 
-    to_ = relationship('ToAddressee', backref='received', passive_deletes=True)
-    cc = relationship('CcAddressee', backref='cced', passive_deletes=True)
-    bcc = relationship('BccAddressee', backref='bcced', passive_deletes=True)
+    to_ = relationship('ToAddressee', passive_deletes=True)
+    cc = relationship('CcAddressee', passive_deletes=True)
+    bcc = relationship('BccAddressee', passive_deletes=True)
     labels = relationship('Label', secondary=label_association,
                           passive_deletes=True,
                           back_populates='messages')
     label_names = association_proxy('labels', 'name')
-    to_names = association_proxy('to_', 'name')
+    tos = association_proxy('to_', 'contact')
+    ccs = association_proxy('cc', 'contact')
+    bccs = association_proxy('bcc', 'contact')
 
     @property
     def __raw(self):
