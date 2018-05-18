@@ -219,9 +219,9 @@ class Gmail:
 
         for chunk in chunks(ids, self.BATCH_REQUEST_SIZE):
             batch = self.service.new_batch_http_request(callback=_cb)
-            for id in chunk:
+            for gid in chunk:
                 batch.add(self.service.users().messages().get(userId='me',
-                                                              id=id,
+                                                              id=gid,
                                                               format=format))
 
             # we wait if there is a user_rate_delay
