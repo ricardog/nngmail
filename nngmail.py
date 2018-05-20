@@ -29,38 +29,6 @@ class NnGmail():
         history_id = self.sql3.get_history_id()
         self.sql3.set_history_id(self.gmail.get_history_id(history_id))
         
-    def create(self, gids, sync_labels=False):
-        history_id = 0
-        if not gids:
-            return self.sql3.get_history_id()
-        if sync_labels:
-            self.sync_labels()
-        if isinstance(gids, str) or not isinstance(gids, Iterable):
-            msg = self.gmail.get_message(gids, 'metadata')
-            self.sql3.create(msg['id'], msg['threadId'],
-                             label_ids=msg['labelIds'],
-                             date=int(msg['internalDate']) / 1000,
-                             size=msg['sizeEstimate'],
-                             headers=msg['payload']['headers'],
-                             snippet=msg['snippet'])
-            history_id = max(history_id, int(msg['historyId']))
-        else:
-            bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
-            for batch in self.gmail.get_messages(gids, 'metadata'):
-                for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
-                    self.sql3.create(msg['id'], msg['threadId'],
-                                     commit=False,
-                                     label_ids=msg.get('labelIds', []),
-                                     date=int(msg['internalDate']) / 1000,
-                                     size=msg['sizeEstimate'],
-                                     headers=msg['payload']['headers'],
-                                     snippet=msg['snippet'])
-                    bar.update(1)
-                    history_id = max(history_id, int(msg['historyId']))
-                self.sql3.commit()
-            bar.close()
-        return history_id
-
     def cacheable(self, msg):
         return True
 
@@ -78,30 +46,39 @@ class NnGmail():
         # Store raw message data fetch during read
         self.sql3.commit()
         return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
-
-
-    def update(self, gids, sync_labels=False):
-        history_id = 0
+    
+    def create_or_update(self, gids, create=True, sync_labels=False):
+        history_id = self.sql3.get_history_id()
         if not gids:
-            return self.sql3.get_history_id()
+            return history_id
+        if isinstance(gids, str) or not isinstance(gids, Iterable):
+            gids = (gids, )
         if sync_labels:
             self.sync_labels()
-        history_id = 0
-        if isinstance(gids, str) or not isinstance(gids, Iterable):
-            msg = self.gmail.get_message(gid, 'metadata')
-            self.sql3.update(msg['id'], msg['labelIds'])
-            history_id = max(history_id, int(msg['historyId']))
-        else:
-            bar = tqdm(leave=True, total=len(gids), desc='updating messages')
-            results = self.gmail.get_messages(gids, 'metadata')
-            for batch in results:
-                for msg in batch:
-                    self.sql3.update(msg['id'], msg.get('labelIds', []))
-                    history_id = max(history_id, int(msg['historyId']))
-                    bar.update(1)
-                self.sql3.session.flush()
-            bar.close()
+        bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
+        for batch in self.gmail.get_messages(gids, 'metadata'):
+            for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
+                if create:
+                    self.sql3.create(msg['id'], msg['threadId'],
+                                     commit=False,
+                                     label_ids=msg.get('labelIds', []),
+                                     date=int(msg['internalDate']) / 1000,
+                                     size=msg['sizeEstimate'],
+                                     headers=msg['payload']['headers'],
+                                     snippet=msg['snippet'])
+                else:
+                    sql3.update(msg['id'], msg.get('labelIds', []))
+                bar.update(1)
+                history_id = max(history_id, int(msg['historyId']))
+            self.sql3.commit()
+        bar.close()
         return history_id
+
+    def create(self, gids, sync_labels=False):
+        return self.create_or_update(gids, True, sync_labels)
+
+    def update(self, gids, sync_labels=False):
+        return self.create_or_update(gids, False, sync_labels)
 
     def update2(self, updated):
         for id in updated.keys():
