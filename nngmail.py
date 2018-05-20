@@ -51,7 +51,7 @@ class NnGmail():
         history_id = self.sql3.get_history_id()
         if not gids:
             return history_id
-        if isinstance(gids, str) or not isinstance(gids, Iterable):
+        if '__getitem__' not in dir(gids):
             gids = (gids, )
         if sync_labels:
             self.sync_labels()
