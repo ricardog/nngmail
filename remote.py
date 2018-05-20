@@ -16,14 +16,12 @@ import pdb
 class Gmail:
     SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
     CLIENT_SECRET_FILE = 'client_secret.json'
-    MIN_BATCH_REQUEST_SIZE = 50
-    BATCH_REQUEST_SIZE = 100
-    MAX_CONNECTION_ERRORS = 3
-    
+    BATCH_SIZE = 100
+
     service = None
     credentials_path = None
     query = '-in:chats'
-    
+
     class GenericException(Exception):
         pass
 
@@ -39,6 +37,9 @@ class Gmail:
     def __init__(self):
         "Object for accessing gmail via http API."
         self.credentials_path = 'credentials.json'
+        self.creds = None
+        self.http = None
+        self.service = None
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
@@ -104,7 +105,7 @@ class Gmail:
                                     pageToken=results['nextPageToken'],
                                     startHistoryId=start).execute()
                 if 'history' in results:
-                    yield (results['history'])
+                    yield results['history']
 
         except googleapiclient.errors.HttpError as ex:
             if ex.resp.status == 404:
@@ -129,12 +130,12 @@ class Gmail:
 
             if 'messages' in results:
                 total += results['resultSizeEstimate']
-                yield (results['resultSizeEstimate'], results['messages'])
+                yield results['resultSizeEstimate'], results['messages']
             if 'nextPageToken' in results:
                 pt = results['nextPageToken']
             if limit is not None and total >= limit:
                 break
-            
+
     @authorized
     def get_message(self, id, format='minimal'):
         try:
@@ -168,20 +169,14 @@ class Gmail:
         "Get a collection of messages."
 
         # FIXME: support adaptive batch sizes
-        max_req = self.BATCH_REQUEST_SIZE
-        
-        # How much to wait before contacting the remote.
-        user_rate_delay = 0
-        # How many requests with the current delay returned ok.
-        user_rate_ok = 0
-        conn_errors = 0
+        max_req = self.BATCH_SIZE
 
         # queue up received batch and send in one go to content / db
         # routine
         msg_batch = [] 
 
         if '__getitem__' not in dir(ids):
-            ids = tuple(ids)
+            ids = (ids, )
 
         def ex_is_error(ex, code):
             "Check if exception is error code 'code'."
@@ -223,48 +218,21 @@ class Gmail:
                 batch.add(self.service.users().messages().get(userId='me',
                                                               id=gid,
                                                               format=format))
-
-            # we wait if there is a user_rate_delay
-            if user_rate_delay:
-                print("remote: waiting %.1f seconds." % user_rate_delay)
-                time.sleep(user_rate_delay)
-
             try:
                 batch.execute(http=self.http)
 
-                # gradually reduce if we had 10 ok batches
-                user_rate_ok += 1
-                if user_rate_ok > 10:
-                    user_rate_delay = user_rate_delay // 2
-                    user_rate_ok = 0
-                conn_errors = 0
-
             except Gmail.UserRateException as ex:
-                user_rate_delay = user_rate_delay * 2 + 1
                 print("remote: user rate error, increasing delay to %s" %
                       user_rate_delay)
-                user_rate_ok = 0
-
             except Gmail.BatchException as ex:
-                if max_req > self.MIN_BATCH_REQUEST_SIZE:
-                    max_req = max_req / 2
-                    print("reducing batch request size to: %d" % max_req)
-                else:
-                    raise Remote.BatchException("cannot reduce request any further")
+                print("reducing batch request size to: %d" % max_req)
 
             except ConnectionError as ex:
                 print("connection failed, re-trying:", ex)
-                conn_errors += 1
-                time.sleep(1)
-
-                if conn_errors > self.MAX_CONNECTION_ERRORS:
-                    print("too many connection errors")
-                    raise
 
             finally:
-                # handle batch
-                if len(msg_batch) > 0:
-                    yield(msg_batch)
+                if msg_batch:
+                    yield msg_batch
                     msg_batch.clear()
 
 
