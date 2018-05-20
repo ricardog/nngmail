@@ -9,6 +9,9 @@ from __future__ import print_function
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
+import queue
+import threading
+
 import googleapiclient
 
 import pdb
@@ -34,12 +37,108 @@ class Gmail:
     class NoHistoryException(Exception):
         pass
 
+    class Worker:
+        def __init__(self, idx, inq, outq, creds):
+            self.idx = idx
+            self.inq = inq
+            self.outq = outq
+            self.creds = creds
+            self.http = None
+            self.service = None
+            self.messages = []
+            
+        def handler(self, rid, resp, ex):
+            "Callback invoked by Google API to handled message data."
+            def ex_is_error(ex, code):
+                "Check if exception is error code 'code'."
+                return (type(ex) is googleapiclient.errors.HttpError and
+                        ex.resp.status == code)
+            if ex is not None:
+                if ex_is_error(ex, 404):
+                    # message could not be found this is probably a
+                    # deleted message, spam or draft message since these
+                    # are not included in the messages.get() query by
+                    # default.
+                    print("remote: could not find remote message: %s!" % rid)
+                    return
+
+                elif ex_is_error(ex, 400):
+                    # message id invalid, probably caused by stray files
+                    # in the mail repo
+                    print("remote: message id: %s is invalid! "  % rid)
+                    return
+
+                elif ex_is_error(ex, 403):
+                    raise Gmail.UserRateException(ex)
+                else:
+                    raise Gmail.BatchException(ex)
+            #print('worked %d: received message' % self.idx)
+            self.messages.append(resp)
+
+        def run(self):
+            print("worker %d started" % self.idx)
+
+            while True:
+                cmd = self.inq.get()
+                if cmd is None:
+                    break
+                if not self.http:
+                    self.http = self.creds.authorize(Http())
+                if not self.service:
+                    self.service = build('gmail', 'v1', http=self.http)
+
+                ridx, gids, format = cmd
+                print('worker %d: received request %d' % (self.idx, ridx))
+                batch = self.service.new_batch_http_request()
+                for gid in gids:
+                    batch.add(self.service.users().messages().get(userId='me',
+                                                                  id=gid,
+                                                                  format=format),
+                              callback=lambda a, b, c: self.handler(a, b, c),
+                              request_id=gid)
+                try:
+                    batch.execute()
+                except Gmail.UserRateException as ex:
+                    print("remote: user rate error, increasing delay")
+                    self.outq.put([ridx, ex])
+                except Gmail.BatchException as ex:
+                    print("reducing batch request size")
+                    self.outq.put([ridx, ex])
+                except ConnectionError as ex:
+                    print("connection failed: ", ex)
+                    self.outq.put([ridx, ex])
+                except Exception as ex:
+                    print("unhandled exception: ", ex)
+                    self.outq.put([ridx, ex])
+                else:
+                    self.outq.put([ridx, self.messages])
+                finally:
+                    self.inq.task_done()
+                    print('worker %d: completed request %d %d out of %d' %
+                          (self.idx, ridx, len(gids), len(self.messages)))
+                    self.messages.clear()
+
     def __init__(self):
         "Object for accessing gmail via http API."
         self.credentials_path = 'credentials.json'
         self.creds = None
         self.http = None
         self.service = None
+        self.num_workers = 2
+        self.workers = []
+        self.threads = []
+        self.outq = queue.Queue(maxsize=self.num_workers + 1)
+        self.inq = queue.Queue(maxsize=self.num_workers + 1)
+        self.creds = self.get_credentials()
+        for idx in range(self.num_workers):
+            self.workers.append(Gmail.Worker(idx, self.outq, self.inq,
+                                             self.creds))
+            # It's OK for these threads to not free up resources on exit
+            # since they don't store permanent state.
+            self.threads.append(
+                threading.Thread(daemon=True,
+                                 target=lambda: self.workers[idx].run()))
+            self.threads[idx].start()
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
@@ -171,70 +270,50 @@ class Gmail:
         # FIXME: support adaptive batch sizes
         max_req = self.BATCH_SIZE
 
-        # queue up received batch and send in one go to content / db
-        # routine
-        msg_batch = [] 
-
         if '__getitem__' not in dir(ids):
             ids = (ids, )
-
-        def ex_is_error(ex, code):
-            "Check if exception is error code 'code'."
-            return type(ex) is googleapiclient.errors.HttpError and \
-                ex.resp.status == code
-
-        def _cb(rid, resp, excep):
-            "Callback invoked by Google API to handled message data."
-            nonlocal msg_batch
-            if excep is not None:
-                if ex_is_error(excep, 404):
-                    # message could not be found this is probably a
-                    # deleted message, spam or draft message since these
-                    # are not included in the messages.get() query by
-                    # default.
-                    print("remote: could not find remote message: %s!" % rid)
-                    return
-
-                elif ex_is_error(excep, 400):
-                    # message id invalid, probably caused by stray files
-                    # in the mail repo
-                    print("remote: message id: %s is invalid! "  % rid)
-                    return
-
-                elif ex_is_error(excep, 403):
-                    raise Gmail.UserRateException(excep)
-                else:
-                    raise Gmail.BatchException(excep)
-            msg_batch.append(resp)
 
         def chunks(l, n):
             "Yield successive n-sized chunks from l."
             for i in range(0, len(l), n):
                 yield l[i:i + n]
 
-        for chunk in chunks(ids, self.BATCH_REQUEST_SIZE):
-            batch = self.service.new_batch_http_request(callback=_cb)
-            for gid in chunk:
-                batch.add(self.service.users().messages().get(userId='me',
-                                                              id=gid,
-                                                              format=format))
-            try:
-                batch.execute(http=self.http)
+        done = 0
+        idx = 0
+        chunker = chunks(ids, self.BATCH_SIZE)
+        while done < 2:
+            if done == 0:
+                try:
+                    chunk = chunker.__next__()
+                except StopIteration:
+                    done += 1
+                    chunk = None
 
-            except Gmail.UserRateException as ex:
-                print("remote: user rate error, increasing delay to %s" %
-                      user_rate_delay)
-            except Gmail.BatchException as ex:
-                print("reducing batch request size to: %d" % max_req)
-
-            except ConnectionError as ex:
-                print("connection failed, re-trying:", ex)
-
-            finally:
-                if msg_batch:
-                    yield msg_batch
-                    msg_batch.clear()
-
+            if not self.inq.empty():
+                try:
+                    ridx, resp = self.inq.get()
+                    print('received response %d' % ridx)
+                    if isinstance(resp, Exception):
+                        pdb.set_trace()
+                        raise resp
+                    print('response has %d messages' % len(resp))
+                    yield resp
+                except Gmail.UserRateException as ex:
+                    print("remote: user rate error, increasing delay to %s" %
+                          user_rate_delay)
+                except Gmail.BatchException as ex:
+                    print("reducing batch request size to: %d" % max_req)
+                except ConnectionError as ex:
+                    print("connection failed, re-trying:", ex)
+                finally:
+                    self.inq.task_done()
+            elif self.inq.empty() and done == 1:
+                done += 1
+            elif chunk:
+                print('queuing request %d [%s -> %s]' % (idx, chunk[0],
+                                                         chunk[-1]))
+                self.outq.put([idx, chunk, format])
+                idx += 1
 
 if __name__ == '__main__':
     gmail = Gmail()
