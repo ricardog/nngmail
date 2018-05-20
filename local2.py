@@ -13,7 +13,26 @@ import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
+
 class Sqlite3():
+    def __new_contacts(self, header):
+        contacts = []
+        for n, e in email.utils.getaddresses([header]):
+            if n == '' and e== '':
+                # This hapens with inpropperly quoted emails like
+                # dl-engr-silicon@stretchinc.com>
+                continue
+            try:
+                contacts.append(Contact.as_unique(self.session, email=e,
+                                                  name=n))
+            except AssertionError as ex:
+                # Contact.as_unique raises an exception of the email
+                # field fails validation.  Which happens with improperly
+                # quoted headers like:
+                # Wayne Heideman" <wayne@stretchinc.com>
+                continue
+        return contacts
+
     def __init__(self, fname):
         self.engine = create_engine("sqlite:///%s" % fname)
         self.conn = self.engine.connect()
@@ -54,24 +73,11 @@ class Sqlite3():
                        filter(lambda h: h['name'] in keepers,
                               kwargs.get('headers', [])))
         default_id = '<%s@mail.gmail.com>' % google_id
-        if 'From' not in headers and 'from' in headers:
-            headers['From'] = headers['from']
-        if 'Subject' not in headers and 'subject' in headers:
-            headers['Subject'] = headers['subject']
-        if headers['From']:
-            name, addr = email.utils.parseaddr(headers['From'])
-            sender = Contact.as_unique(self.session, name=name, email=addr)
-        else:
-            sender = None
+        senders = self.__new_contacts(headers.get('From',
+                                                  headers.get('from', '')))
         adds = {}
         for hdr in ('To', 'CC', 'BCC'):
-            if hdr in headers:
-                adds[hdr] = [Contact.as_unique(self.session, email=e,
-                                               name=n) for
-                             n, e in map(lambda xx: email.utils.parseaddr(xx),
-                                         headers[hdr].split(','))]
-            else:
-                adds[hdr] = []
+            adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
         labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
         thread = Thread.as_unique(self.session, tid=thread_id)
         if 'date' in kwargs:
@@ -82,10 +88,12 @@ class Sqlite3():
                                  thread=thread,
                                  message_id=headers.get('Message-ID',
                                                         default_id),
-                                 subject=headers.get('Subject', ''),
+                                 subject=headers.get('Subject',
+                                                     headers.get('subject',
+                                                                 '')),
                                  size=kwargs.get('size', 0),
                                  date=timestamp,
-                                 sender=sender,
+                                 sender=senders[0],
                                  snippet=kwargs.get('snippet', ''),
                                  labels=labels,
                                  tos=adds['To'], ccs=adds['CC'],

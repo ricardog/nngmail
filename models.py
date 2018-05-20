@@ -82,6 +82,7 @@ class Contact(UniqueMixin, Base):
     def validates_email(self, key, email):
         if '@' not in email:
             print("WARNING: '%s' in email field." % email)
+        assert '@' in email
         return email
 
     @classmethod
