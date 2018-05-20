@@ -265,9 +265,7 @@ class Gmail:
         idx = 0
         ridx = 0
         chunker = chunks(ids, self.BATCH_SIZE)
-        while True:
-            if done and idx == ridx:
-                break
+        while not (done and idx == ridx):
             if not self.inq.empty():
                 try:
                     _, resp = self.inq.get()
