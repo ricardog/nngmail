@@ -97,17 +97,7 @@ class Gmail:
                               request_id=gid)
                 try:
                     batch.execute()
-                except Gmail.UserRateException as ex:
-                    print("remote: user rate error, increasing delay")
-                    self.outq.put([ridx, ex])
-                except Gmail.BatchException as ex:
-                    print("reducing batch request size")
-                    self.outq.put([ridx, ex])
-                except ConnectionError as ex:
-                    print("connection failed: ", ex)
-                    self.outq.put([ridx, ex])
                 except Exception as ex:
-                    print("unhandled exception: ", ex)
                     self.outq.put([ridx, ex])
                 else:
                     self.outq.put([ridx, messages])
