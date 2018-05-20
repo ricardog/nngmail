@@ -45,9 +45,8 @@ class Gmail:
             self.creds = creds
             self.http = None
             self.service = None
-            self.messages = []
             
-        def handler(self, rid, resp, ex):
+        def handler(self, rid, resp, ex, messages):
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
                 "Check if exception is error code 'code'."
@@ -73,7 +72,7 @@ class Gmail:
                 else:
                     raise Gmail.BatchException(ex)
             #print('worked %d: received message' % self.idx)
-            self.messages.append(resp)
+            messages.append(resp)
 
         def run(self):
             print("worker %d started" % self.idx)
@@ -88,13 +87,15 @@ class Gmail:
                     self.service = build('gmail', 'v1', http=self.http)
 
                 ridx, gids, format = cmd
+                messages = []
                 print('worker %d: received request %d' % (self.idx, ridx))
                 batch = self.service.new_batch_http_request()
                 for gid in gids:
                     batch.add(self.service.users().messages().get(userId='me',
                                                                   id=gid,
                                                                   format=format),
-                              callback=lambda a, b, c: self.handler(a, b, c),
+                              callback=lambda a, b, c: self.handler(a, b, c,
+                                                                    messages),
                               request_id=gid)
                 try:
                     batch.execute()
@@ -111,12 +112,11 @@ class Gmail:
                     print("unhandled exception: ", ex)
                     self.outq.put([ridx, ex])
                 else:
-                    self.outq.put([ridx, self.messages])
+                    self.outq.put([ridx, messages])
                 finally:
                     self.inq.task_done()
                     print('worker %d: completed request %d %d out of %d' %
-                          (self.idx, ridx, len(gids), len(self.messages)))
-                    self.messages.clear()
+                          (self.idx, ridx, len(gids), len(messages)))
 
     def __init__(self):
         "Object for accessing gmail via http API."
@@ -278,17 +278,10 @@ class Gmail:
             for i in range(0, len(l), n):
                 yield l[i:i + n]
 
-        done = 0
+        done = False
         idx = 0
         chunker = chunks(ids, self.BATCH_SIZE)
-        while done < 2:
-            if done == 0:
-                try:
-                    chunk = chunker.__next__()
-                except StopIteration:
-                    done += 1
-                    chunk = None
-
+        while True:
             if not self.inq.empty():
                 try:
                     ridx, resp = self.inq.get()
@@ -307,9 +300,15 @@ class Gmail:
                     print("connection failed, re-trying:", ex)
                 finally:
                     self.inq.task_done()
-            elif self.inq.empty() and done == 1:
-                done += 1
-            elif chunk:
+            if done and self.inq.empty():
+                break
+            if not done:
+                try:
+                    chunk = chunker.__next__()
+                except StopIteration:
+                    done = True
+                    chunk = None
+            if chunk:
                 print('queuing request %d [%s -> %s]' % (idx, chunk[0],
                                                          chunk[-1]))
                 self.outq.put([idx, chunk, format])
