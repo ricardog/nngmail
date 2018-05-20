@@ -67,7 +67,7 @@ class NnGmail():
                                      headers=msg['payload']['headers'],
                                      snippet=msg['snippet'])
                 else:
-                    sql3.update(msg['id'], msg.get('labelIds', []))
+                    self.sql3.update(msg['id'], msg.get('labelIds', []))
                 bar.update(1)
                 history_id = max(history_id, int(msg['historyId']))
             self.sql3.commit()
