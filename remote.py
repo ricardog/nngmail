@@ -71,7 +71,6 @@ class Gmail:
                     raise Gmail.UserRateException(ex)
                 else:
                     raise Gmail.BatchException(ex)
-            #print('worked %d: received message' % self.idx)
             messages.append(resp)
 
         def run(self):
@@ -88,7 +87,6 @@ class Gmail:
 
                 ridx, gids, format = cmd
                 messages = []
-                print('worker %d: received request %d' % (self.idx, ridx))
                 batch = self.service.new_batch_http_request()
                 for gid in gids:
                     batch.add(self.service.users().messages().get(userId='me',
@@ -115,8 +113,6 @@ class Gmail:
                     self.outq.put([ridx, messages])
                 finally:
                     self.inq.task_done()
-                    print('worker %d: completed request %d %d out of %d' %
-                          (self.idx, ridx, len(gids), len(messages)))
 
     def __init__(self):
         "Object for accessing gmail via http API."
@@ -266,53 +262,45 @@ class Gmail:
     @authorized
     def get_messages(self, ids, format):
         "Get a collection of messages."
-
         # FIXME: support adaptive batch sizes
-        max_req = self.BATCH_SIZE
-
-        if '__getitem__' not in dir(ids):
-            ids = (ids, )
-
         def chunks(l, n):
             "Yield successive n-sized chunks from l."
             for i in range(0, len(l), n):
                 yield l[i:i + n]
 
+        if '__getitem__' not in dir(ids):
+            ids = (ids, )
+
         done = False
         idx = 0
+        ridx = 0
         chunker = chunks(ids, self.BATCH_SIZE)
         while True:
+            if done and idx == ridx:
+                break
             if not self.inq.empty():
                 try:
-                    ridx, resp = self.inq.get()
-                    print('received response %d' % ridx)
+                    _, resp = self.inq.get()
+                    ridx += 1
                     if isinstance(resp, Exception):
-                        pdb.set_trace()
                         raise resp
-                    print('response has %d messages' % len(resp))
                     yield resp
                 except Gmail.UserRateException as ex:
-                    print("remote: user rate error, increasing delay to %s" %
-                          user_rate_delay)
+                    print("remote: user rate error, increasing delay")
                 except Gmail.BatchException as ex:
-                    print("reducing batch request size to: %d" % max_req)
+                    print("reducing batch request size")
                 except ConnectionError as ex:
-                    print("connection failed, re-trying:", ex)
+                    print("connection failed, re-trying: ", ex)
                 finally:
                     self.inq.task_done()
-            if done and self.inq.empty():
-                break
             if not done:
                 try:
                     chunk = chunker.__next__()
                 except StopIteration:
                     done = True
-                    chunk = None
-            if chunk:
-                print('queuing request %d [%s -> %s]' % (idx, chunk[0],
-                                                         chunk[-1]))
-                self.outq.put([idx, chunk, format])
-                idx += 1
+                else:
+                    self.outq.put([idx, chunk, format])
+                    idx += 1
 
 if __name__ == '__main__':
     gmail = Gmail()
