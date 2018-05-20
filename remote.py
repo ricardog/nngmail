@@ -274,11 +274,11 @@ class Gmail:
                         raise resp
                     yield resp
                 except Gmail.UserRateException as ex:
-                    print("remote: user rate error, increasing delay")
+                    print("remote: user rate error: ", ex)
                 except Gmail.BatchException as ex:
-                    print("reducing batch request size")
+                    print("remote: batch request error: ", ex)
                 except ConnectionError as ex:
-                    print("connection failed, re-trying: ", ex)
+                    print("remote: connection error: ", ex)
                 finally:
                     self.inq.task_done()
             if not done:
