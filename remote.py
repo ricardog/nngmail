@@ -264,15 +264,20 @@ class Gmail:
         done = False
         idx = 0
         ridx = 0
+        pending = {}
         chunker = chunks(ids, self.BATCH_SIZE)
         while not (done and idx == ridx):
             if not self.inq.empty():
                 try:
-                    _, resp = self.inq.get()
-                    ridx += 1
-                    if isinstance(resp, Exception):
-                        raise resp
-                    yield resp
+                    xx, resp = self.inq.get()
+                    pending[xx] = resp
+                    while ridx in pending:
+                        resp = pending[ridx]
+                        del pending[ridx]
+                        ridx += 1
+                        if isinstance(resp, Exception):
+                            raise resp
+                        yield resp
                 except Gmail.UserRateException as ex:
                     print("remote: user rate error: ", ex)
                 except Gmail.BatchException as ex:
@@ -289,6 +294,13 @@ class Gmail:
                 else:
                     self.outq.put([idx, chunk, format])
                     idx += 1
+        for ridx in sorted(pending.keys()):
+            resp = pending[ridx]
+            del pending[ridx]
+            ridx += 1
+            if isinstance(resp, Exception):
+                raise resp
+            yield resp
 
 if __name__ == '__main__':
     gmail = Gmail()
