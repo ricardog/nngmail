@@ -85,18 +85,16 @@ class Gmail:
                 if not self.service:
                     self.service = build('gmail', 'v1', http=self.http)
 
-                ridx, gids, format = cmd
+                ridx, cmds = cmd
                 messages = []
                 batch = self.service.new_batch_http_request()
-                for gid in gids:
-                    batch.add(self.service.users().messages().get(userId='me',
-                                                                  id=gid,
-                                                                  format=format),
+                for gid, cmd in cmds:
+                    batch.add(cmd,
                               callback=lambda a, b, c: self.handler(a, b, c,
                                                                     messages),
                               request_id=gid)
                 try:
-                    batch.execute()
+                    batch.execute(http=self.http)
                 except Exception as ex:
                     self.outq.put([ridx, ex])
                 else:
@@ -266,6 +264,7 @@ class Gmail:
         ridx = 0
         pending = {}
         chunker = chunks(ids, self.BATCH_SIZE)
+        what = self.service.users().messages()
         while not (done and idx == ridx):
             if not self.inq.empty():
                 try:
@@ -292,8 +291,13 @@ class Gmail:
                 except StopIteration:
                     done = True
                 else:
-                    self.outq.put([idx, chunk, format])
+                    cmds = [(gid, what.get(userId='me', id=gid,
+                                           format=format)) for gid in chunk]
+                    self.outq.put([idx, cmds])
                     idx += 1
+
+
+
         for ridx in sorted(pending.keys()):
             resp = pending[ridx]
             del pending[ridx]
