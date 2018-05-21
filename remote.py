@@ -46,7 +46,7 @@ class Gmail:
             self.http = None
             self.service = None
             
-        def handler(self, rid, resp, ex, messages):
+        def handler(self, rid, resp, ex, responses):
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
                 "Check if exception is error code 'code'."
@@ -71,7 +71,7 @@ class Gmail:
                     raise Gmail.UserRateException(ex)
                 else:
                     raise Gmail.BatchException(ex)
-            messages.append(resp)
+            responses.append(resp)
 
         def run(self):
             print("worker %d started" % self.idx)
@@ -80,25 +80,25 @@ class Gmail:
                 cmd = self.inq.get()
                 if cmd is None:
                     break
-                if not self.http:
-                    self.http = self.creds.authorize(Http())
+                # Delay initialization until the first request arrives
                 if not self.service:
+                    self.http = self.creds.authorize(Http())
                     self.service = build('gmail', 'v1', http=self.http)
 
                 ridx, cmds = cmd
-                messages = []
+                responses = []
                 batch = self.service.new_batch_http_request()
                 for gid, cmd in cmds:
                     batch.add(cmd,
                               callback=lambda a, b, c: self.handler(a, b, c,
-                                                                    messages),
+                                                                    responses),
                               request_id=gid)
                 try:
                     batch.execute(http=self.http)
                 except Exception as ex:
                     self.outq.put([ridx, ex])
                 else:
-                    self.outq.put([ridx, messages])
+                    self.outq.put([ridx, responses])
                 finally:
                     self.inq.task_done()
 
