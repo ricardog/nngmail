@@ -212,7 +212,7 @@ class Gmail:
             for i in range(0, len(l), n):
                 yield l[i:i + n]
 
-        for chunk in chunks(ids, self.BATCH_REQUEST_SIZE):
+        for chunk in chunks(ids, self.BATCH_SIZE):
             batch = self.service.new_batch_http_request(callback=_cb)
             for gid in chunk:
                 batch.add(self.service.users().messages().get(userId='me',
