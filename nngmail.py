@@ -57,22 +57,14 @@ class NnGmail():
             self.sync_labels()
         bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
         for batch in self.gmail.get_messages(gids, 'metadata'):
-            msgs = []
-            for msg in sorted(batch, key=lambda m: int(m['internalDate'])):
-                if create:
-                    msgs.append(self.sql3.make(msg['id'],
-                                               msg['threadId'],
-                                               label_ids=msg.get('labelIds', []),
-                                               date=int(msg['internalDate']) / 1000,
-                                               size=msg['sizeEstimate'],
-                                               headers=msg['payload']['headers'],
-                                               snippet=msg['snippet']))
-                else:
-                    self.sql3.update(msg['id'], msg.get('labelIds', []))
-                bar.update(1)
-                history_id = max(history_id, int(msg['historyId']))
-            if msgs:
+            msgs = sorted(batch, key=lambda m: int(m['internalDate']))
+            if create:
                 self.sql3.create(msgs)
+            else:
+                self.sql3.update(msgs)
+            bar.update(len(msgs))
+            history_id = max(history_id,
+                             max([int(msg['historyId']) for msg in msgs]))
         bar.close()
         return history_id
 

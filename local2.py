@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from collections import Iterable
-import datetime
+from datetime import datetime
 import email
 import re
 
@@ -69,48 +69,53 @@ class Sqlite3():
         session.commit()
         self.label_map[name] = label
 
-    def make(self, google_id, thread_id, **kwargs):
+    def create(self, msgs):
+        if '__getitem__' not in dir(msgs):
+            msgs = (msgs, )
         session = Session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID']
-        headers = dict((hh['name'], hh['value']) for hh in
-                       filter(lambda h: h['name'] in keepers,
-                              kwargs.get('headers', [])))
-        default_id = '<%s@mail.gmail.com>' % google_id
-        senders = self.__new_contacts(session,
-                                      headers.get('From',
-                                                  headers.get('from', '')))
-        adds = {}
-        for hdr in ('To', 'CC', 'BCC'):
-            adds[hdr] = self.__new_contacts(session, headers.get(hdr, ''))
-        labels = [self.get_label(lid) for lid in kwargs.get('label_ids', [])]
-        thread = Thread.as_unique(session, tid=thread_id)
-        if 'date' in kwargs:
-            timestamp = datetime.datetime.fromtimestamp(kwargs.get('date'))
-        else:
-            timestamp = datetime.satetime.now()
-        return Message(google_id=google_id, thread=thread,
-                       message_id=headers.get('Message-ID', default_id),
-                       subject=headers.get('Subject',
-                                           headers.get('subject', '')),
-                       size=kwargs.get('size', 0),
-                       date=timestamp, sender=senders[0],
-                       snippet=kwargs.get('snippet', ''),
-                       labels=labels, tos=adds['To'], ccs=adds['CC'],
-                       bccs=adds['BCC'])
-
-    def create(self, instances):
-        session = Session()
-        session.add_all(instances)
+        for msg in msgs:
+            headers = dict((hh['name'], hh['value']) for hh in
+                           filter(lambda h: h['name'] in keepers,
+                                  msg['payload']['headers']))
+            default_id = '<%s@mail.gmail.com>' % msg['id']
+            senders = self.__new_contacts(session,
+                                          headers.get('From',
+                                                      headers.get('from', '')))
+            adds = {}
+            for hdr in ('To', 'CC', 'BCC'):
+                adds[hdr] = self.__new_contacts(session, headers.get(hdr, ''))
+            labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
+            thread = Thread.as_unique(session, tid=msg['threadId'])
+            if 'internalDate' in msg:
+                timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
+                                                   1000)
+            else:
+                timestamp = datetime.now()
+            session.add(Message(google_id=msg['id'], thread=thread,
+                                message_id=headers.get('Message-ID', default_id),
+                                subject=headers.get('Subject',
+                                                    headers.get('subject', '')),
+                                size=msg.get('sizeEstimate', 0),
+                                date=timestamp, sender=senders[0],
+                                snippet=msg['snippet'],
+                                labels=labels, tos=adds['To'], ccs=adds['CC'],
+                                bccs=adds['BCC']))
         session.commit()
 
-    def update(self, gid, label_ids):
+    def update(self, msgs):
+        if '__getitem__' not in dir(msgs):
+            msgs = (msgs, )
         session = Session()
-        labels = Message.find_labels(session, gid)
-        cur = set([l.label_gid for l in labels])
-        new = set(label_ids)
-        Message.rem_labels(session.connection(), gid, list(cur - new))
-        Message.add_labels(session.connection(), gid, list(new - cur))
+        for msg in msgs:
+            gid = msg['id']
+            labels = Message.find_labels(session, gid)
+            cur = set([l.label_gid for l in labels])
+            new = set(msg['labelIds'])
+            Message.rem_labels(session.connection(), gid, list(cur - new))
+            Message.add_labels(session.connection(), gid, list(new - cur))
+        session.commit()
 
     def commit(self):
         Session.commit()
