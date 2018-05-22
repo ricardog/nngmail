@@ -38,13 +38,10 @@ class Gmail:
         pass
 
     class Worker:
-        def __init__(self, idx, inq, outq, creds):
+        def __init__(self, idx, inq, outq):
             self.idx = idx
             self.inq = inq
             self.outq = outq
-            self.creds = creds
-            self.http = None
-            self.service = None
             
         def handler(self, rid, resp, ex, responses):
             "Callback invoked by Google API to handled message data."
@@ -80,21 +77,18 @@ class Gmail:
                 cmd = self.inq.get()
                 if cmd is None:
                     break
-                # Delay initialization until the first request arrives
-                if not self.service:
-                    self.http = self.creds.authorize(Http())
-                    self.service = build('gmail', 'v1', http=self.http)
-
-                ridx, cmds = cmd
+                ridx, creds, cmds = cmd
+                http = creds.authorize(Http())
+                service = build('gmail', 'v1', http=http)
+                batch = service.new_batch_http_request()
                 responses = []
-                batch = self.service.new_batch_http_request()
                 for gid, cmd in cmds:
                     batch.add(cmd,
                               callback=lambda a, b, c: self.handler(a, b, c,
                                                                     responses),
                               request_id=gid)
                 try:
-                    batch.execute(http=self.http)
+                    batch.execute(http=http)
                 except Exception as ex:
                     self.outq.put([ridx, ex])
                 else:
@@ -106,7 +100,6 @@ class Gmail:
         "Object for accessing gmail via http API."
         self.credentials_path = 'credentials.json'
         self.creds = None
-        self.http = None
         self.service = None
         self.num_workers = 2
         self.workers = []
@@ -115,8 +108,7 @@ class Gmail:
         self.inq = queue.Queue(maxsize=self.num_workers + 1)
         self.creds = self.get_credentials()
         for idx in range(self.num_workers):
-            self.workers.append(Gmail.Worker(idx, self.outq, self.inq,
-                                             self.creds))
+            self.workers.append(Gmail.Worker(idx, self.outq, self.inq))
             # It's OK for these threads to not free up resources on exit
             # since they don't store permanent state.
             self.threads.append(
@@ -138,8 +130,8 @@ class Gmail:
         "Authorize the service to access the user's mailbox."
         if not self.service:
             self.creds = self.get_credentials()
-            self.http = self.creds.authorize(Http())
-            self.service = build('gmail', 'v1', http=self.http)
+            http = self.creds.authorize(Http())
+            self.service = build('gmail', 'v1', http=http)
         assert self.service is not None
 
     def authorized(func):
@@ -293,7 +285,7 @@ class Gmail:
                 else:
                     cmds = [(gid, what.get(userId='me', id=gid,
                                            format=format)) for gid in chunk]
-                    self.outq.put([idx, cmds])
+                    self.outq.put([idx, self.creds, cmds])
                     idx += 1
 
 
