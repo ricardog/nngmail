@@ -113,8 +113,8 @@ class Sqlite3():
             labels = Message.find_labels(session, gid)
             cur = set([l.label_gid for l in labels])
             new = set(msg['labelIds'])
-            Message.rem_labels(session.connection(), gid, list(cur - new))
-            Message.add_labels(session.connection(), gid, list(new - cur))
+            Message.rem_labels(session, gid, list(cur - new))
+            Message.add_labels(session, gid, list(new - cur))
         session.commit()
 
     def commit(self):

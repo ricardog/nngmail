@@ -234,23 +234,23 @@ class Message(Base):
         return session.query(label_association).filter_by(message_gid=gid).all()
 
     @staticmethod
-    def rem_labels(conn, gid, label_ids):
+    def rem_labels(session, gid, label_ids):
         if not label_ids:
             return
         q = label_association.delete()
         q = q.where(and_(label_association.c.label_gid.in_(label_ids),
                          label_association.c.message_gid == gid))
-        res = conn.execute(q)
+        res = session.execute(q)
         res.close()
         return
 
     @staticmethod
-    def add_labels(conn, gid, label_ids):
+    def add_labels(session, gid, label_ids):
         if not label_ids:
             return
         values = [(lid, gid) for lid in label_ids]
         q = label_association.insert()
-        res = conn.execute(q.values(values))
+        res = session.execute(q.values(values))
         res.close()
         return
 
