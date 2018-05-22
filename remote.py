@@ -37,13 +37,9 @@ class Gmail:
     class NoHistoryException(Exception):
         pass
 
-    class Worker:
-        def __init__(self, idx, inq, outq):
-            self.idx = idx
-            self.inq = inq
-            self.outq = outq
-            
-        def handler(self, rid, resp, ex, responses):
+    @staticmethod
+    def batch_executor(idx, creds, cmds):
+        def handler(rid, resp, ex, responses):
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
                 "Check if exception is error code 'code'."
@@ -70,50 +66,49 @@ class Gmail:
                     raise Gmail.BatchException(ex)
             responses.append(resp)
 
-        def run(self):
-            print("worker %d started" % self.idx)
+        http = creds.authorize(Http())
+        service = build('gmail', 'v1', http=http)
+        batch = service.new_batch_http_request()
+        responses = []
+        for gid, cmd in cmds:
+            batch.add(cmd, callback=lambda a, b, c: handler(a, b, c,
+                                                            responses),
+                      request_id=gid)
+        batch.execute(http=http)
+        return responses
 
-            while True:
-                cmd = self.inq.get()
-                if cmd is None:
-                    break
-                ridx, creds, cmds = cmd
-                http = creds.authorize(Http())
-                service = build('gmail', 'v1', http=http)
-                batch = service.new_batch_http_request()
-                responses = []
-                for gid, cmd in cmds:
-                    batch.add(cmd,
-                              callback=lambda a, b, c: self.handler(a, b, c,
-                                                                    responses),
-                              request_id=gid)
-                try:
-                    batch.execute(http=http)
-                except Exception as ex:
-                    self.outq.put([ridx, ex])
-                else:
-                    self.outq.put([ridx, responses])
-                finally:
-                    self.inq.task_done()
+    @staticmethod
+    def worker(my_idx, inq, outq):
+        print("worker %d starting" % my_idx)
+        while True:
+            cmd = inq.get()
+            if cmd is None:
+                break
+            ridx, creds, cmds = cmd
+            try:
+                responses = Gmail.batch_executor(ridx, creds, cmds)
+            except Exception as ex:
+                outq.put([ridx, ex])
+            else:
+                outq.put([ridx, responses])
+            finally:
+                inq.task_done()
 
     def __init__(self):
         "Object for accessing gmail via http API."
         self.credentials_path = 'credentials.json'
         self.creds = None
         self.service = None
-        self.num_workers = 2
-        self.workers = []
+        self.num_workers = 0
         self.threads = []
         self.outq = queue.Queue(maxsize=self.num_workers + 1)
         self.inq = queue.Queue(maxsize=self.num_workers + 1)
-        self.creds = self.get_credentials()
         for idx in range(self.num_workers):
-            self.workers.append(Gmail.Worker(idx, self.outq, self.inq))
+            werker = lambda: self.worker(idx, self.outq, self.inq)
             # It's OK for these threads to not free up resources on exit
             # since they don't store permanent state.
-            self.threads.append(
-                threading.Thread(daemon=True,
-                                 target=lambda: self.workers[idx].run()))
+            # FIXME: should I even keep a pointer to the tread?
+            self.threads.append(threading.Thread(daemon=True, target=werker))
             self.threads[idx].start()
 
     def get_credentials(self):
@@ -251,6 +246,24 @@ class Gmail:
         if '__getitem__' not in dir(ids):
             ids = (ids, )
 
+        if self.num_workers == 0:
+            pdb.set_trace()
+            what = self.service.users().messages()
+            for chunk in chunks(ids, self.BATCH_SIZE):
+                try:
+                    cmds = [(gid, what.get(userId='me', id=gid,
+                                           format=format)) for gid in chunk]
+                    responses = Gmail.batch_executor(None, self.creds, cmds)
+                except Gmail.UserRateException as ex:
+                    print("remote: user rate error: ", ex)
+                except Gmail.BatchException as ex:
+                    print("remote: batch request error: ", ex)
+                except ConnectionError as ex:
+                    print("remote: connection error: ", ex)
+                else:
+                    yield responses
+            return
+
         done = False
         idx = 0
         ridx = 0
@@ -287,8 +300,6 @@ class Gmail:
                                            format=format)) for gid in chunk]
                     self.outq.put([idx, self.creds, cmds])
                     idx += 1
-
-
 
         for ridx in sorted(pending.keys()):
             resp = pending[ridx]
