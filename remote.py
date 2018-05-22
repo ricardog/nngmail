@@ -38,7 +38,7 @@ class Gmail:
         pass
 
     @staticmethod
-    def batch_executor(idx, creds, cmds):
+    def batch_executor(creds, cmds):
         def handler(rid, resp, ex, responses):
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
@@ -86,7 +86,7 @@ class Gmail:
                 break
             ridx, creds, cmds = cmd
             try:
-                responses = Gmail.batch_executor(ridx, creds, cmds)
+                responses = Gmail.batch_executor(creds, cmds)
             except Exception as ex:
                 outq.put([ridx, ex])
             else:
@@ -99,7 +99,7 @@ class Gmail:
         self.credentials_path = 'credentials.json'
         self.creds = None
         self.service = None
-        self.num_workers = 0
+        self.num_workers = 2
         self.threads = []
         self.outq = queue.Queue(maxsize=self.num_workers + 1)
         self.inq = queue.Queue(maxsize=self.num_workers + 1)
@@ -247,13 +247,12 @@ class Gmail:
             ids = (ids, )
 
         if self.num_workers == 0:
-            pdb.set_trace()
             what = self.service.users().messages()
             for chunk in chunks(ids, self.BATCH_SIZE):
                 try:
                     cmds = [(gid, what.get(userId='me', id=gid,
                                            format=format)) for gid in chunk]
-                    responses = Gmail.batch_executor(None, self.creds, cmds)
+                    responses = Gmail.batch_executor(self.creds, cmds)
                 except Gmail.UserRateException as ex:
                     print("remote: user rate error: ", ex)
                 except Gmail.BatchException as ex:
