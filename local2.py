@@ -99,9 +99,8 @@ class Sqlite3():
                        labels=labels, tos=adds['To'], ccs=adds['CC'],
                        bccs=adds['BCC'])
 
-    def create(self, instances, session=None):
-        if not session:
-            session = Session()
+    def create(self, instances):
+        session = Session()
         session.add_all(instances)
         session.commit()
 
@@ -112,6 +111,9 @@ class Sqlite3():
         new = set(label_ids)
         Message.rem_labels(session.connection(), gid, list(cur - new))
         Message.add_labels(session.connection(), gid, list(new - cur))
+
+    def commit(self):
+        Session.commit()
 
     def all_ids(self):
         return [m.google_id for m in
