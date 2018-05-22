@@ -7,12 +7,11 @@ import re
 
 from sqlalchemy import create_engine
 from models import Base, KeyValue, Contact, Label, Thread, Message
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
-
 
 class Sqlite3():
     def __new_contacts(self, header):
@@ -34,14 +33,16 @@ class Sqlite3():
         return contacts
 
     def __init__(self, fname):
+        global Session
         self.engine = create_engine("sqlite:///%s" % fname)
         self.conn = self.engine.connect()
         Base.metadata.create_all(self.engine)
-        sessionmk = sessionmaker(bind=self.engine)
-        self.session = sessionmk()
+        session_factory = sessionmaker(bind=self.engine)
+        Session = scoped_session(session_factory)
+        self.session = session_factory()
         self.label_map = {}
         self.label_imap = {}
-        
+
     def __build_label_map(self):
         self.label_map = {}
         self.label_imap = {}
@@ -113,12 +114,12 @@ class Sqlite3():
 
     def all_ids(self):
         return [m.google_id for m in
-                self.session.query(Message).add_column('google_id').all()]
+                Session.query(Message).add_column('google_id').all()]
     
     def find(self, ids, undefer=False):
         if isinstance(ids, str) or not isinstance(ids, Iterable):
             ids = [ids]
-        query = self.session.query(Message).filter(Message.id.in_(ids))
+        query = Session.query(Message).filter(Message.id.in_(ids))
         if undefer:
             query = query.undefer('raw')
         return query.all()
@@ -126,7 +127,7 @@ class Sqlite3():
     def find_by_gid(self, gids):
         if isinstance(gids, str) or not isinstance(gids, Iterable):
             gids = [gids]
-        return self.session.query(Message).filter(Message.google_id.in_(gids)).all()
+        return Session.query(Message).filter(Message.google_id.in_(gids)).all()
     
     def delete(self, gids):
         msgs = self.find_by_gid(gids)
@@ -150,7 +151,7 @@ class Sqlite3():
         self.session.commit()
 
     def __get_kv(self, key):
-        kv = self.session.query(KeyValue).filter(KeyValue.key == key).first()
+        kv = Session.query(KeyValue).filter(KeyValue.key == key).first()
         if kv:
             return kv.value
         return None
