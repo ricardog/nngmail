@@ -18,7 +18,7 @@ import pdb
 
 class Gmail:
     SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
-    CLIENT_SECRET_FILE = 'client_secret.json'
+    CLIENT_SECRET_FILE = 'client-secret.json'
     BATCH_SIZE = 100
 
     service = None
