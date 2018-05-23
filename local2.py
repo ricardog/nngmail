@@ -56,6 +56,12 @@ class Sqlite3():
             self.label_map[label.gid] = label
             self.label_imap[label.id] = label.gid
 
+    def get_account(self, email):
+        session = Session()
+        acct = Account.as_unique(session, email)
+        session.commit()
+        return acct
+
     def get_label(self, name):
         if name not in self.label_map:
             self.__build_label_map()

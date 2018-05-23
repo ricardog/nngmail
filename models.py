@@ -64,6 +64,29 @@ class KeyValue(Base):
     key = Column(String, unique=True, nullable=False)
     value = Column(String, nullable=False)
 
+class Account(UniqueMixin, Base):
+    __tablename__ = 'account'
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True)
+
+    @validates('email')
+    def validates_email(self, key, email):
+        if '@' not in email:
+            print("WARNING: '%s' in email field." % email)
+        assert '@' in email
+        return email
+
+    @classmethod
+    def unique_hash(cls, email, name=None):
+        return email
+
+    @classmethod
+    def unique_filter(cls, query, email, name=None):
+        return query.filter(Contact.email == email)
+
+    def __repr__(self):
+        return '<%s>' % self.email
+
 class Contact(UniqueMixin, Base):
     __tablename__ = 'contact'
     id = Column(Integer, primary_key=True)
@@ -137,20 +160,22 @@ label_association = Table('label_association', Base.metadata,
 class Label(UniqueMixin, Base):
     __tablename__ = 'label'
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)
-    gid = Column(String, unique=True)
+    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
+    name = Column(String)
+    gid = Column(String)
 
+    account = relationship('Account', backref='labels')
     messages = relationship('Message', secondary=label_association,
                             lazy='selectin', passive_deletes=True,
                             back_populates='labels')
-    
+
     @classmethod
-    def unique_hash(cls, gid, name=None):
+    def unique_hash(cls, account, gid, name=None):
         return gid
 
     @classmethod
-    def unique_filter(cls, query, gid, name=None):
-        return query.filter(Label.gid == gid)
+    def unique_filter(cls, query, account, gid, name=None):
+        return query.filter(and_(Label.gid == gid, Label.account == account))
 
     def __repr__(self):
         return '%s' % self.name
@@ -158,8 +183,10 @@ class Label(UniqueMixin, Base):
 class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
     id = Column(Integer, primary_key=True)
+    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
     tid = Column('gid', String, unique=True, index=True)
 
+    account = relationship('Account', backref='labels')
     messages = relationship('Message', backref='thread', cascade='all, delete')
     senders = association_proxy('messages', 'sender')
     subjects = association_proxy('messages', 'subject')
@@ -182,8 +209,11 @@ class Message(Base):
     __tablename__ = 'message'
 
     id = Column(Integer, primary_key=True)
-    google_id = Column(String, index=True, unique=True)
+    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
+    google_id = Column(String, index=True)
     message_id = Column(String(100), index=True, unique=True, nullable=False)
+    thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
+    from_id = Column(Integer, ForeignKey('contact.id'))
     date = Column(DateTime)
     subject = Column(String)
     snippet = Column(String(200))
@@ -191,10 +221,9 @@ class Message(Base):
     size = Column(Integer, default=0)
     _raw = deferred(Column(BLOB))
 
-    from_id = Column(Integer, ForeignKey('contact.id'))
+    account = relationship('Account', backref='labels')
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
                           innerjoin=True)
-    thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
 
     to_ = relationship('ToAddressee', passive_deletes=True)
     cc = relationship('CcAddressee', passive_deletes=True)
