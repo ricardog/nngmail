@@ -166,14 +166,16 @@ class NnGmail():
         created = []
         updated = []
 
-        print('counting messages', end='', flush=True)
+        prof = self.gmail.get_profile()
+        bar = tqdm(leave=True, total=prof['messagesTotal'],
+                   desc="fetching message ID's")
         for (total, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
             created.extend(gids - local_gids)
             updated.extend(local_gids.intersection(gids))
             local_gids = local_gids - gids
-            print('.', end='', flush=True)
-        print('')
+            bar.update(len(msgs))
+        bar.close()
         
         created = sorted(created, key=lambda a: int(a, 16))
         hid1 = self.create(created)
