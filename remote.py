@@ -138,6 +138,13 @@ class Gmail:
         return func_wrap
 
     @authorized
+    def get_profile(self):
+        "Return the user's profile."
+        # Call the Gmail API
+        results = self.service.users().getProfile(userId='me').execute()
+        return results
+
+    @authorized
     def get_labels(self):
         "Return a list of labels."
         # Call the Gmail API
