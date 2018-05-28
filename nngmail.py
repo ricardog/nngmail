@@ -16,8 +16,12 @@ import pdb
 class NnGmail():
     def __init__(self, opts):
         self.email = opts['email']
-        self.sql3 = local2.Sqlite3(**(opts.get('local', {})))
-        self.gmail = remote.Gmail(**(opts.get('gmail', {})))
+        local_opts = opts.get('local', {})
+        local_opts.update({'email': self.email})
+        gmail_opts = opts.get('gmail', {})
+        gmail_opts.update({'email': self.email})
+        self.sql3 = local2.Sqlite3(**local_opts)
+        self.gmail = remote.Gmail(**gmail_opts)
 
     def sync_labels(self):
         for label in self.gmail.get_labels():

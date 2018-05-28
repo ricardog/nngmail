@@ -5,7 +5,7 @@ log:
   filename: sql.log
   level: DEBUG
 local:
-  db_url: sqlite:///nngmail.sqlite3
+  db_url: sqlite:///{email}.sqlite3
 cache:
   timeout: 60
   size_limit: 5M
