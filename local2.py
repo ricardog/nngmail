@@ -5,15 +5,18 @@ from datetime import datetime
 import email
 import re
 
+from options import Options
 from sqlalchemy import create_engine
-from models import Base, KeyValue, Contact, Label, Thread, Message
 from sqlalchemy.orm import sessionmaker, scoped_session
 
+from models import Base, KeyValue, Contact, Label, Thread, Message
 import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
+    options = Options(db_url = None)
+    
     @staticmethod
     def __new_contacts(session, header):
         contacts = []
@@ -32,9 +35,10 @@ class Sqlite3():
                 continue
         return contacts
 
-    def __init__(self, fname):
+    def __init__(self, **kwargs):
         global Session
-        self.engine = create_engine("sqlite:///%s" % fname)
+        self.opts = self.options.push(kwargs)
+        self.engine = create_engine(self.opts.db_url)
         self.conn = self.engine.connect()
         Base.metadata.create_all(self.engine)
         session_factory = sessionmaker(bind=self.engine)

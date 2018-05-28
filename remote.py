@@ -7,23 +7,24 @@ Lists the user's Gmail labels.
 """
 from __future__ import print_function
 from apiclient.discovery import build
+import googleapiclient
 from httplib2 import Http
 from oauth2client import file, client, tools
+from options import Options
 import queue
 import threading
 
-import googleapiclient
 
 import pdb
 
 class Gmail:
-    SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
-    CLIENT_SECRET_FILE = 'client-secret.json'
-    BATCH_SIZE = 100
-
+    options = Options(scopes='https://www.googleapis.com/auth/gmail.readonly',
+                      client_secret_file='client-secret.json',
+                      batch_size=100,
+                      credentials_path=None,
+                      query='-in:chats',
+                      num_workers=0)
     service = None
-    credentials_path = None
-    query = '-in:chats'
 
     class GenericException(Exception):
         pass
@@ -94,16 +95,16 @@ class Gmail:
             finally:
                 inq.task_done()
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         "Object for accessing gmail via http API."
-        self.credentials_path = 'credentials.json'
+        self.opts = self.options.push(kwargs)
         self.creds = None
         self.service = None
-        self.num_workers = 2
         self.threads = []
-        self.outq = queue.Queue(maxsize=self.num_workers + 1)
-        self.inq = queue.Queue(maxsize=self.num_workers + 1)
-        for idx in range(self.num_workers):
+        if self.opts.num_workers > 0:
+            self.outq = queue.Queue(maxsize=self.opts.num_workers + 1)
+            self.inq = queue.Queue(maxsize=self.opts.num_workers + 1)
+        for idx in range(self.opts.num_workers):
             werker = lambda: self.worker(idx, self.outq, self.inq)
             # It's OK for these threads to not free up resources on exit
             # since they don't store permanent state.
@@ -113,11 +114,11 @@ class Gmail:
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
-        store = file.Storage(self.credentials_path)
+        store = file.Storage(self.opts.credentials_path)
         creds = store.get()
         if not creds or creds.invalid:
-            flow = client.flow_from_clientsecrets(self.CLIENT_SECRET_FILE,
-                                                  self.SCOPES)
+            flow = client.flow_from_clientsecrets(self.opts.client_secret_file,
+                                                  self.opts.scopes)
             creds = tools.run_flow(flow, store)
         return creds
 
@@ -200,7 +201,7 @@ class Gmail:
         while pt is None or 'nextPageToken' in results:
             results = self.service.users().messages().list(userId='me',
                                                            pageToken=pt,
-                                                           q=self.query,
+                                                           q=self.opts.query,
                                                            maxResults=limit,
                                                            includeSpamTrash=True).\
                                                            execute()
@@ -253,9 +254,9 @@ class Gmail:
         if '__getitem__' not in dir(ids):
             ids = (ids, )
 
-        if self.num_workers == 0:
+        if self.opts.num_workers == 0:
             what = self.service.users().messages()
-            for chunk in chunks(ids, self.BATCH_SIZE):
+            for chunk in chunks(ids, self.opts.batch_size):
                 try:
                     cmds = [(gid, what.get(userId='me', id=gid,
                                            format=format)) for gid in chunk]
@@ -274,7 +275,7 @@ class Gmail:
         idx = 0
         ridx = 0
         pending = {}
-        chunker = chunks(ids, self.BATCH_SIZE)
+        chunker = chunks(ids, self.opts.batch_size)
         what = self.service.users().messages()
         while not (done and idx == ridx):
             if not self.inq.empty():

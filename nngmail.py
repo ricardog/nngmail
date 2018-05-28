@@ -5,6 +5,7 @@ from collections import Iterable
 import logging
 import sys
 
+import yaml
 from tqdm import tqdm
 
 import local2
@@ -14,12 +15,9 @@ import pdb
 
 class NnGmail():
     def __init__(self, opts):
-        self.db_file = opts['db_file']
-        self.max_payload = opts['max_payload']
-        self.cache_lifetime = opts['cache_lifetime']
         self.email = opts['email']
-        self.sql3 = local2.Sqlite3(self.db_file)
-        self.gmail = remote.Gmail()
+        self.sql3 = local2.Sqlite3(**(opts.get('local', {})))
+        self.gmail = remote.Gmail(**(opts.get('gmail', {})))
 
     def sync_labels(self):
         for label in self.gmail.get_labels():
@@ -187,15 +185,14 @@ class NnGmail():
         self.sql3.set_history_id(history_id)
         
 def main():
-    if None:
-        logging.basicConfig(filename='sql.log')
+    config = yaml.load(open('config.yaml'))
+    if 'log' in config and config['log']['enable']:
+        logging.basicConfig(filename=config['log']['filename'])
         logger = logging.getLogger('sqlalchemy.engine')
-        logger.setLevel(logging.DEBUG)
+        level = logging.__getattribute__(config['log']['level'])
+        logger.setLevel(level)
 
-    nngmail = NnGmail({'db_file': 'nngmail.sqlite3',
-                       'email': 'ricardog@siliconartisans.com',
-                       'max_payload': 1024*1024,
-                       'cache_lifetime': 31})
+    nngmail = NnGmail(config)
     nngmail.pull()
     msgs = nngmail.read(range(2140, 2150))
     #print(msgs)
