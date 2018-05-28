@@ -38,7 +38,6 @@ class Sqlite3():
     def __init__(self, **kwargs):
         global Session
         self.opts = self.options.push(kwargs)
-        pdb.set_trace()
         if '{email}' in self.opts.db_url:
             self.opts.set(db_url=self.opts.db_url.format(email=self.opts.email))
         self.engine = create_engine(self.opts.db_url)
