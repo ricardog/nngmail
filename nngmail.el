@@ -43,3 +43,19 @@ Uses the same syntax as `nnmail-split-methods'.")
   (encode-coding-string group 'utf-8))
 
 (defvar nngmail-status-string "")
+
+(defconst nngmail-src-dir (file-name-directory load-file-name))
+
+(defun nngmail-make-config (account)
+  "Create the YAML file for synching the user's email account.
+The user's email address comes from ACCOUNT."
+  (with-temp-buffer
+    (insert-file-contents
+     (expand-file-name "config.yaml.tmpl" nngmail-src-dir))
+    (goto-char (point-min))
+    (while (re-search-forward "%%[[:alnum:]]+%%" nil t)
+      (message "found a template pattern")
+      (or (and (string-equal (match-string 0) "%%account%%")
+	       (replace-match account))
+	  nil))
+    (buffer-substring-no-properties (point-min) (point-max))))

@@ -1,0 +1,19 @@
+
+email: %%account%%
+log:
+  enable: no
+  filename: sql.log
+  level: DEBUG
+local:
+  db_url: sqlite:///{email}.sqlite3
+cache:
+  timeout: 60
+  size_limit: 5M
+gmail:
+  num_workers: 2
+  client_secrets: client-secret.json
+  credentials_path: credentials.json
+  batch_size: 100
+  min_batch_size: 20
+  max_batch_size: 200
+  scopes: https://www.googleapis.com/auth/gmail.readonly
