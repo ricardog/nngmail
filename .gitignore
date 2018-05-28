@@ -2,5 +2,5 @@
 __pycache__/
 client-secret.json
 credentials.json
-storage.sqlite3
-nngmail.sqlite3
+*.sqlite3
+*.egg-info
