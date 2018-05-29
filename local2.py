@@ -128,11 +128,15 @@ class Sqlite3():
         for msg in msgs:
             gid = msg['id']
             labels = Message.find_labels(session, self.account, gid)
-            cur = set([l.label_gid for l in labels])
-            new = set(msg['labelIds'])
-            Message.rem_labels(session, self.account, gid, list(cur - new))
-            Message.add_labels(session, self.account, gid, list(new - cur))
+            cur = set([l.id for l in labels])
+            new = set([self.get_label(lgid).id for lgid in
+                       msg.get('labelIds', [])])
+            Message.rem_labels(session, gid, list(cur - new))
+            Message.add_labels(session, gid, list(new - cur))
         session.commit()
+
+    def new_session(self):
+        return Session()
 
     def commit(self):
         global Session

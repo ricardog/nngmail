@@ -260,26 +260,27 @@ class Message(Base):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
         # table itself since updating labels only requires reading the
         # association table.
-        return session.query(label_association).\
-            filter_by(message_gid=gid, account=account).all()
+        return session.query(Label).\
+            join(label_association, label_association.c.label_id==Label.id).\
+            filter(label_association.c.message_gid==gid).\
+            filter(Label.account==account).all()
 
     @staticmethod
-    def rem_labels(session, account, gid, label_ids):
+    def rem_labels(session, gid, label_ids):
         if not label_ids:
             return
         q = label_association.delete()
-        q = q.where(and_(label_association.c.label_account_id==account.id,
-                         label_association.c.label_gid.in_(label_ids),
+        q = q.where(and_(label_association.c.label_id.in_(label_ids),
                          label_association.c.message_gid==gid))
         res = session.execute(q)
         res.close()
         return
 
     @staticmethod
-    def add_labels(session, account, gid, label_ids):
+    def add_labels(session, gid, label_ids):
         if not label_ids:
             return
-        values = [(account.id, lid, gid) for lid in label_ids]
+        values = [(lid, gid) for lid in label_ids]
         q = label_association.insert()
         res = session.execute(q.values(values))
         res.close()
