@@ -77,12 +77,12 @@ class Account(UniqueMixin, Base):
         return email
 
     @classmethod
-    def unique_hash(cls, email, name=None):
+    def unique_hash(cls, email):
         return email
 
     @classmethod
-    def unique_filter(cls, query, email, name=None):
-        return query.filter(Contact.email == email)
+    def unique_filter(cls, query, email):
+        return query.filter(Account.email == email)
 
     def __repr__(self):
         return '<%s>' % self.email
@@ -152,7 +152,7 @@ class BccAddressee(Addressee):
       }
 
 label_association = Table('label_association', Base.metadata,
-    Column('label_gid', Integer, ForeignKey('label.gid'), nullable=False),
+    Column('label_id', Integer, ForeignKey('label.id'), nullable=False),
     Column('message_gid', Integer, ForeignKey('message.google_id'),
            index=True, nullable=False)
 )
@@ -186,7 +186,7 @@ class Thread(UniqueMixin, Base):
     account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
     tid = Column('gid', String, unique=True, index=True)
 
-    account = relationship('Account', backref='labels')
+    account = relationship('Account', backref='threads')
     messages = relationship('Message', backref='thread', cascade='all, delete')
     senders = association_proxy('messages', 'sender')
     subjects = association_proxy('messages', 'subject')
@@ -195,12 +195,12 @@ class Thread(UniqueMixin, Base):
     labels = association_proxy('messages', 'labels')
 
     @classmethod
-    def unique_hash(cls, tid):
-        return tid
+    def unique_hash(cls, account, tid):
+        return hash((account, tid))
 
     @classmethod
-    def unique_filter(cls, query, tid):
-        return query.filter(Thread.tid == tid)
+    def unique_filter(cls, query, account, tid):
+        return query.filter_by(tid=tid, account=account)
 
     def __repr__(self):
         return '%d: %s' % (self.id, self.tid)
@@ -221,7 +221,7 @@ class Message(Base):
     size = Column(Integer, default=0)
     _raw = deferred(Column(BLOB))
 
-    account = relationship('Account', backref='labels')
+    account = relationship('Account', backref='messages')
     sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
                           innerjoin=True)
 
@@ -256,28 +256,30 @@ class Message(Base):
     raw = synonym("_raw", descriptor=__raw)
         
     @staticmethod
-    def find_labels(session, gid):
+    def find_labels(session, account, gid):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
         # table itself since updating labels only requires reading the
         # association table.
-        return session.query(label_association).filter_by(message_gid=gid).all()
+        return session.query(label_association).\
+            filter_by(message_gid=gid, account=account).all()
 
     @staticmethod
-    def rem_labels(session, gid, label_ids):
+    def rem_labels(session, account, gid, label_ids):
         if not label_ids:
             return
         q = label_association.delete()
-        q = q.where(and_(label_association.c.label_gid.in_(label_ids),
-                         label_association.c.message_gid == gid))
+        q = q.where(and_(label_association.c.label_account_id==account.id,
+                         label_association.c.label_gid.in_(label_ids),
+                         label_association.c.message_gid==gid))
         res = session.execute(q)
         res.close()
         return
 
     @staticmethod
-    def add_labels(session, gid, label_ids):
+    def add_labels(session, account, gid, label_ids):
         if not label_ids:
             return
-        values = [(lid, gid) for lid in label_ids]
+        values = [(account.id, lid, gid) for lid in label_ids]
         q = label_association.insert()
         res = session.execute(q.values(values))
         res.close()

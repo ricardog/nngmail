@@ -8,14 +8,15 @@ import re
 from options import Options
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.sql import and_, or_, not_
 
-from models import Base, KeyValue, Contact, Label, Thread, Message
+from models import Account, Base, KeyValue, Contact, Label, Thread, Message
 import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
-    options = Options(email=None, db_url=None)
+    options = Options(email=None, db_url=None, account=None)
     
     @staticmethod
     def __new_contacts(session, header):
@@ -46,21 +47,22 @@ class Sqlite3():
         session_factory = sessionmaker(bind=self.engine)
         Session = scoped_session(session_factory)
         self.session = session_factory()
+        session = Session()
+        self.opts.set(account=Account.as_unique(session, email=self.opts.email))
+        session.commit()
         self.label_map = {}
         self.label_imap = {}
 
     def __build_label_map(self):
         self.label_map = {}
         self.label_imap = {}
-        for label in Session.query(Label).all():
+        for label in Session.query(Label).filter_by(account=self.account).all():
             self.label_map[label.gid] = label
             self.label_imap[label.id] = label.gid
 
-    def get_account(self, email):
-        session = Session()
-        acct = Account.as_unique(session, email)
-        session.commit()
-        return acct
+    @property
+    def account(self):
+        return self.opts.account
 
     def get_label(self, name):
         if name not in self.label_map:
@@ -77,7 +79,8 @@ class Sqlite3():
         if m:
             name = 'Inbox:%s' % m.group(1).capitalize()
         session = Session()
-        label = Label.as_unique(session, name=name, gid=gid)
+        label = Label.as_unique(session, name=name, gid=gid,
+                                account=self.account)
         session.commit()
         self.label_map[name] = label
 
@@ -99,13 +102,15 @@ class Sqlite3():
             for hdr in ('To', 'CC', 'BCC'):
                 adds[hdr] = self.__new_contacts(session, headers.get(hdr, ''))
             labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
-            thread = Thread.as_unique(session, tid=msg['threadId'])
+            thread = Thread.as_unique(session, tid=msg['threadId'],
+                                      account=self.account)
             if 'internalDate' in msg:
                 timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
                                                    1000)
             else:
                 timestamp = datetime.now()
             session.add(Message(google_id=msg['id'], thread=thread,
+                                account=self.account,
                                 message_id=headers.get('Message-ID', default_id),
                                 subject=headers.get('Subject',
                                                     headers.get('subject', '')),
@@ -122,34 +127,43 @@ class Sqlite3():
         session = Session()
         for msg in msgs:
             gid = msg['id']
-            labels = Message.find_labels(session, gid)
+            labels = Message.find_labels(session, self.account, gid)
             cur = set([l.label_gid for l in labels])
             new = set(msg['labelIds'])
-            Message.rem_labels(session, gid, list(cur - new))
-            Message.add_labels(session, gid, list(new - cur))
+            Message.rem_labels(session, self.account, gid, list(cur - new))
+            Message.add_labels(session, self.account, gid, list(new - cur))
         session.commit()
 
     def commit(self):
+        global Session
         Session.commit()
 
     def all_ids(self):
+        global Session
         return [m.google_id for m in
-                Session.query(Message).add_column('google_id').all()]
+                Session.query(Message).add_column('google_id').\
+                filter_by(account=self.account).all()]
     
     def find(self, ids, undefer=False):
+        global Session
         if isinstance(ids, str) or not isinstance(ids, Iterable):
             ids = [ids]
-        query = Session.query(Message).filter(Message.id.in_(ids))
+        query = Session.query(Message).filter(and_(Message.id.in_(ids),
+                                                   Message.account==self.account))
         if undefer:
             query = query.undefer('raw')
         return query.all()
 
     def find_by_gid(self, gids):
+        global Session
         if isinstance(gids, str) or not isinstance(gids, Iterable):
             gids = [gids]
-        return Session.query(Message).filter(Message.google_id.in_(gids)).all()
+        return Session.query(Message).\
+            filter(and_(Message.google_id.in_(gids),
+                        Message.account==self.account)).all()
     
     def delete(self, gids):
+        global Session
         msgs = self.find_by_gid(gids)
         if msgs:
             session = Session()
@@ -163,6 +177,7 @@ class Sqlite3():
         pass
 
     def __set_kv(self, key, value):
+        global Session
         session = Session()
         kv = session.query(KeyValue).filter(KeyValue.key == key).first()
         if kv:
@@ -173,16 +188,20 @@ class Sqlite3():
         session.commit()
 
     def __get_kv(self, key):
+        global Session
         kv = Session.query(KeyValue).filter(KeyValue.key == key).first()
         if kv:
             return kv.value
         return None
 
+    def __hid(self):
+        return 'history_id_%s' % self.account.email
+
     def set_history_id(self, value):
-        self.__set_kv('history_id', value)
+        self.__set_kv(self.__hid(), value)
 
     def get_history_id(self):
-        hid = self.__get_kv('history_id')
+        hid = self.__get_kv(self.__hid())
         if hid is not None:
             return int(hid)
         return 0
