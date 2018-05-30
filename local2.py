@@ -109,15 +109,17 @@ class Sqlite3():
                                                    1000)
             else:
                 timestamp = datetime.now()
-            session.add(Message(google_id=msg['id'], thread=thread,
-                                account=self.account,
-                                message_id=headers.get('Message-ID', default_id),
+
+            session.add(Message(account=self.account, google_id=msg['id'],
+                                thread=thread,
+                                message_id=headers.get('Message-ID',
+                                                       default_id),
                                 subject=headers.get('Subject',
                                                     headers.get('subject', '')),
                                 size=msg.get('sizeEstimate', 0),
                                 date=timestamp, sender=senders[0],
-                                snippet=msg['snippet'],
-                                labels=labels, tos=adds['To'], ccs=adds['CC'],
+                                snippet=msg['snippet'], labels=labels,
+                                tos=adds['To'], ccs=adds['CC'],
                                 bccs=adds['BCC']))
         session.commit()
 
@@ -125,14 +127,14 @@ class Sqlite3():
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
         session = Session()
-        for msg in msgs:
-            gid = msg['id']
-            labels = Message.find_labels(session, self.account, gid)
-            cur = set([l[0] for l in labels])
-            new = set([self.get_label(lgid).id for lgid in
-                       msg.get('labelIds', [])])
-            Message.rem_labels(session, gid, list(cur - new))
-            Message.add_labels(session, gid, list(new - cur))
+        objs = self.find_by_gid([m['id'] for m in msgs])
+        if len(objs) != len(msgs):
+            pdb.set_trace()
+        for obj, msg in zip(objs, msgs):
+            if 'labelIds' in msg:
+                obj.labels = [self.get_label(lgid) for lgid in msg['labelIds']]
+            else:
+                obj.labels = []
         session.commit()
 
     def new_session(self):
