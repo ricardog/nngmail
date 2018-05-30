@@ -30,7 +30,7 @@ class NnGmail():
     def sync_history_id(self):
         history_id = self.sql3.get_history_id()
         self.sql3.set_history_id(self.gmail.get_history_id(history_id))
-        
+
     def cacheable(self, msg):
         return True
 
@@ -48,7 +48,7 @@ class NnGmail():
         # Store raw message data fetch during read
         self.sql3.commit()
         return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
-    
+
     def create_or_update(self, gids, create=True, sync_labels=False):
         history_id = self.sql3.get_history_id()
         if not gids:
@@ -88,7 +88,7 @@ class NnGmail():
         history = []
         no_history = False
         history_id = self.sql3.get_history_id()
-        
+
         bar = tqdm(leave=True, total=10, desc='fetching changes')
         pages = 0
         try:
@@ -104,12 +104,12 @@ class NnGmail():
         if no_history:
             return None
         return history
-        
+
     def merge_history(self, history):
         deleted = {}
         added = {}
         updated = {}
-        
+
         bar = tqdm(leave=True, total=len(history) - 1, desc='merging changes')
         for item in map(lambda i: history[i],
                         range(len(history) - 1, -1, -1)):
@@ -160,9 +160,8 @@ class NnGmail():
         self.update_labels(updated)
         bar.close()
         self.sql3.set_history_id(hid)
-                  
+
     def full_pull(self):
-        total = 1
         history_id = 0
         local_gids = set(self.sql3.all_ids())
         created = []
@@ -178,7 +177,7 @@ class NnGmail():
             local_gids = local_gids - gids
             bar.update(len(msgs))
         bar.close()
-        
+
         created = sorted(created, key=lambda a: int(a, 16))
         hid1 = self.create(created)
         hid2 = self.update(updated)
@@ -187,7 +186,7 @@ class NnGmail():
         history_id = max(hid1, hid2, history_id)
         print('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
-        
+
 def main():
     config = yaml.load(open('config.yaml'))
     if 'log' in config and config['log']['enable']:
@@ -199,7 +198,7 @@ def main():
     nngmail = NnGmail(config)
     nngmail.pull()
     msgs = nngmail.read(range(2140, 2150))
-    
+
     session = nngmail.sql3.new_session()
     msg = nngmail.sql3.find(2140)[0]
     msg.labels = msg.labels[0:1]
@@ -207,6 +206,6 @@ def main():
     nngmail.sql3.set_history_id(0)
     #nngmail.pull()
     #print(msgs)
-    
+
 if __name__ == '__main__':
     main()
