@@ -84,6 +84,17 @@ class Sqlite3():
         session.commit()
         self.label_map[name] = label
 
+    def placeholder(self, gids):
+        if not gids:
+            return
+        if '__getitem__' not in dir(gids):
+            msgs = (gids, )
+        session = Session()
+        values = [{'google_id': gid, 'account_id': self.account.id,}
+                  for gid in gids]
+        insert = Message.__table__.insert().values(values)
+        session.execute(insert)
+
     def create(self, msgs):
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
