@@ -12,7 +12,6 @@ cache:
 gmail:
   num_workers: 2
   client_secrets: client-secret.json
-  credentials_path: credentials.json
   batch_size: 100
   min_batch_size: 20
   max_batch_size: 200

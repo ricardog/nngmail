@@ -99,6 +99,8 @@ class Gmail:
     def __init__(self, **kwargs):
         "Object for accessing gmail via http API."
         self.opts = self.options.push(kwargs)
+        if self.opts.credentials_path is None:
+            self.opts.set(credentials_path='%s-creds.json' % self.opts.email)
         self.creds = None
         self.service = None
         self.threads = []
