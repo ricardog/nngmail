@@ -5,6 +5,7 @@ import zlib
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import BLOB, Boolean, Column, DateTime, Enum, Integer
 from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import deferred, relationship, sessionmaker, validates
 from sqlalchemy.orm import synonym
@@ -207,9 +208,11 @@ class Thread(UniqueMixin, Base):
     
 class Message(Base):
     __tablename__ = 'message'
+    UniqueConstraint('account_id', 'google_id', name='id_1')
 
     id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
+    account_id = Column(Integer, ForeignKey('account.id'), index=True,
+                        nullable=False)
     google_id = Column(String, index=True)
     message_id = Column(String(100), index=True, unique=True, nullable=False)
     thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
