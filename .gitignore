@@ -4,3 +4,5 @@ client-secret.json
 credentials.json
 *.sqlite3
 *.egg-info
+*.pyc
+*-creds.json
