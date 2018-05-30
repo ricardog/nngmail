@@ -76,7 +76,7 @@ class NnGmail():
     def update(self, gids, sync_labels=False):
         return self.create_or_update(gids, False, sync_labels)
 
-    def update2(self, updated):
+    def update_labels(self, updated):
         for id in updated.keys():
             self.sql3.update(id, updated[id])
         self.sql3.session.flush()
@@ -157,7 +157,7 @@ class NnGmail():
         bar.update(len(deleted))
         self.create(tuple(added.keys()))
         bar.update(len(added))
-        self.update2(updated)
+        self.update_labels(updated)
         bar.close()
         self.sql3.set_history_id(hid)
                   
