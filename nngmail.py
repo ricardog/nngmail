@@ -199,6 +199,13 @@ def main():
     nngmail = NnGmail(config)
     nngmail.pull()
     msgs = nngmail.read(range(2140, 2150))
+    
+    session = nngmail.sql3.new_session()
+    msg = nngmail.sql3.find(2140)[0]
+    msg.labels = msg.labels[0:1]
+    session.commit()
+    nngmail.sql3.set_history_id(0)
+    #nngmail.pull()
     #print(msgs)
     
 if __name__ == '__main__':
