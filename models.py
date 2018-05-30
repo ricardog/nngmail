@@ -254,15 +254,15 @@ class Message(Base):
         self._raw = zlib.compress(raw)
 
     raw = synonym("_raw", descriptor=__raw)
-        
+
     @staticmethod
     def find_labels(session, account, gid):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
         # table itself since updating labels only requires reading the
         # association table.
-        return session.query(Label).\
-            join(label_association, label_association.c.label_id==Label.id).\
-            filter(label_association.c.message_gid==gid).\
+        return session.query(label_association).\
+            filter_by(message_gid=gid).\
+            join(Label).\
             filter(Label.account==account).all()
 
     @staticmethod

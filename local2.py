@@ -128,7 +128,7 @@ class Sqlite3():
         for msg in msgs:
             gid = msg['id']
             labels = Message.find_labels(session, self.account, gid)
-            cur = set([l.id for l in labels])
+            cur = set([l[0] for l in labels])
             new = set([self.get_label(lgid).id for lgid in
                        msg.get('labelIds', [])])
             Message.rem_labels(session, gid, list(cur - new))
