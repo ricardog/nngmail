@@ -7,6 +7,7 @@ Lists the user's Gmail labels.
 """
 from __future__ import print_function
 from apiclient.discovery import build
+from collections import deque
 import googleapiclient
 from httplib2 import Http
 from oauth2client import file, client, tools
@@ -274,13 +275,12 @@ class Gmail:
                     yield responses
             return
 
-        done = False
         idx = 0
         ridx = 0
         pending = {}
-        chunker = chunks(ids, self.opts.batch_size)
+        chunks = deque(chunks(ids, self.opts.batch_size))
         what = self.service.users().messages()
-        while not (done and idx == ridx):
+        while not (len(chunks) == 0 and idx == ridx):
             if not self.inq.empty():
                 try:
                     xx, resp = self.inq.get()
@@ -300,16 +300,12 @@ class Gmail:
                     print("remote: connection error: ", ex)
                 finally:
                     self.inq.task_done()
-            if not done:
-                try:
-                    chunk = chunker.__next__()
-                except StopIteration:
-                    done = True
-                else:
-                    cmds = [(gid, what.get(userId='me', id=gid,
-                                           format=format)) for gid in chunk]
-                    self.outq.put([idx, self.creds, cmds])
-                    idx += 1
+            if len(chunks) > 0:
+                chunk = chunks.popleft()
+                cmds = [(gid, what.get(userId='me', id=gid,
+                                       format=format)) for gid in chunk]
+                self.outq.put([idx, self.creds, cmds])
+                idx += 1
 
         for ridx in sorted(pending.keys()):
             resp = pending[ridx]
