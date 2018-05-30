@@ -179,6 +179,11 @@ class NnGmail():
         bar.close()
 
         created = sorted(created, key=lambda a: int(a, 16))
+        updated = sorted(updated, key=lambda a: int(a, 16))
+        if (updated and created and
+            int(created[0], 16) < int(updated[-1], 16)):
+            print("WARN: creating id's out of order! (%s %s)" % (created[0],
+                                                                 updated[-1]))
         hid1 = self.create(created)
         hid2 = self.update(updated)
         self.delete(local_gids)
