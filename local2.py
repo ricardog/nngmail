@@ -7,7 +7,7 @@ import re
 
 from options import Options
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import load_only, sessionmaker, scoped_session
 from sqlalchemy.sql import and_, or_, not_
 
 from models import Account, Base, KeyValue, Contact, Label, Thread, Message
@@ -145,7 +145,7 @@ class Sqlite3():
     def all_ids(self):
         global Session
         return [m.google_id for m in
-                Session.query(Message).add_column('google_id').\
+                Session.query(Message).options(load_only('google_id')).\
                 filter_by(account=self.account).all()]
     
     def find(self, ids, undefer=False):
