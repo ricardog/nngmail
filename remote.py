@@ -105,16 +105,17 @@ class Gmail:
         self.creds = None
         self.service = None
         self.threads = []
-        if self.opts.num_workers > 0:
+        if self.opts.num_workers > 1:
             self.outq = queue.Queue(maxsize=self.opts.num_workers + 1)
             self.inq = queue.Queue(maxsize=self.opts.num_workers + 1)
-        for idx in range(self.opts.num_workers):
-            werker = lambda: self.worker(idx, self.outq, self.inq)
-            # It's OK for these threads to not free up resources on exit
-            # since they don't store permanent state.
-            # FIXME: should I even keep a pointer to the tread?
-            self.threads.append(threading.Thread(daemon=True, target=werker))
-            self.threads[idx].start()
+            for idx in range(self.opts.num_workers):
+                werker = lambda: self.worker(idx, self.outq, self.inq)
+                # It's OK for these threads to not free up resources on exit
+                # since they don't store permanent state.
+                # FIXME: should I even keep a pointer to the tread?
+                self.threads.append(threading.Thread(daemon=True,
+                                                     target=werker))
+                self.threads[idx].start()
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
@@ -258,7 +259,7 @@ class Gmail:
         if '__getitem__' not in dir(ids):
             ids = (ids, )
 
-        if self.opts.num_workers == 0:
+        if self.opts.num_workers < 2:
             what = self.service.users().messages()
             for chunk in chunks(ids, self.opts.batch_size):
                 try:

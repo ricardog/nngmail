@@ -1,5 +1,4 @@
 
-email: ricardog@itinerisinc.com
 log:
   enable: no
   filename: sql.log
@@ -10,7 +9,7 @@ cache:
   timeout: 60
   size_limit: 5M
 gmail:
-  num_workers: 2
+  num_workers: 1
   client_secrets: client-secret.json
   batch_size: 100
   min_batch_size: 20
