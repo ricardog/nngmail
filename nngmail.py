@@ -4,6 +4,7 @@ import base64
 from collections import Iterable
 import logging
 import sys
+import threading
 
 import yaml
 from tqdm import tqdm
@@ -14,8 +15,8 @@ import remote
 import pdb
 
 class NnGmail():
-    def __init__(self, opts):
-        self.email = opts['email']
+    def __init__(self, email, opts):
+        self.email = email
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email})
         gmail_opts = opts.get('gmail', {})
@@ -193,6 +194,18 @@ class NnGmail():
         self.sql3.set_history_id(history_id)
 
 def main():
+    def test(email, config):
+        print('creating object for <%s>' % email)
+        nngmail = NnGmail(email, config)
+        nngmail.pull()
+        msgs = nngmail.read(range(2140, 2150))
+
+        session = nngmail.sql3.new_session()
+        msg = nngmail.sql3.find(2140)[0]
+        msg.labels = msg.labels[0:1]
+        session.commit()
+        nngmail.sql3.set_history_id(0)
+        
     config = yaml.load(open('config.yaml'))
     if 'log' in config and config['log']['enable']:
         logging.basicConfig(filename=config['log']['filename'])
@@ -200,17 +213,15 @@ def main():
         level = logging.__getattribute__(config['log']['level'])
         logger.setLevel(level)
 
-    nngmail = NnGmail(config)
-    nngmail.pull()
-    msgs = nngmail.read(range(2140, 2150))
-
-    session = nngmail.sql3.new_session()
-    msg = nngmail.sql3.find(2140)[0]
-    msg.labels = msg.labels[0:1]
-    session.commit()
-    nngmail.sql3.set_history_id(0)
-    #nngmail.pull()
-    #print(msgs)
+    engine, factory, session_mk = local2.Sqlite3.open(config['local']['db_url'])
+    accounts = set(local2.Sqlite3.probe(session_mk()) +
+                   ['ricardog@itinerisinc.com'])
+    threads = map(lambda a: threading.Thread(target=lambda: test(a,
+                                                                 config)),
+                  accounts)
+    tuple(map(lambda t: t.run(), threads))
+    tuple(map(lambda t: t.join(), threads))
+    
 
 if __name__ == '__main__':
     main()

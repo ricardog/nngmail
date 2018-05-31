@@ -17,6 +17,20 @@ RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
     options = Options(email=None, db_url=None, account=None)
+
+    @staticmethod
+    def open(db_url):
+        global Session
+        engine = create_engine(db_url)
+        Base.metadata.create_all(engine)
+        session_factory = sessionmaker(bind=engine)
+        Session = scoped_session(session_factory)
+        return engine, session_factory, Session
+    
+    @staticmethod
+    def probe(session):
+        accts = session.query(Account).all()
+        return [a.email for a in accts]
     
     @staticmethod
     def __new_contacts(session, header):
