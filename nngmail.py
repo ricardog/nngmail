@@ -195,7 +195,7 @@ class NnGmail():
 
 def main():
     def test(email, config):
-        print('creating object for <%s>' % email)
+        print('creating thread for <%s>' % email)
         nngmail = NnGmail(email, config)
         nngmail.pull()
         msgs = nngmail.read(range(2140, 2150))
