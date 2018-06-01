@@ -2,18 +2,10 @@
 import enum
 import zlib
 
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import BLOB, Boolean, Column, DateTime, Enum, Integer
-from sqlalchemy import UnicodeText, Unicode, String, Table, ForeignKey
-from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import deferred, relationship, sessionmaker, validates
-from sqlalchemy.orm import synonym
-from sqlalchemy.sql import and_, or_, not_
+from sqlalchemy.orm.exc import NoResultFound
 
-from sqlalchemy.orm import joinedload, Load
-
-Base = declarative_base()
+from nngmail.nngmail import db
 
 def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
     cache = getattr(session, '_unique_cache', None)
@@ -59,18 +51,16 @@ class UniqueMixin(object):
                     arg, kw
                )
 
-class KeyValue(Base):
-    __tablename__ = 'kv'
-    id = Column(Integer, primary_key=True)
-    key = Column(String, unique=True, nullable=False)
-    value = Column(String, nullable=False)
+class KeyValue(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String, unique=True, nullable=False)
+    value = db.Column(db.String, nullable=False)
 
-class Account(UniqueMixin, Base):
-    __tablename__ = 'account'
-    id = Column(Integer, primary_key=True)
-    email = Column(String, unique=True)
+class Account(UniqueMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String, unique=True)
 
-    @validates('email')
+    @db.validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
             print("WARNING: '%s' in email field." % email)
@@ -88,21 +78,20 @@ class Account(UniqueMixin, Base):
     def __repr__(self):
         return '<%s>' % self.email
 
-class Contact(UniqueMixin, Base):
-    __tablename__ = 'contact'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    email = Column(String, unique=True, index=True)
+class Contact(UniqueMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    email = db.Column(db.String, unique=True, index=True)
 
-    _received = relationship('ToAddressee')
-    _cced = relationship('CcAddressee')
-    _bcced = relationship('BccAddressee')
+    _received = db.relationship('ToAddressee')
+    _cced = db.relationship('CcAddressee')
+    _bcced = db.relationship('BccAddressee')
 
     received = association_proxy('_received', 'message')
     cced = association_proxy('_cced', 'message')
     bcced = association_proxy('_bcced', 'message')
     
-    @validates('email')
+    @db.validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
             print("WARNING: '%s' in email field." % email)
@@ -120,15 +109,14 @@ class Contact(UniqueMixin, Base):
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
 
-class Addressee(Base):
-    __tablename__ = 'addressee_association'
-    id = Column(Integer, primary_key=True)
-    contact_id = Column(Integer, ForeignKey('contact.id'))
-    message_id = Column(Integer, ForeignKey('message.id'))
-    type_ = Column('type_', Enum(AddresseeEnum))
+class Addressee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'))
+    type_ = db.Column('type_', db.Enum(AddresseeEnum))
 
-    contact = relationship('Contact')
-    message = relationship('Message', backref='addressees')
+    contact = db.relationship('Contact')
+    message = db.relationship('Message', backref='addressees')
 
     name = association_proxy('contact', 'name')
     email = association_proxy('contact', 'email')
@@ -152,23 +140,24 @@ class BccAddressee(Addressee):
         'polymorphic_identity': AddresseeEnum.bcc
       }
 
-label_association = Table('label_association', Base.metadata,
-    Column('label_id', Integer, ForeignKey('label.id'), nullable=False),
-    Column('message_gid', Integer, ForeignKey('message.google_id'),
-           index=True, nullable=False)
+label_association = db.Table('label_association',
+    db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
+              nullable=False),
+    db.Column('message_gid', db.Integer, db.ForeignKey('message.google_id'),
+              index=True, nullable=False)
 )
 
-class Label(UniqueMixin, Base):
-    __tablename__ = 'label'
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
-    name = Column(String)
-    gid = Column(String)
+class Label(UniqueMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+                           nullable=False)
+    name = db.Column(db.String)
+    gid = db.Column(db.String)
 
-    account = relationship('Account', backref='labels')
-    messages = relationship('Message', secondary=label_association,
-                            lazy='selectin', passive_deletes=True,
-                            back_populates='labels')
+    account = db.relationship('Account', backref='labels')
+    messages = db.relationship('Message', secondary=label_association,
+                               lazy='selectin', passive_deletes=True,
+                               back_populates='labels')
 
     @classmethod
     def unique_hash(cls, account, gid, name=None):
@@ -181,14 +170,15 @@ class Label(UniqueMixin, Base):
     def __repr__(self):
         return '%s' % self.name
         
-class Thread(UniqueMixin, Base):
-    __tablename__ = 'thread'
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
-    tid = Column(String, unique=True, index=True)
+class Thread(UniqueMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+                           nullable=False)
+    tid = db.Column(db.String, unique=True, index=True)
 
-    account = relationship('Account', backref='threads')
-    messages = relationship('Message', backref='thread', cascade='all, delete')
+    account = db.relationship('Account', backref='threads')
+    messages = db.relationship('Message', backref='thread',
+                               cascade='all, delete')
     senders = association_proxy('messages', 'sender')
     subjects = association_proxy('messages', 'subject')
     dates = association_proxy('messages', 'date')
@@ -206,41 +196,41 @@ class Thread(UniqueMixin, Base):
     def __repr__(self):
         return '%d: %s' % (self.id, self.tid)
     
-class Message(Base):
-    __tablename__ = 'message'
-    UniqueConstraint('account_id', 'google_id', name='id_1')
+class Message(db.Model):
+    db.UniqueConstraint('account_id', 'google_id', name='id_1')
 
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey('account.id'), index=True,
-                        nullable=False)
-    google_id = Column(String, index=True)
-    message_id = Column(String(100), index=True, unique=True, nullable=False)
-    thread_id = Column(Integer, ForeignKey('thread.id'), index=True)
-    from_id = Column(Integer, ForeignKey('contact.id'))
-    date = Column(DateTime)
-    subject = Column(String)
-    snippet = Column(String(200))
-    deleted = Column(Boolean, default=False)
-    size = Column(Integer, default=0)
-    _raw = deferred(Column(BLOB))
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+                           index=True, nullable=False)
+    google_id = db.Column(db.String, index=True)
+    message_id = db.Column(db.String(100), index=True, unique=True,
+                           nullable=False)
+    thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
+    from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
+    date = db.Column(db.DateTime)
+    subject = db.Column(db.String)
+    snippet = db.Column(db.String(200))
+    deleted = db.Column(db.Boolean, default=False)
+    size = db.Column(db.Integer, default=0)
+    _raw = db.deferred(db.Column(db.BLOB))
 
-    account = relationship('Account', backref='messages')
-    sender = relationship(Contact, foreign_keys=[from_id], backref='sent',
-                          innerjoin=True)
+    account = db.relationship('Account', backref='messages')
+    sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
+                             innerjoin=True)
 
-    to_ = relationship('ToAddressee', passive_deletes=True)
-    cc = relationship('CcAddressee', passive_deletes=True)
-    bcc = relationship('BccAddressee', passive_deletes=True)
-    labels = relationship('Label', secondary=label_association,
-                          passive_deletes=True,
-                          back_populates='messages')
+    to_ = db.relationship('ToAddressee', passive_deletes=True)
+    cc = db.relationship('CcAddressee', passive_deletes=True)
+    bcc = db.relationship('BccAddressee', passive_deletes=True)
+    labels = db.relationship('Label', secondary=label_association,
+                             passive_deletes=True,
+                             back_populates='messages')
     label_names = association_proxy('labels', 'name')
     tos = association_proxy('to_', 'contact',
                             creator=lambda c: ToAddressee(contact=c))
     ccs = association_proxy('cc', 'contact',
                             creator=lambda c: CcAddressee(contact=c))
     bccs = association_proxy('bcc', 'contact',
-                            creator=lambda c: BccAddressee(contact=c))
+                             creator=lambda c: BccAddressee(contact=c))
 
     @property
     def __raw(self):
@@ -256,14 +246,14 @@ class Message(Base):
         self.raw2 = raw
         self._raw = zlib.compress(raw)
 
-    raw = synonym("_raw", descriptor=__raw)
+    raw = db.synonym("_raw", descriptor=__raw)
 
     @staticmethod
     def find_labels(session, account, gid):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
         # table itself since updating labels only requires reading the
         # association table.
-        return session.query(label_association).\
+        return db.session.query(label_association).\
             filter_by(message_gid=gid).\
             join(Label).\
             filter(Label.account==account).all()
@@ -288,13 +278,3 @@ class Message(Base):
         res = session.execute(q.values(values))
         res.close()
         return
-
-def init(fname):
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker, Load, joinedload
-    engine = create_engine("sqlite:///%s" % fname)
-    conn = engine.connect()
-    Base.metadata.create_all(engine)
-    sessionmk = sessionmaker(bind=engine)
-    session = sessionmk()
-    return (engine, session)
