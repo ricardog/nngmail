@@ -185,7 +185,7 @@ class Thread(UniqueMixin, Base):
     __tablename__ = 'thread'
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer, ForeignKey('account.id'), nullable=False)
-    tid = Column('gid', String, unique=True, index=True)
+    tid = Column(String, unique=True, index=True)
 
     account = relationship('Account', backref='threads')
     messages = relationship('Message', backref='thread', cascade='all, delete')
