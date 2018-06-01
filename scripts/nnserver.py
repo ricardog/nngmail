@@ -12,6 +12,9 @@ import nngmail
 
 import pdb
 
+## Based on the following SO question:
+## https://stackoverflow.com/questions/46210672/python-2-7-streaming-http-server-supporting-multiple-connections-on-one-port
+
 # Launch 100 listener threads.
 class HTTPServerThread(threading.Thread):
     def __init__(self, i, sock):
