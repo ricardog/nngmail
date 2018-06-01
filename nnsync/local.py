@@ -6,34 +6,23 @@ import email
 import re
 
 from options import Options
-from sqlalchemy import create_engine
-from sqlalchemy.orm import load_only, sessionmaker, scoped_session
+
+from sqlalchemy.orm import load_only
 from sqlalchemy.sql import and_, or_, not_
 
-from models import Account, Base, KeyValue, Contact, Label, Thread, Message
+from nngmail import db
+from nngmail.models import Account, KeyValue, Contact
+from nngmail.models import Label, Thread, Message
+
 import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
     options = Options(email=None, db_url=None, account=None)
-
-    @staticmethod
-    def open(db_url):
-        global Session
-        engine = create_engine(db_url)
-        Base.metadata.create_all(engine)
-        session_factory = sessionmaker(bind=engine)
-        Session = scoped_session(session_factory)
-        return engine, session_factory, Session
     
     @staticmethod
-    def probe(session):
-        accts = session.query(Account).all()
-        return [a.email for a in accts]
-    
-    @staticmethod
-    def __new_contacts(session, header):
+    def __new_contacts(header):
         contacts = []
         for n, e in email.utils.getaddresses([header]):
             if n == '' and e== '':
@@ -41,7 +30,7 @@ class Sqlite3():
                 # dl-engr-silicon@stretchinc.com>
                 continue
             try:
-                contacts.append(Contact.as_unique(session, email=e, name=n))
+                contacts.append(Contact.as_unique(db.session, email=e, name=n))
             except AssertionError as ex:
                 # Contact.as_unique raises an exception of the email
                 # field fails validation.  Which happens with improperly
@@ -51,24 +40,15 @@ class Sqlite3():
         return contacts
 
     def __init__(self, **kwargs):
-        global Session
         self.opts = self.options.push(kwargs)
-        self.engine = create_engine(self.opts.db_url)
-        self.conn = self.engine.connect()
-        Base.metadata.create_all(self.engine)
-        session_factory = sessionmaker(bind=self.engine)
-        Session = scoped_session(session_factory)
-        self.session = session_factory()
-        session = Session()
-        self.opts.set(account=Account.as_unique(session, email=self.opts.email))
-        session.commit()
+        self.opts.set(account=Account.as_unique(db.session, email=self.opts.email))
         self.label_map = {}
         self.label_imap = {}
 
     def __build_label_map(self):
         self.label_map = {}
         self.label_imap = {}
-        for label in Session.query(Label).filter_by(account=self.account).all():
+        for label in Label.query.filter_by(account=self.account).all():
             self.label_map[label.gid] = label
             self.label_imap[label.id] = label.gid
 
@@ -90,7 +70,7 @@ class Sqlite3():
         m = RE_CATEGORY.match(name)
         if m:
             name = 'Inbox:%s' % m.group(1).capitalize()
-        session = Session()
+        session = db.session()
         label = Label.as_unique(session, name=name, gid=gid,
                                 account=self.account)
         session.commit()
@@ -101,7 +81,7 @@ class Sqlite3():
             return
         if '__getitem__' not in dir(gids):
             msgs = (gids, )
-        session = Session()
+        session = db.session()
         values = [{'google_id': gid, 'account_id': self.account.id,}
                   for gid in gids]
         insert = Message.__table__.insert().values(values)
@@ -110,7 +90,7 @@ class Sqlite3():
     def create(self, msgs):
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
-        session = Session()
+        session = db.session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID']
         for msg in msgs:
@@ -118,14 +98,13 @@ class Sqlite3():
                            filter(lambda h: h['name'] in keepers,
                                   msg['payload']['headers']))
             default_id = '<%s@mail.gmail.com>' % msg['id']
-            senders = self.__new_contacts(session,
-                                          headers.get('From',
+            senders = self.__new_contacts(headers.get('From',
                                                       headers.get('from', '')))
             adds = {}
             for hdr in ('To', 'CC', 'BCC'):
-                adds[hdr] = self.__new_contacts(session, headers.get(hdr, ''))
+                adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
             labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
-            thread = Thread.as_unique(session, tid=msg['threadId'],
+            thread = Thread.as_unique(db.session, tid=msg['threadId'],
                                       account=self.account)
             if 'internalDate' in msg:
                 timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
@@ -133,23 +112,23 @@ class Sqlite3():
             else:
                 timestamp = datetime.now()
 
-            session.add(Message(account=self.account, google_id=msg['id'],
-                                thread=thread,
-                                message_id=headers.get('Message-ID',
-                                                       default_id),
-                                subject=headers.get('Subject',
-                                                    headers.get('subject', '')),
-                                size=msg.get('sizeEstimate', 0),
-                                date=timestamp, sender=senders[0],
-                                snippet=msg['snippet'], labels=labels,
-                                tos=adds['To'], ccs=adds['CC'],
-                                bccs=adds['BCC']))
+            db.session.add(Message(account=self.account, google_id=msg['id'],
+                                   thread=thread,
+                                   message_id=headers.get('Message-ID',
+                                                          default_id),
+                                   subject=headers.get('Subject',
+                                                       headers.get('subject', '')),
+                                   size=msg.get('sizeEstimate', 0),
+                                   date=timestamp, sender=senders[0],
+                                   snippet=msg['snippet'], labels=labels,
+                                   tos=adds['To'], ccs=adds['CC'],
+                                   bccs=adds['BCC']))
         session.commit()
 
     def update(self, msgs):
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
-        session = Session()
+        session = db.session()
         objs = self.find_by_gid([m['id'] for m in msgs])
         if len(objs) != len(msgs):
             pdb.set_trace()
@@ -160,55 +139,39 @@ class Sqlite3():
                 obj.labels = []
         session.commit()
 
-    def new_session(self):
-        return Session()
-
     def commit(self):
-        global Session
-        Session.commit()
+        db.session.commit()
 
     def all_ids(self):
-        global Session
         return [m.google_id for m in
-                Session.query(Message).options(load_only('google_id')).\
+                Message.query.options(load_only('google_id')).\
                 filter_by(account=self.account).all()]
     
     def find(self, ids, undefer=False):
-        global Session
         if isinstance(ids, str) or not isinstance(ids, Iterable):
             ids = [ids]
-        query = Session.query(Message).filter(and_(Message.id.in_(ids),
-                                                   Message.account==self.account))
+        query = Message.query.filter(and_(Message.id.in_(ids),
+                                          Message.account==self.account))
         if undefer:
             query = query.undefer('raw')
         return query.all()
 
     def find_by_gid(self, gids):
-        global Session
         if isinstance(gids, str) or not isinstance(gids, Iterable):
             gids = [gids]
-        return Session.query(Message).\
-            filter(and_(Message.google_id.in_(gids),
-                        Message.account==self.account)).all()
+        return Message.query.filter(and_(Message.google_id.in_(gids),
+                                         Message.account==self.account)).all()
     
     def delete(self, gids):
-        global Session
         msgs = self.find_by_gid(gids)
         if msgs:
-            session = Session()
+            session = db.session()
             session.delete(msgs)
             session.commit()
 
-    def add_label(self, gid, lid):
-        pass
-
-    def rm_label(self, gid, lid):
-        pass
-
     def __set_kv(self, key, value):
-        global Session
-        session = Session()
-        kv = session.query(KeyValue).filter(KeyValue.key == key).first()
+        session = db.session()
+        kv = KeyValue.query.filter(KeyValue.key == key).first()
         if kv:
             kv.value = value
         else:
@@ -217,8 +180,7 @@ class Sqlite3():
         session.commit()
 
     def __get_kv(self, key):
-        global Session
-        kv = Session.query(KeyValue).filter(KeyValue.key == key).first()
+        kv = KeyValue.query.filter(KeyValue.key == key).first()
         if kv:
             return kv.value
         return None

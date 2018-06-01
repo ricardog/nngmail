@@ -1,6 +1,6 @@
 import click
-from nngmail.nngmail import app, db
-from nngmail.nngmail.models import *
+from nngmail import app, db
+from nngmail.models import *
 
 @app.route('/')
 def index():
@@ -10,5 +10,12 @@ def index():
 def account():
     click.echo("getting accounts")
     click.echo("there are %d accounts" % Account.query.count())
-    return '\n'.join(map(lambda a: str(a), Account.query.all()))
+    return '\n'.join(map(lambda a: str(a), Account.query.all())) + '\n'
+
+@app.route('/contact/')
+def contact():
+    click.echo("getting contacts")
+    click.echo("there are %d contacts" % Contact.query.count())
+    return '\n'.join(map(lambda a: str(a), Contact.query.limit(100).all())) + '\n'
+
 

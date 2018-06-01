@@ -9,19 +9,19 @@ import threading
 import yaml
 from tqdm import tqdm
 
-import local2
-import remote
+from . import local
+from . import remote
 
 import pdb
 
-class NnGmail():
+class NnSync():
     def __init__(self, email, opts):
         self.email = email
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email})
         gmail_opts = opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
-        self.sql3 = local2.Sqlite3(**local_opts)
+        self.sql3 = local.Sqlite3(**local_opts)
         self.gmail = remote.Gmail(**gmail_opts)
 
     def sync_labels(self):
@@ -192,36 +192,3 @@ class NnGmail():
         history_id = max(hid1, hid2, history_id)
         print('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
-
-def main():
-    def test(email, config):
-        print('creating thread for <%s>' % email)
-        nngmail = NnGmail(email, config)
-        nngmail.pull()
-        msgs = nngmail.read(range(2140, 2150))
-
-        session = nngmail.sql3.new_session()
-        msg = nngmail.sql3.find(2140)[0]
-        msg.labels = msg.labels[0:1]
-        session.commit()
-        nngmail.sql3.set_history_id(0)
-        
-    config = yaml.load(open('config.yaml'))
-    if 'log' in config and config['log']['enable']:
-        logging.basicConfig(filename=config['log']['filename'])
-        logger = logging.getLogger('sqlalchemy.engine')
-        level = logging.__getattribute__(config['log']['level'])
-        logger.setLevel(level)
-
-    engine, factory, session_mk = local2.Sqlite3.open(config['local']['db_url'])
-    accounts = set(local2.Sqlite3.probe(session_mk()) +
-                   ['ricardog@itinerisinc.com'])
-    threads = map(lambda a: threading.Thread(target=lambda: test(a,
-                                                                 config)),
-                  accounts)
-    tuple(map(lambda t: t.run(), threads))
-    tuple(map(lambda t: t.join(), threads))
-    
-
-if __name__ == '__main__':
-    main()

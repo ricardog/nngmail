@@ -6,7 +6,9 @@ Shows basic usage of the Gmail API.
 Lists the user's Gmail labels.
 """
 from __future__ import print_function
+import click
 from collections import deque
+import os
 import queue
 import threading
 import pdb
@@ -20,7 +22,7 @@ from options import Options
 class Gmail:
     options = Options(email=None,
                       scopes='https://www.googleapis.com/auth/gmail.readonly',
-                      client_secret_file='client-secret.json',
+                      client_secret_file='data/client-secret.json',
                       batch_size=100,
                       credentials_path=None,
                       query='-in:chats',
@@ -99,8 +101,17 @@ class Gmail:
     def __init__(self, **kwargs):
         "Object for accessing gmail via http API."
         self.opts = self.options.push(kwargs)
+        data_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
+                                                 '../data'))
+        print('data dir is %s' % data_dir)
         if self.opts.credentials_path is None:
             self.opts.set(credentials_path='%s-creds.json' % self.opts.email)
+        if os.path.relpath(self.opts.client_secret_file):
+            self.opts.set(client_secret_file=os.path.join(data_dir,
+                                                   self.opts.client_secret_file))
+        if os.path.relpath(self.opts.credentials_path):
+            self.opts.set(credentials_path=os.path.join(data_dir,
+                                                      self.opts.credentials_path))
         self.creds = None
         self.service = None
         self.threads = []

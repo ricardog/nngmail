@@ -5,7 +5,8 @@ import zlib
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.exc import NoResultFound
 
-from nngmail.nngmail import db
+from nngmail import db
+from sqlalchemy.sql import and_, or_, not_
 
 def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
     cache = getattr(session, '_unique_cache', None)

@@ -10,7 +10,7 @@ cache:
   size_limit: 5M
 gmail:
   num_workers: 1
-  client_secrets: client-secret.json
+  client_secrets: data/client-secret.json
   batch_size: 100
   min_batch_size: 20
   max_batch_size: 200

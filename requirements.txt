@@ -1,6 +1,0 @@
-Click
-google-api-python-client
-options
-pyyaml
-sqlalchemy
-tqdm
