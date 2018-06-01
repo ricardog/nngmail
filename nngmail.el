@@ -44,28 +44,13 @@ Uses the same syntax as `nnmail-split-methods'.")
 
 (defvar nngmail-status-string "")
 
-;(defconst nngmail-src-dir (file-name-directory load-file-name))
+(defconst nngmail-src-dir (file-name-directory load-file-name))
 
-(defun nngmail-make-config (account)
-  "Create the YAML file for synching the user's email account.
-The user's email address comes from ACCOUNT."
-  (let ((tfile (make-temp-file "nngmail" nil ".yml")))
-    (with-temp-file tfile
-      (insert-file-contents
-       (expand-file-name "config.yaml.tmpl" nngmail-src-dir))
-      (goto-char (point-min))
-      (while (re-search-forward "%%[[:alnum:]]+%%" nil t)
-	(message "found a template pattern")
-	(or (and (string-equal (match-string 0) "%%account%%")
-		 (replace-match account))
-	    nil)))
-    (expand-file-name tfile)))
-
-(defun nngmail-start-server (account)
-  "Start an nnserver for the user's email ACCOUNT."
+(defun nngmail-start-server ()
+  "Start an nnserver to sync the user's gmail account(s)."
   (let* ((program (expand-file-name "~/.pyenv/shims/nnserver"))
-	 (buf (generate-new-buffer (concat "*" "nngmail-" account "*")))
-	 (config-file (nngmail-make-config account))
+	 (buf (generate-new-buffer (concat "*nngmail*")))
+	 (config-file (expand-file-name "config.yaml" nngmail-src-dir))
 	 (some-other-stuff "blah blah blah")
 	 (proc (start-process "nngmail" buf program config-file)))
     (message "nngmail sync daemon started")))
