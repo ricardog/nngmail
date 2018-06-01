@@ -6,17 +6,16 @@ Shows basic usage of the Gmail API.
 Lists the user's Gmail labels.
 """
 from __future__ import print_function
-from apiclient.discovery import build
 from collections import deque
+import queue
+import threading
+import pdb
+
+from apiclient.discovery import build
 import googleapiclient
 from httplib2 import Http
 from oauth2client import file, client, tools
 from options import Options
-import queue
-import threading
-
-
-import pdb
 
 class Gmail:
     options = Options(email=None,
@@ -46,7 +45,7 @@ class Gmail:
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
                 "Check if exception is error code 'code'."
-                return (type(ex) is googleapiclient.errors.HttpError and
+                return (isinstance(ex, googleapiclient.errors.HttpError) and
                         ex.resp.status == code)
             if ex is not None:
                 if ex_is_error(ex, 404):
@@ -168,7 +167,7 @@ class Gmail:
             else:
                 raise Gmail.GenericException("no historyId field returned")
 
-        except googleapiclient.errors.HttpError as ex:
+        except googleapiclient.errors.HttpError:
             # this happens if the original historyId is too old,
             # try to get last message and the historyId from it.
             for mset in self.list_messages(1):
@@ -182,7 +181,7 @@ class Gmail:
         try:
             results = hist.list(userId='me', startHistoryId=start).execute()
             if 'history' in results:
-                yield (results['history'])
+                yield results['history']
             while 'nextPageToken' in results:
                 results = hist.list(userId='me',
                                     pageToken=results['nextPageToken'],
@@ -194,18 +193,19 @@ class Gmail:
             if ex.resp.status == 404:
                 raise Gmail.NoHistoryException
             elif ex.resp.status == 403:
-                raise Gmail.UserRateException(excep)
+                raise Gmail.UserRateException(ex)
             else:
-                raise Gmail.GenericException(excep)
+                raise Gmail.GenericException(ex)
 
     @authorized
     def list_messages(self, limit=1):
         "Returns a list of messages (max = limit)."
         total = 0
-        pt = None
-        while pt is None or 'nextPageToken' in results:
+        token = None
+        results = []
+        while token is None or 'nextPageToken' in results:
             results = self.service.users().messages().list(userId='me',
-                                                           pageToken=pt,
+                                                           pageToken=token,
                                                            q=self.opts.query,
                                                            maxResults=limit,
                                                            includeSpamTrash=True).\
@@ -215,7 +215,7 @@ class Gmail:
                 total += results['resultSizeEstimate']
                 yield results['resultSizeEstimate'], results['messages']
             if 'nextPageToken' in results:
-                pt = results['nextPageToken']
+                token = results['nextPageToken']
             if limit is not None and total >= limit:
                 break
 
