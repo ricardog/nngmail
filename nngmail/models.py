@@ -200,7 +200,7 @@ class Label(UniqueMixin, db.Model):
 
     def __repr__(self):
         return '%s' % self.name
-        
+
 class Thread(UniqueMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
@@ -251,9 +251,9 @@ class Message(db.Model):
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
-    to_ = db.relationship('ToAddressee', passive_deletes=True)
-    cc = db.relationship('CcAddressee', passive_deletes=True)
-    bcc = db.relationship('BccAddressee', passive_deletes=True)
+    to_ = db.relationship('ToAddressee', cascade='all,delete')
+    cc = db.relationship('CcAddressee', cascade='all,delete')
+    bcc = db.relationship('BccAddressee', cascade='all,delete')
     labels = db.relationship('Label', secondary=label_association,
                              passive_deletes=True,
                              back_populates='messages')
