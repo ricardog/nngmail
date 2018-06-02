@@ -29,11 +29,8 @@ def import_email(email, nickname):
     nickname - nickname for the account
     """
     
-    print('root path    : %s' % app.root_path)
-    print('instance path: %s' % app.instance_path)
     config_file = os.path.normpath(os.path.join(app.root_path, '..',
                                                 'data', 'config.yaml'))
-    print('config file  : %s' % config_file)
     try:
         config = yaml.load(open(config_file, mode='rb'))
     except IOError:
