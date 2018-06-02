@@ -78,9 +78,7 @@ class NnSync():
         return self.create_or_update(gids, False, sync_labels)
 
     def update_labels(self, updated):
-        for id in updated.keys():
-            self.sql3.update(id, updated[id])
-        self.sql3.session.flush()
+        self.sql3.update(updated)
 
     def delete(self, gids):
         self.sql3.delete(gids)
