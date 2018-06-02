@@ -1,4 +1,6 @@
 import click
+from flask import jsonify
+
 from nngmail import app, db
 from nngmail.models import *
 
@@ -6,16 +8,13 @@ from nngmail.models import *
 def index():
     return 'Hello World!'
 
-@app.route('/account/')
-def account():
-    click.echo("getting accounts")
-    click.echo("there are %d accounts" % Account.query.count())
-    return '\n'.join(map(lambda a: str(a), Account.query.all())) + '\n'
+@app.route('/api/v1.0/accounts', methods=['GET', 'POST', 'DELETE'])
+def accounts():
+    return jsonify({'accounts': Account.serialize_list(Account.query.all())})
 
-@app.route('/contact/')
-def contact():
-    click.echo("getting contacts")
-    click.echo("there are %d contacts" % Contact.query.count())
-    return '\n'.join(map(lambda a: str(a), Contact.query.limit(100).all())) + '\n'
+@app.route('/api/v1.0/contacts', methods=['GET'])
+def contacts():
+    return jsonify({'contacts': Contact.serialize_list(Contact.query.limit(100).all())})
+
 
 
