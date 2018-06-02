@@ -4,6 +4,7 @@ import zlib
 
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.inspection import inspect
 
 from nngmail import db
 from sqlalchemy.sql import and_, or_, not_
@@ -52,12 +53,21 @@ class UniqueMixin(object):
                     arg, kw
                )
 
+class Serializeable(object):
+    def serialize(self, omit=[]):
+        return {c: getattr(self, c) for c in
+                filter(lambda c: c not in omit, inspect(self).attrs.keys())}
+
+    @staticmethod
+    def serialize_list(l, omit=[]):
+        return [m.serialize(omit) for m in l]
+
 class KeyValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, unique=True, nullable=False)
     value = db.Column(db.String, nullable=False)
 
-class Account(UniqueMixin, db.Model):
+class Account(UniqueMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
     nickname = db.Column(db.String(100), nullable=True)
@@ -80,7 +90,15 @@ class Account(UniqueMixin, db.Model):
     def __repr__(self):
         return '%2d: %s <%s>' % (self.id, self.nickname, self.email)
 
-class Contact(UniqueMixin, db.Model):
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('messages', 'threads',
+                                                   'labels'))
+    @staticmethod
+    def serialize_list(l):
+        return [Serializeable.serialize(e, omit=('messages', 'threads',
+                                                 'labels')) for e in l]
+        
+class Contact(UniqueMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     email = db.Column(db.String, unique=True, index=True)
@@ -110,6 +128,15 @@ class Contact(UniqueMixin, db.Model):
     
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
+
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('sent', '_received',
+                                                   '_cced', '_bcced'))
+    @staticmethod
+    def serialize_list(l):
+        return [Serializeable.serialize(e, omit=('sent', '_received',
+                                                 '_cced',
+                                                 '_bcced')) for e in l]
 
 class Addressee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
