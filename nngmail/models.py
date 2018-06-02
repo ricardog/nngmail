@@ -318,3 +318,16 @@ class Message(db.Model):
         res = session.execute(q.values(values))
         res.close()
         return
+
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('_raw', 'account',
+                                                   'thread', 'sender', 'to_',
+                                                   'cc', 'bcc', 'addressees',
+                                                   'raw', 'labels'))
+    @staticmethod
+    def serialize_list(l):
+        return [Serializeable.serialize(e, omit=('_raw', 'account',
+                                                 'thread', 'sender', 'to_',
+                                                 'cc', 'bcc', 'addressees',
+                                                 'raw',
+                                                 'labels')) for e in l]
