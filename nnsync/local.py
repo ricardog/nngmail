@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from collections import Iterable
 from datetime import datetime
 import email
 import re
@@ -20,18 +19,18 @@ RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
     options = Options(email=None, db_url=None, account=None)
-    
+
     @staticmethod
     def __new_contacts(header):
         contacts = []
         for n, e in email.utils.getaddresses([header]):
-            if n == '' and e== '':
+            if n == '' and e == '':
                 # This hapens with inpropperly quoted emails like
                 # dl-engr-silicon@stretchinc.com>
                 continue
             try:
                 contacts.append(Contact.as_unique(db.session, email=e, name=n))
-            except AssertionError as ex:
+            except AssertionError:
                 # Contact.as_unique raises an exception of the email
                 # field fails validation.  Which happens with improperly
                 # quoted headers like:
@@ -60,7 +59,7 @@ class Sqlite3():
         if name not in self.label_map:
             self.__build_label_map()
         return self.label_map[name]
-                               
+
     def get_label_gid(self, id):
         if id not in self.label_imap:
             self.__build_label_map()
@@ -80,7 +79,7 @@ class Sqlite3():
         if not gids:
             return
         if '__getitem__' not in dir(gids):
-            msgs = (gids, )
+            gids = (gids, )
         session = db.session()
         values = [{'google_id': gid, 'account_id': self.account.id,}
                   for gid in gids]
@@ -112,17 +111,17 @@ class Sqlite3():
             else:
                 timestamp = datetime.now()
 
-            db.session.add(Message(account=self.account, google_id=msg['id'],
-                                   thread=thread,
-                                   message_id=headers.get('Message-ID',
-                                                          default_id),
-                                   subject=headers.get('Subject',
-                                                       headers.get('subject', '')),
-                                   size=msg.get('sizeEstimate', 0),
-                                   date=timestamp, sender=senders[0],
-                                   snippet=msg['snippet'], labels=labels,
-                                   tos=adds['To'], ccs=adds['CC'],
-                                   bccs=adds['BCC']))
+            db.session().add(Message(account=self.account, google_id=msg['id'],
+                                     thread=thread,
+                                     message_id=headers.get('Message-ID',
+                                                            default_id),
+                                     subject=headers.get('Subject',
+                                                         headers.get('subject', '')),
+                                     size=msg.get('sizeEstimate', 0),
+                                     date=timestamp, sender=senders[0],
+                                     snippet=msg['snippet'], labels=labels,
+                                     tos=adds['To'], ccs=adds['CC'],
+                                     bccs=adds['BCC']))
         session.commit()
 
     def update(self, msgs):
@@ -140,28 +139,28 @@ class Sqlite3():
         session.commit()
 
     def commit(self):
-        db.session.commit()
+        db.session().commit()
 
     def all_ids(self):
         return [m.google_id for m in
                 Message.query.options(load_only('google_id')).\
                 filter_by(account=self.account).all()]
-    
+
     def find(self, ids, undefer=False):
-        if isinstance(ids, str) or not isinstance(ids, Iterable):
-            ids = [ids]
+        if '__getitem__' not in dir(ids):
+            ids = (ids, )
         query = Message.query.filter(and_(Message.id.in_(ids),
-                                          Message.account==self.account))
+                                          Message.account == self.account))
         if undefer:
             query = query.undefer('raw')
         return query.all()
 
     def find_by_gid(self, gids):
-        if isinstance(gids, str) or not isinstance(gids, Iterable):
-            gids = [gids]
+        if '__getitem__' not in dir(gids):
+            gids = (gids, )
         return Message.query.filter(and_(Message.google_id.in_(gids),
-                                         Message.account==self.account)).all()
-    
+                                         Message.account == self.account)).all()
+
     def delete(self, gids):
         msgs = self.find_by_gid(gids)
         if msgs:
