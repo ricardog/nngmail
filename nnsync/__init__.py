@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
-from collections import Iterable
-import logging
-import sys
-import threading
 
-import yaml
 from tqdm import tqdm
 
 from . import local
@@ -95,7 +90,7 @@ class NnSync():
                 history += results
                 pages += 1
                 bar.update(1)
-        except remote.Gmail.NoHistoryException as ex:
+        except remote.Gmail.NoHistoryException:
             no_history = True
         for _ in range(pages, 10):
             bar.update(1)
@@ -169,7 +164,7 @@ class NnSync():
         prof = self.gmail.get_profile()
         bar = tqdm(leave=True, total=prof['messagesTotal'],
                    desc="fetching message ID's")
-        for (total, msgs) in self.gmail.list_messages(limit=None):
+        for (_, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
             created.extend(gids - local_gids)
             updated.extend(local_gids.intersection(gids))
