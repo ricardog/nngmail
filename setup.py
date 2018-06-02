@@ -17,6 +17,5 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        nnserver=scripts.nnserver:daemon
     ''',
 )
