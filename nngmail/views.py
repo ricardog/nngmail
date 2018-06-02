@@ -23,9 +23,21 @@ class AccountAPI(MethodView):
             return jsonify(account.serialize())
 
     def post(self):
-        abort(404)
-
-    def delete(self, user_id):
+        if not request.json:
+            return make_response(jsonify({'error': 'No data'}), 400)
+        if ('nickname' not in request.json or
+            not isinstance(request.json['nickname'], str)):
+            return make_response(jsonify({'error': 'Bad nickname'}), 400)
+        if ('email' not in request.json or
+            not isinstance(request.json['email'], str)):
+            return make_response(jsonify({'error': 'Bad email'}), 400)
+        account = Account(email=request.json['email'],
+                          nickname=request.json['nickname'])
+        db.session().add(account)
+        db.session().commit()
+        return jsonify(account.serialize())
+        
+    def delete(self, account_id):
         account = Account.query.get(account_id)
         if not account:
             return make_response(jsonify({'error': 'Not found'}), 404)
