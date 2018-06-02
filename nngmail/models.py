@@ -67,6 +67,11 @@ class KeyValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, unique=True, nullable=False)
     value = db.Column(db.String, nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+                           index=True, nullable=False)
+
+    account = db.relationship('Account',
+                              backref=backref('keys', cascade='all,delete'))
 
 class Account(UniqueMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
@@ -93,11 +98,12 @@ class Account(UniqueMixin, db.Model, Serializeable):
 
     def serialize(self):
         return Serializeable.serialize(self, omit=('messages', 'threads',
-                                                   'labels'))
+                                                   'labels', 'keys'))
     @staticmethod
     def serialize_list(l):
         return [Serializeable.serialize(e, omit=('messages', 'threads',
-                                                 'labels')) for e in l]
+                                                 'labels',
+                                                 'keys')) for e in l]
         
 class Contact(UniqueMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
@@ -247,7 +253,8 @@ class Message(db.Model):
     _raw = db.deferred(db.Column(db.BLOB))
 
     account = db.relationship('Account',
-                              backref=backref('messages', cascade='all,delete') )
+                              backref=backref('messages',
+                                              cascade='all,delete'))
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 

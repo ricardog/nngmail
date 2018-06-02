@@ -40,7 +40,7 @@ class Sqlite3():
 
     def __init__(self, **kwargs):
         self.opts = self.options.push(kwargs)
-        self.opts.set(account=Account.as_unique(db.session,
+        self.opts.set(account=Account.as_unique(db.session(),
                                                 email=self.opts.email,
                                                 nickname=self.opts.nickname))
         self.label_map = {}
@@ -105,7 +105,7 @@ class Sqlite3():
             for hdr in ('To', 'CC', 'BCC'):
                 adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
             labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
-            thread = Thread.as_unique(db.session, tid=msg['threadId'],
+            thread = Thread.as_unique(session, tid=msg['threadId'],
                                       account=self.account)
             if 'internalDate' in msg:
                 timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
@@ -113,17 +113,17 @@ class Sqlite3():
             else:
                 timestamp = datetime.now()
 
-            db.session().add(Message(account=self.account, google_id=msg['id'],
-                                     thread=thread,
-                                     message_id=headers.get('Message-ID',
-                                                            default_id),
-                                     subject=headers.get('Subject',
-                                                         headers.get('subject', '')),
-                                     size=msg.get('sizeEstimate', 0),
-                                     date=timestamp, sender=senders[0],
-                                     snippet=msg['snippet'], labels=labels,
-                                     tos=adds['To'], ccs=adds['CC'],
-                                     bccs=adds['BCC']))
+            session.add(Message(account=self.account, google_id=msg['id'],
+                                thread=thread,
+                                message_id=headers.get('Message-ID',
+                                                       default_id),
+                                subject=headers.get('Subject',
+                                                    headers.get('subject', '')),
+                                size=msg.get('sizeEstimate', 0),
+                                date=timestamp, sender=senders[0],
+                                snippet=msg['snippet'], labels=labels,
+                                tos=adds['To'], ccs=adds['CC'],
+                                bccs=adds['BCC']))
         session.commit()
 
     def update(self, msgs):
@@ -176,28 +176,27 @@ class Sqlite3():
 
     def __set_kv(self, key, value):
         session = db.session()
-        kv = KeyValue.query.filter(KeyValue.key == key).first()
+        kv = KeyValue.query.filter_by(key=key).\
+            filter_by(account=self.account).first()
         if kv:
             kv.value = value
         else:
-            kv = KeyValue(key=key, value=value)
+            kv = KeyValue(account=self.account, key=key, value=value)
         session.add(kv)
         session.commit()
 
     def __get_kv(self, key):
-        kv = KeyValue.query.filter(KeyValue.key == key).first()
+        kv = KeyValue.query.filter_by(key=key).\
+            filter_by(account=self.account).first()
         if kv:
             return kv.value
         return None
 
-    def __hid(self):
-        return 'history_id_%s' % self.account.email
-
     def set_history_id(self, value):
-        self.__set_kv(self.__hid(), value)
+        self.__set_kv('history_id', value)
 
     def get_history_id(self):
-        hid = self.__get_kv(self.__hid())
+        hid = self.__get_kv('history_id')
         if hid is not None:
             return int(hid)
         return 0
