@@ -18,7 +18,7 @@ import pdb
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
-    options = Options(email=None, db_url=None, account=None)
+    options = Options(email=None, nickname=None, db_url=None, account=None)
 
     @staticmethod
     def __new_contacts(header):
@@ -40,7 +40,9 @@ class Sqlite3():
 
     def __init__(self, **kwargs):
         self.opts = self.options.push(kwargs)
-        self.opts.set(account=Account.as_unique(db.session, email=self.opts.email))
+        self.opts.set(account=Account.as_unique(db.session,
+                                                email=self.opts.email,
+                                                nickname=self.opts.nickname))
         self.label_map = {}
         self.label_imap = {}
 
@@ -147,6 +149,8 @@ class Sqlite3():
                 filter_by(account=self.account).all()]
 
     def find(self, ids, undefer=False):
+        if not ids:
+            return
         if '__getitem__' not in dir(ids):
             ids = (ids, )
         query = Message.query.filter(and_(Message.id.in_(ids),
@@ -156,6 +160,8 @@ class Sqlite3():
         return query.all()
 
     def find_by_gid(self, gids):
+        if not gids:
+            return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
         return Message.query.filter(and_(Message.google_id.in_(gids),

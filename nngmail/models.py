@@ -60,6 +60,7 @@ class KeyValue(db.Model):
 class Account(UniqueMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
+    nickname = db.Column(db.String(100), nullable=True)
 
     @db.validates('email')
     def validates_email(self, key, email):
@@ -69,15 +70,15 @@ class Account(UniqueMixin, db.Model):
         return email
 
     @classmethod
-    def unique_hash(cls, email):
+    def unique_hash(cls, email, nickname):
         return email
 
     @classmethod
-    def unique_filter(cls, query, email):
+    def unique_filter(cls, query, email, nickname):
         return query.filter(Account.email == email)
 
     def __repr__(self):
-        return '<%s>' % self.email
+        return '%2d: %s <%s>' % (self.id, self.nickname, self.email)
 
 class Contact(UniqueMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

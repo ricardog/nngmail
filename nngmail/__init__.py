@@ -1,6 +1,7 @@
 import click
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import os
 import yaml
 
 app = Flask(__name__)
@@ -19,11 +20,25 @@ def init_db_command():
 
 @app.cli.command('import')
 @click.argument('email', type=click.STRING)
-@click.argument('config_file', type=click.File(mode='rb'))
-def import_email(email, config_file):
-    print('config file      : %s' % config_file.name)
-    config = yaml.load(config_file)
-    gmail = NnSync(email, config)
+@click.argument('nickname', type=click.STRING)
+def import_email(email, nickname):
+    """Add a new account to the database and import all the message metadata. 
+
+    email - email address to add
+    nickname - nickname for the account
+    """
+    
+    print('root path    : %s' % app.root_path)
+    print('instance path: %s' % app.instance_path)
+    config_file = os.path.normpath(os.path.join(app.root_path, '..',
+                                                'data', 'config.yaml'))
+    print('config file  : %s' % config_file)
+    try:
+        config = yaml.load(open(config_file, mode='rb'))
+    except IOError:
+        print('Error: reading config file (%s)' % config_file)
+        return
+    gmail = NnSync(email, nickname, config)
     gmail.pull()    
 
 app.cli.add_command(init_db_command)

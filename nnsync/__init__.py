@@ -10,10 +10,12 @@ from . import remote
 import pdb
 
 class NnSync():
-    def __init__(self, email, opts):
+    def __init__(self, email, nickname, opts):
         self.email = email
+        self.nickname = nickname
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email})
+        local_opts.update({'nickname': self.nickname})
         gmail_opts = opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
         self.sql3 = local.Sqlite3(**local_opts)
