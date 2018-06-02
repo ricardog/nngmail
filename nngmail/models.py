@@ -3,6 +3,7 @@ import enum
 import zlib
 
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.inspection import inspect
 
@@ -183,7 +184,8 @@ class Label(UniqueMixin, db.Model):
     name = db.Column(db.String)
     gid = db.Column(db.String)
 
-    account = db.relationship('Account', backref='labels')
+    account = db.relationship('Account',
+                              backref=backref('labels', cascade='all,delete'))
     messages = db.relationship('Message', secondary=label_association,
                                lazy='selectin', passive_deletes=True,
                                back_populates='labels')
@@ -205,7 +207,8 @@ class Thread(UniqueMixin, db.Model):
                            nullable=False)
     tid = db.Column(db.String, unique=True, index=True)
 
-    account = db.relationship('Account', backref='threads')
+    account = db.relationship('Account',
+                              backref=backref('threads', cascade='all,delete'))
     messages = db.relationship('Message', backref='thread',
                                cascade='all, delete')
     senders = association_proxy('messages', 'sender')
@@ -243,7 +246,8 @@ class Message(db.Model):
     size = db.Column(db.Integer, default=0)
     _raw = db.deferred(db.Column(db.BLOB))
 
-    account = db.relationship('Account', backref='messages')
+    account = db.relationship('Account',
+                              backref=backref('messages', cascade='all,delete') )
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
