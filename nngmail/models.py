@@ -172,8 +172,8 @@ class BccAddressee(Addressee):
 label_association = db.Table('label_association',
     db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
               nullable=False),
-    db.Column('message_gid', db.Integer, db.ForeignKey('message.google_id'),
-              index=True, nullable=False)
+    db.Column('message_gid', db.String(20),
+              db.ForeignKey('message.google_id'), index=True, nullable=False)
 )
 
 class Label(UniqueMixin, db.Model):
@@ -231,7 +231,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            index=True, nullable=False)
-    google_id = db.Column(db.String, index=True)
+    google_id = db.Column(db.String(20), index=True)
     message_id = db.Column(db.String(100), index=True, unique=True,
                            nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
