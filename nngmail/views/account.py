@@ -1,13 +1,8 @@
-import click
 from flask import jsonify, make_response, request
 from flask.views import MethodView
 
-from nngmail import app, db
-from nngmail.models import *
-
-@app.route('/')
-def index():
-    return 'Hello World!'
+from nngmail import db
+from nngmail.models import Account
 
 class AccountAPI(MethodView):
     def get(self, account_id):
@@ -57,18 +52,3 @@ class AccountAPI(MethodView):
         account.nickname = request.json['nickname']
         db.session().commit()
         return jsonify(account.serialize())
-
-account_view = AccountAPI.as_view('account_api')
-app.add_url_rule('/api/v1.0/accounts/', defaults={'account_id': None},
-                 view_func=account_view, methods=['GET',])
-app.add_url_rule('/api/v1.0/accounts/', view_func=account_view,
-                 methods=['POST',])
-app.add_url_rule('/api/v1.0/accounts/<int:account_id>', view_func=account_view,
-                 methods=['GET', 'PUT', 'DELETE'])
-
-@app.route('/api/v1.0/contacts', methods=['GET'])
-def contacts():
-    return jsonify({'contacts': Contact.serialize_list(Contact.query.limit(100).all())})
-
-
-
