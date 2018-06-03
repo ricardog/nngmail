@@ -1,17 +1,28 @@
 import click
 from flask import Flask
+from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 import os
 import yaml
+
+class MyJSONEncoder(JSONEncoder):
+    def default(self, o):
+        ser = getattr(o, 'serialize', None)
+        #import pdb; pdb.set_trace()
+        if callable(ser):
+            return o.serialize()
+        return super(MyJSONEncoder, self).default(o)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../data/nngmail.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SQLALCHEMY_ECHO'] = True
+app.json_encoder = MyJSONEncoder
 db = SQLAlchemy(app)
 
 from nnsync import NnSync
 import nngmail.views
+
 
 @app.cli.command('init-db')
 def init_db_command():
