@@ -20,14 +20,18 @@
 
 (nnoo-declare nngmail)
 
-(defvoo nngmail-address "localhost"
+(defvoo nngmail-server "localhost"
   "The address of the gmail proxy.")
 
 (defvoo nngmail-user nil
   "Username to use for authentication to the IMAP server.")
 
-(defvoo nngmail-server-port 1234
+(defvoo nngmail-port 5000
   "The port the gmail proxy listens on.")
+
+(defvoo nngmail-base-url
+    (format "http://%s:%d/api/v1.0" nngmail-server nngmail-port)
+  "The base URL for talking to the nngmail server.")
 
 (defvoo nngmail-split-methods nil
   "How mail is split.
@@ -55,5 +59,63 @@ Uses the same syntax as `nnmail-split-methods'.")
 	 (proc (start-process "nngmail" buf program config-file)))
     (message "nngmail sync daemon started")))
 
+(defvar nngmail-virtual-servers ())
+
+(defun nngmail-get-account-params (elem)
+  (let ((nickname (plist-get elem 'nickname))
+	(email (plist-get elem 'email))
+	(id (plist-get elem 'id)))
+    (cons nickname (list id email))))
+
+(defun nngmail-get-account (nickname)
+  (cdr (assoc-string nickname nngmail-virtual-servers)))
+
+(defun nngmail-get-account-email (nickname)
+  (elt (nngmail-get-account nickname) 1))
+
+(defun nngmail-get-account-id (nickname)
+  (elt (nngmail-get-account nickname) 0))
+
+(defun nngmail-parse-accounts ()
+  (setq nngmail-virtual-servers ())
+  (goto-char url-http-end-of-headers)
+  (let ((json-object-type 'plist)
+        (json-key-type 'symbol)
+        (json-array-type 'vector))
+    (let* ((result (json-read))
+	   (accounts (plist-get result 'accounts))
+	   )
+      ;; Do something with RESULT here
+      (seq-map
+       (lambda (elem)
+	 (push (nngmail-get-account-params elem) nngmail-virtual-servers))
+       accounts)
+      )))
+
+(defun nngmail-url-for (resource &rest id method)
+  "Generate a URL to probe the resource."
+  (format "%s/%ss/" nngmail-base-url resource))
+
+(defun nngmail-get-accounts ()
+  (url-retrieve (nngmail-url-for "account")
+		(lambda (events)
+		  (nngmail-parse-accounts)))
+  (message (format "%s: %s"
+		   (nngmail-get-account-id "itineris")
+		   (nngmail-get-account-email "itineris"))))
+
+(deffoo nngmail-open-server (nickname email)
+  "Verify the nngmail server syncs the account."
+  (interactive)
+  (nngmail-get-accounts)
+  (unless (nngmail-get-account nickname)
+    (error
+     (format "You are not synching the account %s:%s" email nickname)))
+  (unless
+      (string-equal (nngmail-get-account-email nickname) email)
+    (error (format "Email address mismatch %s != %s" email
+		   (nngmail-get-account-email nickname)))))
+			
+
 (provide 'nngmail)
-;;;
+;;; nngmail.el ends here
