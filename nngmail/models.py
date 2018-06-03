@@ -314,6 +314,15 @@ class Message(db.Model):
         res.close()
         return
 
+    @staticmethod
+    def unread(account_id=None):
+        query = Message.query.join(label_association).join(Label)
+        if account_id:
+            query = query.filter(Message.account_id == account_id)
+        query = query.filter(Label.name == 'UNREAD').\
+            order_by(Message.id.desc())
+        return query
+    
     def serialize(self):
         return Serializeable.serialize(self, omit=('_raw', 'raw', 'account',
                                                    'thread', 'addressees'))
