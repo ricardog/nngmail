@@ -1,0 +1,5 @@
+{% for msg in messages[::-1] %}
+{{msg.id}} {{msg.subject}}	{{msg.from}}	{{msg.date}}	{{msg.message_id}}	references	{{msg.size}}	{{0}}	xref	
+{% endfor %}
+
+

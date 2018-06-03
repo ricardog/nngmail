@@ -1,6 +1,6 @@
 import click
 
-from flask import jsonify, make_response, request
+from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
 
 from nngmail import db
@@ -11,7 +11,13 @@ class MessageAPI(MethodView):
         if not message_id:
             ## Return list
             query = Message.query.filter_by(account_id=account_id).\
-                limit(200)
+                order_by(Message.id.desc()).\
+                limit(request.args.get('limit', 200))
+            fmt = request.args.get('format', 'json')
+            if fmt.lower() == 'nov':
+                return render_template('nov.txt', messages=query.all())
+            if fmt.lower() == 'header':
+                return render_template('header.txt', messages=query.all())
             return jsonify({'messages': tuple(query.all())})
         else:
             ## Return single
