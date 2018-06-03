@@ -242,6 +242,7 @@ class Message(db.Model):
     from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
     date = db.Column(db.DateTime)
     subject = db.Column(db.String)
+    references = db.Column(db.String)
     snippet = db.Column(db.String(200))
     deleted = db.Column(db.Boolean, default=False)
     size = db.Column(db.Integer, default=0)

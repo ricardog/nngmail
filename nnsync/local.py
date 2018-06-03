@@ -93,7 +93,7 @@ class Sqlite3():
             msgs = (msgs, )
         session = db.session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
-                   'Message-ID']
+                   'Message-ID', 'References']
         for msg in msgs:
             headers = dict((hh['name'], hh['value']) for hh in
                            filter(lambda h: h['name'] in keepers,
@@ -119,6 +119,8 @@ class Sqlite3():
                                                        default_id),
                                 subject=headers.get('Subject',
                                                     headers.get('subject', '')),
+                                references=headers.get('References',
+                                                       headers.get('References', '')),
                                 size=msg.get('sizeEstimate', 0),
                                 date=timestamp, sender=senders[0],
                                 snippet=msg['snippet'], labels=labels,
