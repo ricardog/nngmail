@@ -55,9 +55,11 @@ class UniqueMixin(object):
                )
 
 class Serializeable(object):
-    def serialize(self, omit=[]):
+    def serialize(self, include=[], omit=[]):
         return {c: getattr(self, c) for c in
-                filter(lambda c: c not in omit, inspect(self).attrs.keys())}
+                filter(lambda c: not include or c in include,
+                       filter(lambda c: c not in omit,
+                              inspect(self).attrs.keys()))}
 
     @staticmethod
     def serialize_list(l, omit=[]):
@@ -145,7 +147,7 @@ class Contact(UniqueMixin, db.Model, Serializeable):
                                                  '_cced',
                                                  '_bcced')) for e in l]
 
-class Addressee(db.Model):
+class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
     message_id = db.Column(db.Integer, db.ForeignKey('message.id'))
@@ -160,6 +162,13 @@ class Addressee(db.Model):
     __mapper_args__ = {
         'polymorphic_on': type_
       }
+
+    def serialize(self):
+        return self.contact.serialize()
+
+    @staticmethod
+    def serialize_list(l):
+        return [e.contact.serialize() for e in l]
 
 class ToAddressee(Addressee):
     __mapper_args__ = {
@@ -183,7 +192,7 @@ label_association = db.Table('label_association',
               db.ForeignKey('message.google_id'), index=True, nullable=False)
 )
 
-class Label(UniqueMixin, db.Model):
+class Label(UniqueMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
@@ -206,6 +215,14 @@ class Label(UniqueMixin, db.Model):
 
     def __repr__(self):
         return '%s' % self.name
+
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('account', 'messages'))
+
+    @staticmethod
+    def serialize_list(l):
+        return [Serializeable.serialize(e, omit=('account', 'message'))
+                for e in l]
 
 class Thread(UniqueMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -320,14 +337,9 @@ class Message(db.Model):
         return
 
     def serialize(self):
-        return Serializeable.serialize(self, omit=('_raw', 'account',
-                                                   'thread', 'sender', 'to_',
-                                                   'cc', 'bcc', 'addressees',
-                                                   'raw', 'labels'))
+        return Serializeable.serialize(self, omit=('_raw', 'raw', 'account',
+                                                   'thread', 'addressees'))
     @staticmethod
     def serialize_list(l):
-        return [Serializeable.serialize(e, omit=('_raw', 'account',
-                                                 'thread', 'sender', 'to_',
-                                                 'cc', 'bcc', 'addressees',
-                                                 'raw',
-                                                 'labels')) for e in l]
+        return [Serializeable.serialize(e, omit=('_raw', 'raw', 'thread',
+                                                 'addressees')) for e in l]
