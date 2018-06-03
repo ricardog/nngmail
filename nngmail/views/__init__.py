@@ -23,7 +23,8 @@ acct_base = base + '/accounts/<int:account_id>'
 message_view = MessageAPI.as_view('message_api')
 app.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
                  view_func=message_view, methods=['GET',])
-app.add_url_rule(acct_base + '/messages/<int:message_id>',
+app.add_url_rule(base + '/messages/<int:message_id>',
+                 defaults={'account_id': None},
                  view_func=message_view,
                  methods=['GET', 'DELETE'])
 
