@@ -1,10 +1,10 @@
-{% for msg in messages[::-1] %}
+{%- for msg in messages[::-1] -%}
 221 {{msg.id}} Article retrieved.
 From: {{msg.sender}}
 Subject: {{msg.subject}}
 Date: {{msg.date}}
 Message-ID: {{msg.message_id}}
-References: references
+References: {{msg.references}}
 X-GM-LABELS: {{ msg.labels|join(', ') }}
 .
 
