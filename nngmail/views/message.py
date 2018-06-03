@@ -1,3 +1,5 @@
+import click
+
 from flask import jsonify, make_response, request
 from flask.views import MethodView
 
@@ -20,15 +22,14 @@ class MessageAPI(MethodView):
             ## Return list
             query = Message.query.filter_by(account_id=account_id).\
                 limit(200)
-            return jsonify({'messages':
-                            Message.serialize_list(query.all())})
+            return jsonify({'messages': tuple(query.all())})
         else:
             ## Return single
             message = Message.query.get(message_id)
             if not message:
                 return make_response(jsonify({'error': 'Not found'}), 404)
-            return jsonify(message.serialize())
-        
+            return jsonify(message)
+
     def delete(self, account_id, message_id):
         message = Message.query.get(message_id)
         if not message:

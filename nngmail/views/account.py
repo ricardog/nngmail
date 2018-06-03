@@ -8,14 +8,13 @@ class AccountAPI(MethodView):
     def get(self, account_id):
         if not account_id:
             ## Return list
-            return jsonify({'accounts':
-                            Account.serialize_list(Account.query.all())})
+            return jsonify({'accounts': tuple(Account.query.all())})
         else:
             ## Return single
             account = Account.query.get(account_id)
             if not account:
                 return make_response(jsonify({'error': 'Not found'}), 404)
-            return jsonify(account.serialize())
+            return jsonify(account)
 
     def post(self):
         if not request.json:
@@ -30,7 +29,7 @@ class AccountAPI(MethodView):
                           nickname=request.json['nickname'])
         db.session().add(account)
         db.session().commit()
-        return jsonify(account.serialize())
+        return jsonify(account)
         
     def delete(self, account_id):
         account = Account.query.get(account_id)
@@ -51,4 +50,4 @@ class AccountAPI(MethodView):
             return make_response(jsonify({'error': 'Bad nickname'}), 400)
         account.nickname = request.json['nickname']
         db.session().commit()
-        return jsonify(account.serialize())
+        return jsonify(account)
