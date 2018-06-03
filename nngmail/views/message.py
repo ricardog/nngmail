@@ -10,15 +10,19 @@ class MessageAPI(MethodView):
     def get(self, account_id, message_id):
         if not message_id:
             ## Return list
-            query = Message.query.filter_by(account_id=account_id).\
-                order_by(Message.id.desc()).\
-                limit(request.args.get('limit', 200))
+            if 'limit' in request.args:
+                query = Message.query.filter_by(account_id=account_id).\
+                    order_by(Message.id.desc()).\
+                    limit(request.args.get('limit', 200))
+            else:
+                query = Message.unread(account_id)
+
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'nov':
                 return render_template('nov.txt', messages=query.all())
             if fmt.lower() == 'header':
                 return render_template('header.txt', messages=query.all())
-            return jsonify({'messages': tuple(query.all())})
+            return jsonify({'messages': query.all()})
         else:
             ## Return single
             message = Message.query.get(message_id)
