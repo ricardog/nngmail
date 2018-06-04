@@ -22,7 +22,7 @@ from options import Options
 class Gmail:
     options = Options(email=None,
                       scopes='https://www.googleapis.com/auth/gmail.readonly',
-                      client_secret_file='data/client-secret.json',
+                      client_secret_file='client-secret.json',
                       batch_size=100,
                       credentials_path=None,
                       query='-in:chats',
