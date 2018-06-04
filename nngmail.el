@@ -8,6 +8,7 @@
 (eval-when-compile
   (require 'cl))
 
+(require 'ht)
 (require 'nnheader)
 (require 'gnus-util)
 (require 'gnus)
@@ -52,62 +53,126 @@ Uses the same syntax as `nnmail-split-methods'.")
 
 (defvar nngmail-status-string "")
 
-(defconst nngmail-src-dir (file-name-directory load-file-name))
+;(defconst nngmail-src-dir (file-name-directory load-file-name))
 
-(defun nngmail-start-server ()
-  "Start an nnserver to sync the user's gmail account(s)."
-  (let* ((program (expand-file-name "~/.pyenv/shims/nnserver"))
-	 (buf (generate-new-buffer (concat "*nngmail*")))
-	 (config-file (expand-file-name "config.yaml" nngmail-src-dir))
-	 (some-other-stuff "blah blah blah")
-	 (proc (start-process "nngmail" buf program config-file)))
-    (message "nngmail sync daemon started")))
+(defvar nngmail-servers ()
+  "An alist of accounts the server knows about.
+What I call an account in the server is what gnus calls a server.  This list has all the accounts the server we connect to synchs.")
 
-(defvar nngmail-servers ())
+(defvar nngmail-groups ()
+  "An alist of per-account groups the server knows about.
+A server's entry holds a per-group alist with the min ID, max ID,
+and artcile count for the group.")
+
+(defun nngmail-get-account (nickname)
+  (cdr (assoc-string nickname nngmail-servers)))
+
+(defun nngmail-get-account-id (nickname)
+  (elt (nngmail-get-account nickname) 0))
+
+(defun nngmail-get-account-email (nickname)
+  (elt (nngmail-get-account nickname) 1))
+
+(defun nngmail-get-account-groups (nickname)
+  (elt (nngmail-get-account nickname) 2))
+
+(defun nngmail-set-account-groups (nickname groups)
+  (setf (alist-get nickname nngmail-servers)
+	(list (nngmail-get-account-id nickname)
+	      (nngmail-get-account-email nickname)
+	      groups)))
 
 (defun nngmail-get-account-params (elem)
   (let ((nickname (plist-get elem 'nickname))
 	(email (plist-get elem 'email))
 	(id (plist-get elem 'id)))
-    (cons nickname (list id email))))
+    (cons nickname (list id email (ht)))))
 
-(defun nngmail-get-account (nickname)
-  (cdr (assoc-string nickname nngmail-servers)))
+(defun nngmail-get-group-params (elem)
+  (let ((google_id (plist-get elem 'gid))
+	(id (plist-get elem 'id))
+	(name (plist-get elem 'name))
+	)
+    (cons name (list id google_id))))
 
-(defun nngmail-get-account-email (nickname)
-  (elt (nngmail-get-account nickname) 1))
-
-(defun nngmail-get-account-id (nickname)
-  (elt (nngmail-get-account nickname) 0))
-
-(defun nngmail-parse-accounts ()
-  (let ((json-object-type 'plist)
-        (json-key-type 'symbol)
-        (json-array-type 'vector))
-    (let* ((result (json-read))
-	   (accounts (plist-get result 'accounts))
-	   )
-      ;; Do something with RESULT here
-      (seq-map
-       (lambda (elem)
-	 (push (nngmail-get-account-params elem) nngmail-servers))
-       accounts)
-      )))
-
-(defun nngmail-url-for (resource &rest id method)
+(defun nngmail-url-for (resource &optional id account-id args)
   "Generate a URL to probe the resource."
-  (format "%s/%ss/" nngmail-base-url resource))
+  (let ((base-url (if account-id
+		      (format "%s/accounts/%d" nngmail-base-url account-id)
+		    nngmail-base-url)))
+    (if id
+	(format "%s/%ss/%d" base-url resource id)
+      (format "%s/%ss/" base-url resource))))
+
+(defun nngmail-handle-response ()
+  "Handle the response from a `url-retrieve-synchronously' call.
+ Parse the HTTP response and throw if an error occurred.  The url
+ package seems to require extra processing for this.  This should
+ be called in a `save-excursion', in the download buffer.  It
+ will move point to somewhere in the headers."
+   ;; We assume HTTP here.
+   (require 'url-http)
+   (let ((response (url-http-parse-response)))
+     (when (or (< response 200) (>= response 300))
+       (error "Error during download request:%s"
+              (buffer-substring-no-properties (point) (progn
+                                                        (end-of-line)
+                                                        (point)))))))
+
+(defun nngmail-parse-json (buffer)
+  (with-current-buffer buffer
+    (nngmail-handle-response)
+    (goto-char url-http-end-of-headers)
+    (let ((json-object-type 'plist)
+	  (json-key-type 'symbol)
+	  (json-array-type 'vector))
+      (json-read))))
+
+(defun nngmail-fetch-resource (resource &optional id account-id args)
+  "Retrieve a resource from the nngmail server."
+  (let* ((url (nngmail-url-for resource id account-id args))
+	 (buffer (url-retrieve-synchronously url t)))
+    (nngmail-parse-json buffer)))
 
 (defun nngmail-get-accounts ()
-  (let ((buffer (url-retrieve-synchronously (nngmail-url-for "account") t)))
-    (setq nngmail-servers ())
-    (with-current-buffer buffer
-      (goto-char url-http-end-of-headers)
-      (nngmail-parse-accounts buffer))))
+  "Get a list of accounts, with their respective ID's, nicknames,
+and email addresses, from the server.  The list of accounts is
+store in `nngmail-servers` for fast access."
+  (let* ((resource (nngmail-fetch-resource "account"))
+	 (accounts (if resource
+		       (plist-get resource 'accounts)
+		     ())))
+    (seq-map
+     (lambda (elem)
+       (push (nngmail-get-account-params elem) nngmail-servers))
+     accounts)
+    ))
+
+(defun nngmail-get-groups (server)
+  "Get a list of groups/labels, with their respective ID's, nicknames,
+and email addresses, from the server.  The list of accounts is
+store in `nngmail-servers` for fast access."
+  (let* ((groups (nngmail-get-account-groups server))
+	 (account-id (nngmail-get-account-id server))
+	 (resource (nngmail-fetch-resource "label" nil account-id "info=1"))
+	 (data (if resource
+		     (plist-get resource 'labels)
+		 ()))
+	 (tmp ()))
+    (seq-map
+     (lambda (elem)
+       (push (nngmail-get-group-params elem) tmp))
+     data)
+    (nngmail-set-account-groups server (ht-from-alist tmp))
+    ))
 
 (defun nngmail-touch-server (server)
-  (setq nngmail-last-account-id (nngmail-get-account server)))
-	
+  (and (nngmail-get-account-id server)
+       (setq nngmail-last-account-id (nngmail-get-account server))))
+
+;;;
+;;; Required functions in gnus back end API
+;;;
 (deffoo nngmail-open-server (server &rest definitions)
   "Verify the nngmail server syncs the account."
   (interactive)
@@ -147,11 +212,15 @@ accounts alist."
 
 (deffoo nngmail-server-opened (&optional server)
   "Returns whether the server exists in the accounts alist"
-  (nngmail-get-account-id server))
+  (nngmail-touch-server server))
 
 (deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
   "Retrieve headers for the specified group (label)."
-  nil
+  (when group
+    (setq group (nnimap-decode-gnus-group group)))
+  (with-current-buffer nntp-server-buffer
+    (erase-buffer)
+  
   )
 
 (deffoo nngmail-status-message (&optional server)
@@ -187,6 +256,9 @@ accounts alist."
 (deffoo nngmail-request-type (group &optional article)
   'mail)
 
+;;;
+;;; Optional functions in gnus back end API
+;;;
 (defvar nngmail-mark-alist
   '((read "UNREAD")
     (tick "FLAGGED")
