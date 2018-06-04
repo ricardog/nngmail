@@ -6,6 +6,10 @@ from flask.views import MethodView
 from nngmail import db
 from nngmail.models import Account, Message
 
+# FIXME: To create a url for a resource use
+# click.echo(url_for('message_api', account_id=1))
+# click.echo(url_for('message_api', message_id=message.id))
+
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
         if not message_id:
