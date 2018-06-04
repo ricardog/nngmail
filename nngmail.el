@@ -82,6 +82,9 @@ and artcile count for the group.")
 	      (nngmail-get-account-email nickname)
 	      groups)))
 
+(defun nngmail-get-error-string (response)
+  (plist-get response 'error))
+  
 (defun nngmail-get-account-params (elem)
   (let ((nickname (plist-get elem 'nickname))
 	(email (plist-get elem 'email))
@@ -114,6 +117,13 @@ and artcile count for the group.")
    (require 'url-http)
    (let ((response (url-http-parse-response)))
      (when (or (< response 200) (>= response 300))
+       (let ((json-object-type 'plist)
+	     (json-key-type 'symbol)
+	     (json-array-type 'vector))
+	 (goto-char (point-min))
+	 (re-search-forward "^$")
+	 (setq nngmail-status-string
+	       (nngmail-get-error-string (json-read))))
        (error "Error during download request:%s"
               (buffer-substring-no-properties (point) (progn
                                                         (end-of-line)
@@ -123,16 +133,18 @@ and artcile count for the group.")
   (with-current-buffer buffer
     (nngmail-handle-response)
     (goto-char url-http-end-of-headers)
-    (let ((json-object-type 'plist)
-	  (json-key-type 'symbol)
-	  (json-array-type 'vector))
+    (let* ((json-object-type 'plist)
+	   (json-key-type 'symbol)
+	   (json-array-type 'vector))
       (json-read))))
 
 (defun nngmail-fetch-resource (resource &optional id account-id args)
   "Retrieve a resource from the nngmail server."
   (let* ((url (nngmail-url-for resource id account-id args))
-	 (buffer (url-retrieve-synchronously url t)))
-    (nngmail-parse-json buffer)))
+	 (buffer (url-retrieve-synchronously url t))
+	 (response (nngmail-parse-json buffer)))
+;    (kill-buffer buffer)
+    response))
 
 (defun nngmail-get-accounts ()
   "Get a list of accounts, with their respective ID's, nicknames,
