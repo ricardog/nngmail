@@ -208,6 +208,17 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     def serialize(self):
         return Serializeable.serialize(self, omit=('account', 'messages'))
 
+    @staticmethod
+    def info(account_id):
+        query = Message.query.filter_by(account_id=account_id)
+        query = query.join(label_association)
+        query = query.with_entities(label_association.c.label_id,
+                                    db.func.min(Message.id).label('min_id'),
+                                    db.func.max(Message.id).label('max_id'),
+                                    db.func.count(Message.id).label('count'))
+        query = query.group_by(label_association.c.label_id)
+        return query
+
 class Thread(UniqueMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
@@ -329,7 +340,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
         query = query.filter(Label.name == 'UNREAD').\
             order_by(Message.id.desc())
         return query
-    
+
     def serialize(self):
         return Serializeable.serialize(self, omit=('_raw', 'raw',
                                                           'account',
