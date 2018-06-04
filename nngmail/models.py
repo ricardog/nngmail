@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import enum
 import zlib
 
@@ -61,6 +62,11 @@ class Serializeable(object):
                        filter(lambda c: c not in omit,
                               inspect(self).attrs.keys()))}
 
+class TimestampMixin(object):
+    created = db.Column(
+        db.DateTime, nullable=False, default=datetime.utcnow)
+    updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
 class KeyValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, unique=True, nullable=False)
@@ -71,7 +77,7 @@ class KeyValue(db.Model):
     account = db.relationship('Account',
                               backref=backref('keys', cascade='all,delete'))
 
-class Account(UniqueMixin, db.Model, Serializeable):
+class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
     nickname = db.Column(db.String(100), nullable=True)
@@ -175,7 +181,7 @@ label_association = db.Table('label_association',
               db.ForeignKey('message.google_id'), index=True, nullable=False)
 )
 
-class Label(UniqueMixin, db.Model, Serializeable):
+class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
@@ -229,7 +235,7 @@ class Thread(UniqueMixin, db.Model):
     def __repr__(self):
         return '%d: %s' % (self.id, self.tid)
     
-class Message(db.Model):
+class Message(TimestampMixin, Serializeable, db.Model):
     db.UniqueConstraint('account_id', 'google_id', name='id_1')
 
     id = db.Column(db.Integer, primary_key=True)
@@ -325,5 +331,7 @@ class Message(db.Model):
         return query
     
     def serialize(self):
-        return Serializeable.serialize(self, omit=('_raw', 'raw', 'account',
-                                                   'thread', 'addressees'))
+        return Serializeable.serialize(self, omit=('_raw', 'raw',
+                                                          'account',
+                                                          'thread',
+                                                          'addressees'))
