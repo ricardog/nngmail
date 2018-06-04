@@ -27,13 +27,14 @@ class MessageAPI(MethodView):
             ## Return single
             message = Message.query.get(message_id)
             if not message:
-                return make_response(jsonify({'error': 'Not found'}), 404)
+                return make_response(jsonify({'error': 'Message not found'}),
+                                     404)
             return jsonify(message)
 
     def delete(self, account_id, message_id):
         message = Message.query.get(message_id)
         if not message:
-            return make_response(jsonify({'error': 'Not found'}), 404)
+            return make_response(jsonify({'error': 'Message not found'}), 404)
         db.session().delete(message)
         db.session().commit()
         return jsonify({'result': True})
