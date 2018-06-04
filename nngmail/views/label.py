@@ -10,6 +10,11 @@ class LabelAPI(MethodView):
     def get(self, account_id, label_id):
         if not label_id:
             ## Return list
+            if 'info' in request.args:
+                data = Label.info(account_id).all()
+                info = tuple((dict(zip(['id', 'min', 'max', 'count'], e)))
+                             for e in data)
+                return jsonify({'labels': info})
             query = Label.query.filter_by(account_id=account_id).\
                         order_by(Label.id.desc())
             return jsonify({'labels': query.all()})
