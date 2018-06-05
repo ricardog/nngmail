@@ -21,7 +21,7 @@
 
 (nnoo-declare nngmail)
 
-(defvoo nngmail-server "localhost"
+(defvoo nngmail-host "localhost"
   "The address of the gmail proxy.")
 
 (defvoo nngmail-user nil
@@ -31,7 +31,7 @@
   "The port the gmail proxy listens on.")
 
 (defvoo nngmail-base-url
-    (format "http://%s:%d/api/v1.0" nngmail-server nngmail-port)
+    (format "http://%s:%d/api/v1.0" nngmail-host nngmail-port)
   "The base URL for talking to the nngmail server.")
 
 (defvoo nngmail-split-methods nil
@@ -53,8 +53,6 @@ Uses the same syntax as `nnmail-split-methods'.")
 (defvar nngmail-last-account nil)
 
 (defvar nngmail-status-string "")
-
-;(defconst nngmail-src-dir (file-name-directory load-file-name))
 
 (defvar nngmail-servers ()
   "An alist of accounts the server knows about.
