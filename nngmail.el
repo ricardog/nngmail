@@ -50,6 +50,7 @@ Uses the same syntax as `nnmail-split-methods'.")
   (encode-coding-string group 'utf-8))
 
 (defvar nngmail-last-account-id nil)
+(defvar nngmail-last-account nil)
 
 (defvar nngmail-status-string "")
 
@@ -65,22 +66,37 @@ A server's entry holds a per-group alist with the min ID, max ID,
 and artcile count for the group.")
 
 (defun nngmail-get-account (nickname)
-  (cdr (assoc-string nickname nngmail-servers)))
+  (cdr (assoc nickname nngmail-servers)))
 
 (defun nngmail-get-account-id (nickname)
-  (elt (nngmail-get-account nickname) 0))
+  (cdr (assq 'id (nngmail-get-account nickname))))
 
 (defun nngmail-get-account-email (nickname)
-  (elt (nngmail-get-account nickname) 1))
+  (cdr (assq 'email (nngmail-get-account nickname))))
 
 (defun nngmail-get-account-groups (nickname)
-  (elt (nngmail-get-account nickname) 2))
+  (cdr (assq 'groups (nngmail-get-account nickname))))
+
+(defun nngmail-get-account-message (nickname)
+  (cdr (assq 'message (nngmail-get-account nickname))))
+
+(defun nngmail-get-account-group (nickname)
+  (cdr (assq 'group (nngmail-get-account nickname))))
 
 (defun nngmail-set-account-groups (nickname groups)
-  (setcdr (assoc nickname nngmail-servers)
-	  (list (nngmail-get-account-id nickname)
-		(nngmail-get-account-email nickname)
-		groups)))
+  (setcdr (assoc 'groups (assoc nickname nngmail-servers)) groups))
+
+(defun nngmail-set-account-group (nickname group)
+  (setcdr (assoc 'group (assoc nickname nngmail-servers)) group))
+
+(defun nngmail-get-group-min (nickname group)
+  (cdr (assq 'min (ht-get (nngmail-get-groups nickname) group))))
+
+(defun nngmail-get-group-max (nickname group)
+  (cdr (assq 'max (ht-get (nngmail-get-groups nickname) group))))
+
+(defun nngmail-get-group-count (nickname group)
+  (cdr (assq 'count (ht-get (nngmail-get-groups nickname) group))))
 
 (defun nngmail-get-error-string (response)
   (plist-get response 'error))
@@ -88,18 +104,27 @@ and artcile count for the group.")
 (defun nngmail-get-account-params (elem)
   (let ((nickname (plist-get elem 'nickname))
 	(email (plist-get elem 'email))
-	(id (plist-get elem 'id)))
-    (cons nickname (list id email (ht)))))
+	(id (plist-get elem 'id))
+	(groups (ht)))
+    (cons nickname `((id      . ,id)
+		     (email   . ,email)
+		     (groups  . ,groups)
+		     (message . nil)
+		     (group   . nil)))))
 
 (defun nngmail-get-group-params (elem)
-  (let ((google_id (plist-get elem 'gid))
-	(id (plist-get elem 'id))
+  (let ((id (plist-get elem 'id))
 	(name (plist-get elem 'name))
+	(google_id (plist-get elem 'gid))
 	(min (plist-get elem 'min))
 	(max (plist-get elem 'max))
 	(count (plist-get elem 'count))
 	)
-    (cons name (list id google_id min max count))))
+    (cons name `((id . ,id)
+		 (google_id . ,google_id)
+		 (min . ,min)
+		 (max . ,max)
+		 (count . ,count)))))
 
 (defun nngmail-url-for (resource &optional id account-id args)
   "Generate a URL to probe the resource."
@@ -187,8 +212,9 @@ store in `nngmail-servers` for fast access."
     ))
 
 (defun nngmail-touch-server (server)
-  (and (nngmail-get-account-id server)
-       (setq nngmail-last-account-id (nngmail-get-account server))))
+  (when (nngmail-get-account-id server)
+    (setq nngmail-last-account-id (nngmail-get-account server)
+	  nngmail-last-account server)))
 
 ;;;
 ;;; Required functions in gnus back end API
@@ -219,32 +245,24 @@ accounts alist."
   (message (format "nngmail: closed server '%s'" server))
   (and (eq nngmail-last-account-id
 	   (nngmail-get-account-id server))
-       (setq nngmail-last-acount-id nil)))
+       (setq nngmail-last-account-id nil
+	     nngmail-last-account nil)))
 
 (deffoo nngmail-request-close ()
   "Close connection to all servers.  Removes all entries from the
 accounts alist."
   (setq nngmail-servers ()
-	nngmail-last-account-id nil)
-  (and
-   (message (format "nngmail: closed server '%s'" server))
-   nil))
+	nngmail-last-account-id nil
+	nngmail-last-account nil
+	nngmail-status-string nil))
 
 (deffoo nngmail-server-opened (&optional server)
   "Returns whether the server exists in the accounts alist"
   (nngmail-touch-server server))
 
-(deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
-  "Retrieve headers for the specified group (label)."
-  (when group
-    (setq group (nnimap-decode-gnus-group group)))
-  (with-current-buffer nntp-server-buffer
-    (erase-buffer)
-  
-  )
-
 (deffoo nngmail-status-message (&optional server)
-  nngmail-status-string)
+  (or (nngmail-get-account-message (or server nngmail-last-ccount))
+      nngmail-status-message))
 
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
@@ -252,10 +270,36 @@ accounts alist."
    (cons group article)
    nil))
 
+(defun nngmail-change-group (server group)
+  (and (ht-get (nngmail-get-account-groups server) group)
+       (nngmail-set-account-group server group)))
+
 (deffoo nngmail-request-group (group &optional server fast info)
   "Retrieve information about GROUP."
   ;;; 211 56 1000 1059 ifi.discussion
-  nil)
+  (let ((account (or server nngmail-last-account)))
+    (when group
+      (setq group (nngmail-decode-gnus-group group)))
+    (let ((result (nngmail-change-group account group)))
+      (with-current-buffer nntp-server-buffer
+	(when result
+	  (and (not fast)
+	       (nngmail-get-groups account))
+	  (erase-buffer)
+	  (insert (format "211 %d %d %d %S\n"
+			  (nngmail-group-count account group)
+			  (nngmail-group-min account group)
+			  (nngmail-group-max account group)
+			  group)))))
+    (nngmail-touch-server account)))
+
+(deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
+  "Retrieve headers for the specified group (label)."
+  (when group
+    (setq group (nnimap-decode-gnus-group group)))
+  (with-current-buffer nntp-server-buffer
+    (erase-buffer)
+    ))
   
 (deffoo nngmail-close-group (group &optional server)
   "Close the group.  A nop."
