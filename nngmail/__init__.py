@@ -1,5 +1,5 @@
 import click
-from flask import Flask
+from flask import Flask, jsonify, make_response
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -23,6 +23,10 @@ db = SQLAlchemy(app)
 from nnsync import NnSync
 import nngmail.views
 
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'The requested URL was not '
+                                  'found on the server.'}), 404)
 
 @app.cli.command('init-db')
 def init_db_command():
