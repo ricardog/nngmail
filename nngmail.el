@@ -77,10 +77,10 @@ and artcile count for the group.")
   (elt (nngmail-get-account nickname) 2))
 
 (defun nngmail-set-account-groups (nickname groups)
-  (setf (alist-get nickname nngmail-servers)
-	(list (nngmail-get-account-id nickname)
-	      (nngmail-get-account-email nickname)
-	      groups)))
+  (setcdr (assoc nickname nngmail-servers)
+	  (list (nngmail-get-account-id nickname)
+		(nngmail-get-account-email nickname)
+		groups)))
 
 (defun nngmail-get-error-string (response)
   (plist-get response 'error))
@@ -95,17 +95,24 @@ and artcile count for the group.")
   (let ((google_id (plist-get elem 'gid))
 	(id (plist-get elem 'id))
 	(name (plist-get elem 'name))
+	(min (plist-get elem 'min))
+	(max (plist-get elem 'max))
+	(count (plist-get elem 'count))
 	)
-    (cons name (list id google_id))))
+    (cons name (list id google_id min max count))))
 
 (defun nngmail-url-for (resource &optional id account-id args)
   "Generate a URL to probe the resource."
   (let ((base-url (if account-id
 		      (format "%s/accounts/%d" nngmail-base-url account-id)
-		    nngmail-base-url)))
+		    nngmail-base-url))
+	(url-args (mapconcat (function (lambda (value)
+					 (format "%s=%s" (car value)
+						 (cdr value))))
+			     args "&")))
     (if id
-	(format "%s/%ss/%d" base-url resource id)
-      (format "%s/%ss/" base-url resource))))
+	(format "%s/%ss/%d?%s" base-url resource id url-args)
+      (format "%s/%ss/?%s" base-url resource url-args))))
 
 (defun nngmail-handle-response ()
   "Handle the response from a `url-retrieve-synchronously' call.
@@ -166,7 +173,8 @@ and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
   (let* ((groups (nngmail-get-account-groups server))
 	 (account-id (nngmail-get-account-id server))
-	 (resource (nngmail-fetch-resource "label" nil account-id "info=1"))
+	 (resource (nngmail-fetch-resource "label" nil account-id
+					   '((info . 1))))
 	 (data (if resource
 		     (plist-get resource 'labels)
 		 ()))
