@@ -211,8 +211,10 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     @staticmethod
     def info(account_id):
         query = Message.query.filter_by(account_id=account_id)
-        query = query.join(label_association)
+        query = query.join(label_association).join(Label)
         query = query.with_entities(label_association.c.label_id,
+                                    Label.name,
+                                    Label.gid,
                                     db.func.min(Message.id).label('min_id'),
                                     db.func.max(Message.id).label('max_id'),
                                     db.func.count(Message.id).label('count'))

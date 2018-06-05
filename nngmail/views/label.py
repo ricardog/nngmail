@@ -12,7 +12,7 @@ class LabelAPI(MethodView):
             ## Return list
             if 'info' in request.args:
                 data = Label.info(account_id).all()
-                info = tuple((dict(zip(['id', 'min', 'max', 'count'], e)))
+                info = tuple((dict(zip(['id', 'name', 'gid', 'min', 'max', 'count'], e)))
                              for e in data)
                 return jsonify({'labels': info})
             query = Label.query.filter_by(account_id=account_id).\
