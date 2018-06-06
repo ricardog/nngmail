@@ -154,10 +154,7 @@ and artcile count for the group.")
 	 (re-search-forward "^$")
 	 (setq nngmail-status-string
 	       (nngmail-get-error-string (json-read))))
-       (error "Error during download request:%s"
-              (buffer-substring-no-properties (point) (progn
-                                                        (end-of-line)
-                                                        (point)))))))
+       (error "Error: nngmail server responded with error"))))
 
 (defun nngmail-parse-json (buffer)
   (with-current-buffer buffer
@@ -168,12 +165,27 @@ and artcile count for the group.")
 	   (json-array-type 'vector))
       (json-read))))
 
+(defmacro safe-parse (fn &rest clean-up)
+  `(unwind-protect
+       (let (retval)
+	 (condition-case ex
+	     (setq retval (progn ,fn))
+	   ('error
+	    (message (format "Caught exception: [%s]" ex))
+	    (nnheader-report 'nngmail "Could not request resource")
+	    (setq retval (cons 'exception ex))))
+	 retval)
+     ,@clean-up))
+
 (defun nngmail-fetch-resource (resource &optional id account-id args)
   "Retrieve a resource from the nngmail server."
   (let* ((url (nngmail-url-for resource id account-id args))
 	 (buffer (url-retrieve-synchronously url t))
-	 (response (nngmail-parse-json buffer)))
-    (kill-buffer buffer)
+	 (response (safe-parse
+		    (nngmail-parse-json buffer)
+		    (progn
+		      (kill-buffer buffer)
+		      (
     response))
 
 (defun nngmail-get-accounts ()
@@ -181,9 +193,7 @@ and artcile count for the group.")
 and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
   (let* ((resource (nngmail-fetch-resource "account"))
-	 (accounts (if resource
-		       (plist-get resource 'accounts)
-		     ())))
+	 (accounts (plist-get resource 'accounts)))
     (seq-map
      (lambda (elem)
        (push (nngmail-get-account-params elem) nngmail-servers))
@@ -198,9 +208,7 @@ store in `nngmail-servers` for fast access."
 	 (account-id (nngmail-get-account-id server))
 	 (resource (nngmail-fetch-resource "label" nil account-id
 					   '((info . 1))))
-	 (data (if resource
-		     (plist-get resource 'labels)
-		 ()))
+	 (data (plist-get resource 'labels))
 	 (tmp ()))
     (seq-map
      (lambda (elem)
@@ -263,8 +271,8 @@ accounts alist."
   (nngmail-touch-server server))
 
 (deffoo nngmail-status-message (&optional server)
-  (or (nngmail-get-account-message (or server nngmail-last-ccount))
-      nngmail-status-message))
+  (or (nngmail-get-account-message (or server nngmail-last-account))
+      nngmail-status-string))
 
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
