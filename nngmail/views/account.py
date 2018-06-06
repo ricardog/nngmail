@@ -44,14 +44,17 @@ class AccountAPI(MethodView):
     def put(self, account_id):
         account = Account.query.get(account_id)
         if not account:
-            return make_response(jsonify({'error': 'Account not found'}), 404)
+            return make_response(jsonify({'error':
+                                          'Account %d not found' % account_id}),
+                                 404)
         if not request.json:
             return make_response(jsonify({'error':
                                           'No data on account update'}),
                                  400)
         if ('nickname' not in request.json or
             not isinstance(request.json['nickname'], str)):
-            return make_response(jsonify({'error': 'Bad account nickname'}),
+            return make_response(jsonify({'error':
+                                          'Bad account nickname (%s)' % nickname}),
                                  400)
         account.nickname = request.json['nickname']
         db.session().commit()
