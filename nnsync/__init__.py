@@ -45,7 +45,7 @@ class NnSync():
                 id_map[msg['id']].raw = blob
         # Store raw message data fetch during read
         self.sql3.commit()
-        return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
+        #return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
 
     def create_or_update(self, gids, create=True, sync_labels=False):
         history_id = self.sql3.get_history_id()
