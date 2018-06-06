@@ -295,17 +295,17 @@ accounts alist."
     (setq group (nngmail-decode-gnus-group group)))
   (let* ((account (or server nngmail-last-account))
 	 (result (nngmail-change-group account group)))
-    (with-current-buffer nntp-server-buffer
+    (with-current-buffer "foobar" ;;FIXME: remove foobar nntp-server-buffer
       (when result
 	(and (not fast)
 	     (nngmail-get-groups account))
 	(erase-buffer)
 	(insert (format "211 %d %d %d %S\n"
-			(nngmail-group-count account group)
-			(nngmail-group-min account group)
-			(nngmail-group-max account group)
-			group)))))
-  (nngmail-touch-server account))
+			(nngmail-get-group-count account group)
+			(nngmail-get-group-min account group)
+			(nngmail-get-group-max account group)
+			group))))
+    (nngmail-touch-server account)))
   
 (deffoo nngmail-close-group (group &optional server)
   "Close the group.  A nop."
@@ -319,14 +319,14 @@ accounts alist."
   ;;; ifi.discussion 3324 3300 n
   (let ((account (or server nngmail-last-account)))
     (if account
-	(with-current-buffer nntp-server-buffer
+	(with-current-buffer "foobar" ;; FIXME: remove foobar nntp-server-buffer
 	  (nngmail-get-groups account)
 	  (erase-buffer)
 	  (maphash (lambda (key value)
-		     (insert (format "%S %d %d n"
+		     (insert (format "%S %d %d n\n"
 				     key
-				     (assq 'max value)
-				     (assq 'max value))))
+				     (cdr (assq 'max value))
+				     (cdr (assq 'max value)))))
 		   (nngmail-get-account-groups account))
 	  (nngmail-touch-server account))
       nil)))
