@@ -173,7 +173,7 @@ and artcile count for the group.")
   (let* ((url (nngmail-url-for resource id account-id args))
 	 (buffer (url-retrieve-synchronously url t))
 	 (response (nngmail-parse-json buffer)))
-;    (kill-buffer buffer)
+    (kill-buffer buffer)
     response))
 
 (defun nngmail-get-accounts ()
@@ -213,6 +213,10 @@ store in `nngmail-servers` for fast access."
   (when (nngmail-get-account-id server)
     (setq nngmail-last-account-id (nngmail-get-account server)
 	  nngmail-last-account server)))
+
+(defun nngmail-change-group (server group)
+  (and (ht-get (nngmail-get-account-groups server) group)
+       (nngmail-set-account-group server group)))
 
 ;;;
 ;;; Required functions in gnus back end API
@@ -264,32 +268,68 @@ accounts alist."
 
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
-  (and
-   (cons group article)
-   nil))
-
-(defun nngmail-change-group (server group)
-  (and (ht-get (nngmail-get-account-groups server) group)
-       (nngmail-set-account-group server group)))
+  (when group
+    (setq group (nnimap-decode-gnus-group group)))
+  (when (stringp article)
+    (let* ((account (or server nngmail-last-account))
+	   (query (format "message_id=%s" article))
+	   (message (nngmail-fetch-resource "message" nil account
+					    `((q . ,query)))))
+      (setq article (plist-get message 'id))))
+  (let* ((url (nngmail-url-for "message" article nil '((format . "raw"))))
+	 (buffer (url-retrieve-synchronously url t)))
+    (with-current-buffer (or to-buffer nntp-server-buffer)
+      (erase-buffer)
+      (url-insert-buffer-contents buffer url nil)
+      (kill-buffer buffer)
+      (goto-char (point-min))
+      ;;; FIXME: is this necessary?
+      ;;;(nnheader-insert-buffer-substring buffer)
+      (nnheader-ms-strip-cr)))
+  (cons group article))
 
 (deffoo nngmail-request-group (group &optional server fast info)
   "Retrieve information about GROUP."
   ;;; 211 56 1000 1059 ifi.discussion
+  (when group
+    (setq group (nngmail-decode-gnus-group group)))
+  (let* ((account (or server nngmail-last-account))
+	 (result (nngmail-change-group account group)))
+    (with-current-buffer nntp-server-buffer
+      (when result
+	(and (not fast)
+	     (nngmail-get-groups account))
+	(erase-buffer)
+	(insert (format "211 %d %d %d %S\n"
+			(nngmail-group-count account group)
+			(nngmail-group-min account group)
+			(nngmail-group-max account group)
+			group)))))
+  (nngmail-touch-server account))
+  
+(deffoo nngmail-close-group (group &optional server)
+  "Close the group.  A nop."
+  (nngmail-set-account-group nil))
+
+(deffoo nngmail-request-list (&optional server)
+  "Return a list of all groups available on SERVER."
+  ;;; An example of a server with two groups
+  ;;;
+  ;;; ifi.test 0000002200 0000002000 y
+  ;;; ifi.discussion 3324 3300 n
   (let ((account (or server nngmail-last-account)))
-    (when group
-      (setq group (nngmail-decode-gnus-group group)))
-    (let ((result (nngmail-change-group account group)))
-      (with-current-buffer nntp-server-buffer
-	(when result
-	  (and (not fast)
-	       (nngmail-get-groups account))
+    (if account
+	(with-current-buffer nntp-server-buffer
+	  (nngmail-get-groups account)
 	  (erase-buffer)
-	  (insert (format "211 %d %d %d %S\n"
-			  (nngmail-group-count account group)
-			  (nngmail-group-min account group)
-			  (nngmail-group-max account group)
-			  group)))))
-    (nngmail-touch-server account)))
+	  (maphash (lambda (key value)
+		     (insert (format "%S %d %d n"
+				     key
+				     (assq 'max value)
+				     (assq 'max value))))
+		   (nngmail-get-account-groups account))
+	  (nngmail-touch-server account))
+      nil)))
 
 (deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
   "Retrieve headers for the specified group (label)."
@@ -298,21 +338,11 @@ accounts alist."
   (with-current-buffer nntp-server-buffer
     (erase-buffer)
     ))
-  
-(deffoo nngmail-close-group (group &optional server)
-  "Close the group.  A nop."
-  nil)
-
-(deffoo nngmail-request-list (&optional server)
-  "Return a list of all groups available on SERVER."
-  ;;; An example of a server with two groups
-  ;;;
-  ;;; ifi.test 0000002200 0000002000 y
-  ;;; ifi.discussion 3324 3300 n
-  nil)
 
 (deffoo nngmail-request-post (&optional server)
-  (setq nngmail-status-string "Read-only server")
+  (let ((account (or server nngmail-last-account)))
+    (if account
+	(nngmail-set-account-message "Read-only server")))
   nil)
 
 (deffoo nngmail-request-type (group &optional article)
