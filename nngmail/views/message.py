@@ -2,6 +2,7 @@ import click
 
 from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
+from sqlalchemy.orm import undefer
 
 from nngmail import db
 from nngmail.models import Account, Message
@@ -33,6 +34,12 @@ class MessageAPI(MethodView):
             if not message:
                 return make_response(jsonify({'error': 'Message not found'}),
                                      404)
+            fmt = request.args.get('format', 'json')
+            if fmt.lower() == 'raw':
+                message = Message.query.options(undefer('_raw')).get(message_id)
+                # FIXME: use stream_with_context?
+                click.echo('here you go sir!')
+                return make_response(message.raw)
             return jsonify(message)
 
     def delete(self, account_id, message_id):
