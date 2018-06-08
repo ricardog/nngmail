@@ -188,10 +188,9 @@ What I call an account in the server is what gnus calls a server.  This list has
 	 (response (if (bufferp buffer)
 		       (safe-parse
 			(nngmail-parse-json buffer)
-			(kill-buffer buffer))
-		     nil))
-
-    response)))
+			(kill-buffer buffer)
+			))))
+    response))
 
 (defun nngmail-get-accounts ()
   "Get a list of accounts, with their respective ID's, nicknames,
