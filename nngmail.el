@@ -58,11 +58,6 @@ Uses the same syntax as `nnmail-split-methods'.")
   "An alist of accounts the server knows about.
 What I call an account in the server is what gnus calls a server.  This list has all the accounts the server we connect to synchs.")
 
-(defvar nngmail-groups ()
-  "An alist of per-account groups the server knows about.
-A server's entry holds a per-group alist with the min ID, max ID,
-and artcile count for the group.")
-
 (defun nngmail-get-account (nickname)
   (cdr (assoc nickname nngmail-servers)))
 
@@ -180,13 +175,22 @@ and artcile count for the group.")
 (defun nngmail-fetch-resource (resource &optional id account-id args)
   "Retrieve a resource from the nngmail server."
   (let* ((url (nngmail-url-for resource id account-id args))
-	 (buffer (url-retrieve-synchronously url t))
-	 (response (safe-parse
-		    (nngmail-parse-json buffer)
-		    (progn
-		      (kill-buffer buffer)
-		      (
-    response))
+	 (buffer (condition-case ex
+		     (url-retrieve-synchronously url t)
+		   ('file-error
+		    (message (format "Connection error fetching %s" url))
+		    (setq nngmail-status-string
+			  (format "Connection error fetching %s" url))
+		    (nnheader-report
+		     'nngmail (format "Connection error fetching %s" url))
+		    (setq retval nil))))
+	 (response (if (bufferp buffer)
+		       (safe-parse
+			(nngmail-parse-json buffer)
+			(kill-buffer buffer))
+		     nil))
+
+    response)))
 
 (defun nngmail-get-accounts ()
   "Get a list of accounts, with their respective ID's, nicknames,
@@ -303,7 +307,7 @@ accounts alist."
     (setq group (nngmail-decode-gnus-group group)))
   (let* ((account (or server nngmail-last-account))
 	 (result (nngmail-change-group account group)))
-    (with-current-buffer "foobar" ;;FIXME: remove foobar nntp-server-buffer
+    (with-current-buffer nntp-server-buffer
       (when result
 	(and (not fast)
 	     (nngmail-get-groups account))
@@ -327,7 +331,7 @@ accounts alist."
   ;;; ifi.discussion 3324 3300 n
   (let ((account (or server nngmail-last-account)))
     (if account
-	(with-current-buffer "foobar" ;; FIXME: remove foobar nntp-server-buffer
+	(with-current-buffer nntp-server-buffer
 	  (nngmail-get-groups account)
 	  (erase-buffer)
 	  (maphash (lambda (key value)
