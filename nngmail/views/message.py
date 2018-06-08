@@ -11,6 +11,11 @@ from nngmail.models import Account, Message
 # click.echo(url_for('message_api', account_id=1))
 # click.echo(url_for('message_api', message_id=message.id))
 
+def to_range(r):
+    if len(r) == 2:
+        return tuple(range(int(r[0]), int(r[1])+1))
+    return (int(r[0]), )
+
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
         if not message_id:
@@ -19,6 +24,12 @@ class MessageAPI(MethodView):
                 query = Message.query.filter_by(account_id=account_id).\
                     order_by(Message.id.desc()).\
                     limit(request.args.get('limit', 200))
+            elif 'id' in request.args:
+                ids = sum(map(lambda r: to_range(r),
+                              map(lambda s: s.split(':'),
+                                  request.args['id'].split(','))), ())
+                query = Message.query.filter_by(account_id=account_id).\
+                    filter(Message.id.in_(ids)).order_by(Message.id.desc())
             else:
                 query = Message.unread(account_id)
 
