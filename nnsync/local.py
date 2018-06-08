@@ -29,7 +29,10 @@ class Sqlite3():
                 # dl-engr-silicon@stretchinc.com>
                 continue
             try:
-                contacts.append(Contact.as_unique(db.session, email=e, name=n))
+                contact = Contact.as_unique(db.session, email=e, name=n)
+                if contact.name == '' and n:
+                    contact.name = n
+                contacts.append(contact)
             except AssertionError:
                 # Contact.as_unique raises an exception of the email
                 # field fails validation.  Which happens with improperly
