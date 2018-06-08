@@ -208,6 +208,7 @@ store in `nngmail-servers` for fast access."
   "Get a list of groups/labels, with their respective ID's, nicknames,
 and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
+  (message (format "in nngmail-get-groups for %s" server))
   (let* ((groups (nngmail-get-account-groups server))
 	 (account-id (nngmail-get-account-id server))
 	 (resource (nngmail-fetch-resource "label" nil account-id
@@ -227,6 +228,7 @@ store in `nngmail-servers` for fast access."
 	  nngmail-last-account server)))
 
 (defun nngmail-change-group (server group)
+  (message (format "in nngmail-change-groups for %s %s" server group))
   (and (ht-get (nngmail-get-account-groups server) group)
        (nngmail-set-account-group server group)))
 
@@ -268,6 +270,7 @@ accounts alist."
 (deffoo nngmail-request-close ()
   "Close connection to all servers.  Removes all entries from the
 accounts alist."
+  (message (format "in nngmail-request-close"))
   (setq nngmail-servers ()
 	nngmail-last-account-id nil
 	nngmail-last-account nil
