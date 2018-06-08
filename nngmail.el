@@ -350,13 +350,43 @@ accounts alist."
 	  (nngmail-touch-server account))
       nil)))
 
+(defun nngmail-article-ranges (ranges)
+  (let (result)
+    (cond
+     ((numberp ranges)
+      (number-to-string ranges))
+     ((numberp (cdr ranges))
+      (format "%d:%d" (car ranges) (cdr ranges)))
+     (t
+      (dolist (elem ranges)
+	(push
+	 (if (consp elem)
+	     (format "%d:%d" (car elem) (cdr elem))
+	   (number-to-string elem))
+	 result))
+      (mapconcat #'identity (nreverse result) ",")))))
+
 (deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
   "Retrieve headers for the specified group (label)."
   (when group
-    (setq group (nnimap-decode-gnus-group group)))
-  (with-current-buffer nntp-server-buffer
-    (erase-buffer)
-    ))
+    (setq group (nngmail-decode-gnus-group group)))
+  (message (format "in nngmail-retrieve-headers for %s" group))
+  (let* ((account (or server nngmail-last-account))
+	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
+	 (url (nngmail-url-for "message" nil
+			      (nngmail-get-account-id account)
+			      `((format . "nov")
+				(id . ,ids))))
+	 (buffer (url-retrieve-synchronously url t)))
+    (with-current-buffer nntp-server-buffer
+      (erase-buffer)
+      (url-insert-buffer-contents buffer url nil)
+      (kill-buffer buffer)
+      (goto-char (point-min))
+      ;;; FIXME: is this necessary?
+      ;;;(nnheader-insert-buffer-substring buffer)
+      (nnheader-remove-cr-followed-by-lf)))
+  'nov)
 
 (deffoo nngmail-request-post (&optional server)
   (let ((account (or server nngmail-last-account)))
@@ -386,7 +416,6 @@ accounts alist."
   ;;; ACTION is a list of mark setting requests, having this format:
   ;;; (RANGE ACTION MARK)
   ;;; Gnus marks are:
-
   nil)
 
 (deffoo nngmail-request-scan (&optional group server)
