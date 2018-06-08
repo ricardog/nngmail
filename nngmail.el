@@ -20,6 +20,7 @@
 (require 'nnmail)
 
 (nnoo-declare nngmail)
+(gnus-declare-backend "nngmail" 'mail 'address)
 
 (defvoo nngmail-host "localhost"
   "The address of the gmail proxy.")
