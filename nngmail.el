@@ -265,7 +265,8 @@ accounts alist."
   (and (eq nngmail-last-account-id
 	   (nngmail-get-account-id server))
        (setq nngmail-last-account-id nil
-	     nngmail-last-account nil)))
+	     nngmail-last-account nil))
+  t)
 
 (deffoo nngmail-request-close ()
   "Close connection to all servers.  Removes all entries from the
@@ -339,13 +340,14 @@ accounts alist."
   (let ((account (or server nngmail-last-account)))
     (if account
 	(with-current-buffer nntp-server-buffer
+	  (message (format "in nngmail-request list for %s" account))
 	  (nngmail-get-groups account)
 	  (erase-buffer)
 	  (maphash (lambda (key value)
 		     (insert (format "%S %d %d n\n"
 				     key
 				     (cdr (assq 'max value))
-				     (cdr (assq 'max value)))))
+				     (cdr (assq 'min value)))))
 		   (nngmail-get-account-groups account))
 	  (nngmail-touch-server account))
       nil)))
