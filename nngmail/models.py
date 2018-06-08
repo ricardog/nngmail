@@ -105,9 +105,10 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
                                                    'labels', 'keys'))
         
 class Contact(UniqueMixin, db.Model, Serializeable):
+    db.UniqueConstraint('name', 'email', name='unique_1')
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    email = db.Column(db.String, unique=True, index=True)
+    email = db.Column(db.String, index=True)
 
     _received = db.relationship('ToAddressee')
     _cced = db.relationship('CcAddressee')
@@ -126,7 +127,7 @@ class Contact(UniqueMixin, db.Model, Serializeable):
 
     @classmethod
     def unique_hash(cls, email, name=None):
-        return email
+        return name + ' ' + email
 
     @classmethod
     def unique_filter(cls, query, email, name=None):
