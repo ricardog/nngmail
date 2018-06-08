@@ -49,7 +49,6 @@ class MessageAPI(MethodView):
             if fmt.lower() == 'raw':
                 message = Message.query.options(undefer('_raw')).get(message_id)
                 # FIXME: use stream_with_context?
-                click.echo('here you go sir!')
                 return make_response(message.raw)
             return jsonify(message)
 
