@@ -42,8 +42,6 @@ Uses the same syntax as `nnmail-split-methods'.")
 (defvoo nngmail-split-fancy nil
   "Uses the same syntax as `nnmail-split-fancy'.")
 
-(defvoo nngmail-header-format "nov")
-
 (defun nngmail-decode-gnus-group (group)
   (decode-coding-string group 'utf-8))
 
