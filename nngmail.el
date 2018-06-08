@@ -287,7 +287,7 @@ accounts alist."
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
   (when group
-    (setq group (nnimap-decode-gnus-group group)))
+    (setq group (nngmail-decode-gnus-group group)))
   (when (stringp article)
     (let* ((account (or server nngmail-last-account))
 	   (query (format "message_id=%s" article))
@@ -311,6 +311,7 @@ accounts alist."
   ;;; 211 56 1000 1059 ifi.discussion
   (when group
     (setq group (nngmail-decode-gnus-group group)))
+  (message (format "in nngmail-request-group %s" group))
   (let* ((account (or server nngmail-last-account))
 	 (result (nngmail-change-group account group)))
     (with-current-buffer nntp-server-buffer
@@ -327,7 +328,7 @@ accounts alist."
   
 (deffoo nngmail-close-group (group &optional server)
   "Close the group.  A nop."
-  (nngmail-set-account-group nil))
+  (message (format "in nngmail-close-group for %s" group)))
 
 (deffoo nngmail-request-list (&optional server)
   "Return a list of all groups available on SERVER."
