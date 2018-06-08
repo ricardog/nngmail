@@ -235,25 +235,28 @@ store in `nngmail-servers` for fast access."
 ;;;
 (deffoo nngmail-open-server (server &rest definitions)
   "Verify the nngmail server syncs the account."
-  (interactive)
+  (message (format "in nngmail-open-server for %s" server))
   (nngmail-get-accounts)
-  (unless (nngmail-get-account server)
-    (error
-     (format "You are not synching the account %s" server)))
-  (and
-   (assoc-string "email" definitions)
-   (let ((email-def (assoc-string "email" definitions))
-	 (email-ser (nngmail-get-account-email server)))
-     (unless
-       (string-equal email-ser email-def)
-       (error (format "Email address mismatch %s != %s"
-		   email-ser email-def)))))
-  (message (format "nngmail: opened server '%s'" server))
-  (nngmail-touch-server server))
+  (if (not (nngmail-get-account server))
+      (nnheader-report
+       'nngmail (format "You are ntot syncing %s" server)))
+  (progn
+    (and
+     definitions
+     (assoc-string "email" definitions)
+     (let ((email-def (assoc-string "email" definitions))
+	   (email-ser (nngmail-get-account-email server)))
+       (unless
+	   (string-equal email-ser email-def)
+	 (error (format "Email address mismatch %s != %s"
+			email-ser email-def)))))
+    (message (format "nngmail: opened server '%s'" server))
+    (nngmail-touch-server server)))
 
 (deffoo nngmail-close-server (server)
   "Close connection to server.  Removes the server from the
 accounts alist."
+  (message (format "in nngmail-close-server for %s" server))
   (setq nngmail-servers
 	(delq (assoc-string server nngmail-servers) nngmail-servers))
   (message (format "nngmail: closed server '%s'" server))
