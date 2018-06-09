@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import click
 import queue
 import threading
 from tqdm import tqdm
@@ -14,9 +15,7 @@ class NnSync():
     def __init__(self, email, nickname, opts):
         self.email = email
         self.nickname = nickname
-        self.ingress = None
-        self.egress = None
-        self.thread = None
+        self.opts = opts
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email,
                            'nickname': self.nickname,
@@ -203,23 +202,30 @@ class NnSync():
         self.read(ids)
 
     def sync(self):
-        def __sync(self):
-            print("%s sync started" % self.nickname)
+        def __sync(email, nickname, opts, ingress, egress):
+            me = NnSync(email, nickname, opts)
+            click.echo("%s sync started" % me.nickname)
             while True:
                 try:
-                    data = self.ingress.get(block=True,
-                                           timeout=self.gmail.poll_interval)
+                    data = ingress.get(block=True,
+                                       timeout=me.gmail.poll_interval)
                     if not data:
                         break
                     # Process cmd
                     cmd, args = data
-                    print("%s: received cmd %s" % (self.nickname, cmd))
+                    print("%s: received cmd %s" % (me.nickname, cmd))
+                    egress.put(cmd)
                 except queue.Empty:
-                    self.pull()
-            print("%s sync stopped" % self.nickname)
-        self.ingress = queue.Queue()
-        self.egress = queue.Queue()
-        self.thread = threading.Thread(daemon=True,
-                                       target=lambda: __sync(self))
-        self.thread.start()
-        return (self.thread, self.ingress, self.egress)
+                    click.echo('%s: pull' % me.nickname)
+                    me.pull()
+            click.echo("%s sync stopped" % me.nickname)
+        ingress = queue.Queue()
+        egress = queue.Queue()
+        thread = threading.Thread(daemon=True,
+                                       target=lambda: __sync(self.email,
+                                                             self.nickname,
+                                                             self.opts,
+                                                             ingress,
+                                                             egress))
+        thread.start()
+        return (thread, ingress, egress)
