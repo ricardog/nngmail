@@ -10,6 +10,7 @@ import click
 from collections import deque
 import os
 import queue
+import sys
 import threading
 import pdb
 
@@ -132,9 +133,13 @@ class Gmail:
         store = file.Storage(self.opts.credentials_path)
         creds = store.get()
         if not creds or creds.invalid:
+            # Clear out argv so argparse in run_flow() is happy.
+            argv = sys.argv
+            sys.argv = []
             flow = client.flow_from_clientsecrets(self.opts.client_secret_file,
                                                   self.opts.scopes)
             creds = tools.run_flow(flow, store)
+            sys.argv = argv
         return creds
 
     def authorize(self):
