@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import email
 import re
 
@@ -18,7 +18,8 @@ import pdb
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
-    options = Options(email=None, nickname=None, db_url=None, account=None)
+    options = Options(email=None, nickname=None, db_url=None, account=None,
+                      cache_timeout=60)
 
     @staticmethod
     def __new_contacts(header):
@@ -171,6 +172,13 @@ class Sqlite3():
             gids = (gids, )
         return Message.query.filter(and_(Message.google_id.in_(gids),
                                          Message.account == self.account)).all()
+
+    def find_cacheable(self):
+        td = timedelta(days=self.opts.cache_timeout)
+        query = Message.query.with_entities(Message.id).\
+                filter(Message.date > datetime.now() - td).\
+                filter(Message.account == self.account)
+        return sum(query.all(), ())
 
     def delete(self, gids):
         msgs = self.find_by_gid(gids)

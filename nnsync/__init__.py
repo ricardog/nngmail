@@ -14,8 +14,11 @@ class NnSync():
         self.email = email
         self.nickname = nickname
         local_opts = opts.get('local', {})
-        local_opts.update({'email': self.email})
-        local_opts.update({'nickname': self.nickname})
+        local_opts.update({'email': self.email,
+                           'nickname': self.nickname,
+                           'cache_timeout': opts.get('cache',
+                                                     {}).get('timeout',
+                                                             None)})
         gmail_opts = opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
         self.sql3 = local.Sqlite3(**local_opts)
@@ -190,3 +193,7 @@ class NnSync():
         history_id = max(hid1, hid2, history_id)
         print('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
+
+    def init_cache(self):
+        ids = self.sql3.find_cacheable()
+        self.read(ids)
