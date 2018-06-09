@@ -39,12 +39,15 @@ class NnSync():
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
         raw = {}
+        bar = tqdm(leave=True, total=len(needed), desc="caching messages")
         for batch in self.gmail.get_messages(needed, format='raw'):
             for msg in batch:
                 blob = base64.b64decode(msg['raw'], altchars='-_')
                 id_map[msg['id']].raw = blob
+                bar.update(1)
         # Store raw message data fetch during read
         self.sql3.commit()
+        bar.close()
         #return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
 
     def create_or_update(self, gids, create=True, sync_labels=False):
@@ -126,7 +129,7 @@ class NnSync():
                                           item[kind])):
                         if msg['id'] not in updated:
                             updated[msg['id']] = msg['labelIds']
-            bar.update()
+            bar.update(1)
         bar.close()
         return(int(history[-1]['id']), deleted, added, updated)
 
