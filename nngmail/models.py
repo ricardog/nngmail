@@ -68,8 +68,9 @@ class TimestampMixin(object):
     updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 class KeyValue(db.Model):
+    db.UniqueConstraint('account_id', 'key', name='key_1')
     id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String, unique=True, nullable=False)
+    key = db.Column(db.String, nullable=False)
     value = db.Column(db.String, nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            index=True, nullable=False)
@@ -183,6 +184,7 @@ label_association = db.Table('label_association',
 )
 
 class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
+    db.UniqueConstraint('account_id', 'gif', name='gid_1')
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
@@ -223,10 +225,11 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         return query
 
 class Thread(UniqueMixin, db.Model):
+    db.UniqueConstraint('account_id', 'tid', name='tid_1')
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
-    tid = db.Column(db.String, unique=True, index=True)
+    tid = db.Column(db.String, index=True)
 
     account = db.relationship('Account',
                               backref=backref('threads', cascade='all,delete'))
@@ -256,8 +259,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            index=True, nullable=False)
     google_id = db.Column(db.String(20), index=True)
-    message_id = db.Column(db.String(100), index=True, unique=True,
-                           nullable=False)
+    message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
     from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
     date = db.Column(db.DateTime)
