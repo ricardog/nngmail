@@ -37,7 +37,8 @@ def init_db_command():
 @app.cli.command('import')
 @click.argument('email', type=click.STRING)
 @click.argument('nickname', type=click.STRING)
-def import_email(email, nickname):
+@click.option('--init-cache', is_flag=True, default=False)
+def import_email(email, nickname, init_cache):
     """Add a new account to the database and import all the message metadata. 
 
     email - email address to add
@@ -53,6 +54,9 @@ def import_email(email, nickname):
         return
     gmail = NnSync(email, nickname, config)
     gmail.pull()    
+    if init_cache:
+        print('fetching cacheable messages')
+        gmail.init_cache()
 
 app.cli.add_command(init_db_command)
 app.cli.add_command(import_email)
