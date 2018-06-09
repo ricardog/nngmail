@@ -47,8 +47,7 @@ def import_email(email, nickname, init_cache):
     nickname - nickname for the account
     """
     
-    config = load_config()
-    gmail = NnSync(email, nickname, config)
+    gmail = NnSync(email, nickname, load_config())
     gmail.pull()    
     if init_cache:
         print('fetching cacheable messages')
