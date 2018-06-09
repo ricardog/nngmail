@@ -105,7 +105,6 @@ class Gmail:
         self.opts = self.options.push(kwargs)
         data_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
                                                  '../data'))
-        print('data dir is %s' % data_dir)
         if self.opts.credentials_path is None:
             self.opts.set(credentials_path='%s-creds.json' % self.opts.email)
         if os.path.relpath(self.opts.client_secret_file):
