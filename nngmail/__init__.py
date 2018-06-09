@@ -19,9 +19,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SQLALCHEMY_ECHO'] = True
 app.json_encoder = MyJSONEncoder
 db = SQLAlchemy(app)
+zync = dict()
 
 from nnsync import NnSync
 import nngmail.views
+import nngmail.background
 
 @app.errorhandler(404)
 def not_found(error):
@@ -45,18 +47,21 @@ def import_email(email, nickname, init_cache):
     nickname - nickname for the account
     """
     
-    config_file = os.path.normpath(os.path.join(app.root_path, '..',
-                                                'data', 'config.yaml'))
-    try:
-        config = yaml.load(open(config_file, mode='rb'))
-    except IOError:
-        print('Error: reading config file (%s)' % config_file)
-        return
+    config = load_config()
     gmail = NnSync(email, nickname, config)
     gmail.pull()    
     if init_cache:
         print('fetching cacheable messages')
         gmail.init_cache()
 
+def load_config():
+    config_file = os.path.normpath(os.path.join(app.root_path, '..',
+                                                'data', 'config.yaml'))
+    try:
+        return yaml.load(open(config_file, mode='rb'))
+    except IOError:
+        print('Error: reading config file (%s)' % config_file)
+        return {}
+    
 app.cli.add_command(init_db_command)
 app.cli.add_command(import_email)
