@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import base64
-
+import queue
+import threading
 from tqdm import tqdm
 
 from . import local
@@ -13,6 +14,9 @@ class NnSync():
     def __init__(self, email, nickname, opts):
         self.email = email
         self.nickname = nickname
+        self.ingress = None
+        self.egress = None
+        self.thread = None
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email,
                            'nickname': self.nickname,
@@ -197,3 +201,25 @@ class NnSync():
     def init_cache(self):
         ids = self.sql3.find_cacheable()
         self.read(ids)
+
+    def sync(self):
+        def __sync(self):
+            print("%s sync started" % self.nickname)
+            while True:
+                try:
+                    data = self.ingress.get(block=True,
+                                           timeout=self.gmail.poll_interval)
+                    if not data:
+                        break
+                    # Process cmd
+                    cmd, args = data
+                    print("%s: received cmd %s" % (self.nickname, cmd))
+                except queue.Empty:
+                    self.pull()
+            print("%s sync stopped" % self.nickname)
+        self.ingress = queue.Queue()
+        self.egress = queue.Queue()
+        self.thread = threading.Thread(daemon=True,
+                                       target=lambda: __sync(self))
+        self.thread.start()
+        return (self.thread, self.ingress, self.egress)
