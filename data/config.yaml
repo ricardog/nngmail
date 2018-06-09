@@ -6,10 +6,11 @@ log:
 local:
   db_url: sqlite:///nngmail.sqlite3
 cache:
-  timeout: 60
+  timeout: 120
   size_limit: 5M
 gmail:
   num_workers: 1
+  poll_interval: 300
   client_secrets: data/client-secret.json
   batch_size: 100
   min_batch_size: 20

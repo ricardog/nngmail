@@ -27,7 +27,8 @@ class Gmail:
                       batch_size=100,
                       credentials_path=None,
                       query='-in:chats',
-                      num_workers=0)
+                      num_workers=0,
+                      poll_interval=300)
     service = None
 
     class GenericException(Exception):
@@ -127,6 +128,10 @@ class Gmail:
                 self.threads.append(threading.Thread(daemon=True,
                                                      target=werker))
                 self.threads[idx].start()
+
+    @property
+    def poll_interval(self):
+        return self.opts.poll_interval
 
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
