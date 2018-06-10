@@ -1,4 +1,4 @@
-
+verbose: yes
 log:
   enable: no
   filename: sql.log

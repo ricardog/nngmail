@@ -12,6 +12,17 @@ from . import remote
 
 import pdb
 
+class _tqdm(tqdm):
+    @staticmethod
+    def status_printer(file):
+        def print_status(s):
+            return
+        return print_status
+    def close(self):
+        return
+    def update(self, n=1):
+        return
+
 class NnSync():
     def __init__(self, email, nickname, opts):
         self.email = email
@@ -24,6 +35,10 @@ class NnSync():
         gmail_opts.update({'email': self.email})
         self.sql3 = local.Sqlite3(**local_opts)
         self.gmail = remote.Gmail(**gmail_opts)
+        if opts['verbose']:
+            self.bar = tqdm
+        else:
+            self.bar = _tqdm
 
     def sync_labels(self):
         for label in self.gmail.get_labels():
@@ -43,7 +58,7 @@ class NnSync():
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
         raw = {}
-        bar = tqdm(leave=True, total=len(needed), desc="caching messages")
+        bar = self.bar(leave=True, total=len(needed), desc="caching messages")
         for batch in self.gmail.get_messages(needed, format='raw'):
             for msg in batch:
                 blob = base64.b64decode(msg['raw'], altchars='-_')
@@ -62,7 +77,7 @@ class NnSync():
             gids = (gids, )
         if sync_labels:
             self.sync_labels()
-        bar = tqdm(leave=True, total=len(gids), desc='fetching metadata')
+        bar = self.bar(leave=True, total=len(gids), desc='fetching metadata')
         for batch in self.gmail.get_messages(gids, 'metadata'):
             msgs = sorted(batch, key=lambda m: int(m['internalDate']))
             if create:
@@ -92,7 +107,7 @@ class NnSync():
         no_history = False
         history_id = self.sql3.get_history_id()
 
-        bar = tqdm(leave=True, total=10, desc='fetching changes')
+        bar = self.bar(leave=True, total=10, desc='fetching changes')
         pages = 0
         try:
             for results in self.gmail.get_history_since(history_id):
@@ -113,7 +128,8 @@ class NnSync():
         added = {}
         updated = {}
 
-        bar = tqdm(leave=True, total=len(history) - 1, desc='merging changes')
+        bar = self.bar(leave=True, total=len(history) - 1,
+                       desc='merging changes')
         for item in map(lambda i: history[i],
                         range(len(history) - 1, -1, -1)):
             if 'messagesDeleted' in item:
@@ -150,12 +166,12 @@ class NnSync():
             return
 
         if len(history) == 0:
-            print('no new changes')
+            click.echo('no new changes')
             return
 
         hid, deleted, added, updated = self.merge_history(history)
         total = len(deleted) + len(added) + len(updated)
-        bar = tqdm(leave=True, total=total, desc='applying changes')
+        bar = self.bar(leave=True, total=total, desc='applying changes')
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
         self.create(tuple(added.keys()))
@@ -171,8 +187,8 @@ class NnSync():
         updated = []
 
         prof = self.gmail.get_profile()
-        bar = tqdm(leave=True, total=prof['messagesTotal'],
-                   desc="fetching message ID's")
+        bar = self.bar(leave=True, total=prof['messagesTotal'],
+                       desc="fetching message ID's")
         for (_, msgs) in self.gmail.list_messages(limit=None):
             gids = set([msg['id'] for msg in msgs])
             created.extend(gids - local_gids)
@@ -185,14 +201,14 @@ class NnSync():
         updated = sorted(updated, key=lambda a: int(a, 16))
         if (updated and created and
             int(created[0], 16) < int(updated[-1], 16)):
-            print("WARN: creating id's out of order! (%s %s)" % (created[0],
-                                                                 updated[-1]))
+            click.echo("WARN: creating id's out of order! (%s %s)" %
+                       (created[0], updated[-1]))
         hid1 = self.create(created)
         hid2 = self.update(updated)
         self.delete(local_gids)
 
         history_id = max(hid1, hid2, history_id)
-        print('new historyId: %d' % history_id)
+        click.echo('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
 
     def init_cache(self):
@@ -211,7 +227,7 @@ class NnSync():
                         break
                     # Process cmd
                     cmd, args = data
-                    print("%s: received cmd %s" % (me.nickname, cmd))
+                    click.echo("%s: received cmd %s" % (me.nickname, cmd))
                     egress.put(cmd)
                 except queue.Empty:
                     click.echo('%s: pull' % me.nickname)
