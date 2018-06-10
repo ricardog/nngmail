@@ -133,6 +133,8 @@ class Sqlite3():
         session.commit()
 
     def update(self, msgs):
+        if not msgs:
+            return
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
         session = db.session()
