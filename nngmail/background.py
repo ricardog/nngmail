@@ -22,6 +22,7 @@ def background():
         if account.nickname not in zync:
             gmail = NnSync(account.email, account.nickname, config)
             zync[account.nickname] = gmail.sync()
+    #atexit.register(kill_zync)
 
 def kill_zync():
     print('atexit handler called')
@@ -33,5 +34,4 @@ def kill_zync():
             ingress.get()
         thread.join()
 
-atexit.register(kill_zync)
 
