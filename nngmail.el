@@ -1,3 +1,9 @@
+;;; package --- Summary
+
+;;; Commentary:
+
+
+;;; Code:
 (eval-and-compile
   (require 'nnheader)
   ;; In Emacs 24, `open-protocol-stream' is an autoloaded alias for
@@ -101,8 +107,9 @@ What I call an account in the server is what gnus calls a server.  This list has
     (cons nickname `((id      . ,id)
 		     (email   . ,email)
 		     (groups  . ,groups)
-		     (message . nil)
-		     (group   . nil)))))
+		     (message)
+		     (group)
+		     ))))
 
 (defun nngmail-get-group-params (elem)
   (let ((id (plist-get elem 'id))
@@ -195,12 +202,13 @@ What I call an account in the server is what gnus calls a server.  This list has
 and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
   (let* ((resource (nngmail-fetch-resource "account"))
-	 (accounts (plist-get resource 'accounts)))
+	 (accounts (plist-get resource 'accounts))
+	 servers)
     (seq-map
      (lambda (elem)
-       (push (nngmail-get-account-params elem) nngmail-servers))
+       (push (nngmail-get-account-params elem) servers))
      accounts)
-    ))
+    servers))
 
 (defun nngmail-get-groups (server)
   "Get a list of groups/labels, with their respective ID's, nicknames,
@@ -236,10 +244,11 @@ store in `nngmail-servers` for fast access."
 (deffoo nngmail-open-server (server &rest definitions)
   "Verify the nngmail server syncs the account."
   (message (format "in nngmail-open-server for %s" server))
-  (nngmail-get-accounts)
-  (if (not (nngmail-get-account server))
+  (let ((servers (nngmail-get-accounts)))
+    (when (not (assoc server servers))
       (nnheader-report
        'nngmail (format "You are ntot syncing %s" server)))
+    (push (cons server (cdr (assoc server servers))) nngmail-servers))
   (progn
     (and
      definitions
@@ -277,7 +286,9 @@ accounts alist."
 
 (deffoo nngmail-server-opened (&optional server)
   "Returns whether the server exists in the accounts alist"
-  (nngmail-touch-server server))
+  (if (nngmail-get-account server)
+      t
+    nil))
 
 (deffoo nngmail-status-message (&optional server)
   (or (nngmail-get-account-message (or server nngmail-last-account))
@@ -348,7 +359,7 @@ accounts alist."
 				     (cdr (assq 'min value)))))
 		   (nngmail-get-account-groups account))
 	  (nngmail-touch-server account))
-      nil)))
+      t)))
 
 (defun nngmail-article-ranges (ranges)
   (let (result)
