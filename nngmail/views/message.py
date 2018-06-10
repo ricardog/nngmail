@@ -34,7 +34,7 @@ class MessageAPI(MethodView):
                 query = Message.unread(account_id)
             messages = query.all()
 
-            if messages[0].account.nickname in zync:
+            if messages and messages[0].account.nickname in zync:
                 ids = [m.id for m in messages]
                 zync[messages[0].account.nickname][1].put(['read', ids])
 
