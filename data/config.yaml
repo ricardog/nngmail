@@ -5,14 +5,15 @@ log:
   level: DEBUG
 local:
   db_url: sqlite:///nngmail.sqlite3
-cache:
-  timeout: 120
-  size_limit: 5M
+  cache:
+    timeout: 120
+    max_size: 5M
 gmail:
   num_workers: 1
-  poll_interval: 300
+  poll_interval: 20
   client_secrets: data/client-secret.json
   batch_size: 100
   min_batch_size: 20
   max_batch_size: 200
-  scopes: https://www.googleapis.com/auth/gmail.readonly
+  scopes:
+    - https://www.googleapis.com/auth/gmail.readonly

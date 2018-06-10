@@ -19,10 +19,7 @@ class NnSync():
         self.opts = opts
         local_opts = opts.get('local', {})
         local_opts.update({'email': self.email,
-                           'nickname': self.nickname,
-                           'cache_timeout': opts.get('cache',
-                                                     {}).get('timeout',
-                                                             None)})
+                           'nickname': self.nickname})
         gmail_opts = opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
         self.sql3 = local.Sqlite3(**local_opts)

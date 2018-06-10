@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import collections
 from datetime import datetime, timedelta
 import email
 import re
@@ -19,7 +20,7 @@ RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
     options = Options(email=None, nickname=None, db_url=None, account=None,
-                      cache_timeout=60)
+                      cache_timeout=60, cache_max_size=0)
 
     @staticmethod
     def __new_contacts(header):
@@ -43,7 +44,16 @@ class Sqlite3():
         return contacts
 
     def __init__(self, **kwargs):
-        self.opts = self.options.push(kwargs)
+        def flatten(d, parent_key='', sep='_'):
+            items = []
+            for k, v in d.items():
+                new_key = parent_key + sep + k if parent_key else k
+                if isinstance(v, collections.MutableMapping):
+                    items.extend(flatten(v, new_key, sep=sep).items())
+                else:
+                    items.append((new_key, v))
+            return dict(items)
+        self.opts = self.options.push(flatten(kwargs))
         self.opts.set(account=Account.as_unique(db.session(),
                                                 email=self.opts.email,
                                                 nickname=self.opts.nickname))
