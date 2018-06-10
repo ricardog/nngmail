@@ -2,6 +2,7 @@
 
 import base64
 import click
+from copy import deepcopy
 import queue
 import threading
 from tqdm import tqdm
@@ -147,7 +148,7 @@ class NnSync():
         else:
             history = self.get_history()
         if history is None:
-            print('No history available; attempting full pull')
+            click.echo('No history available; attempting full pull')
             self.full_pull()
             return
 
@@ -204,7 +205,7 @@ class NnSync():
     def sync(self):
         def __sync(email, nickname, opts, ingress, egress):
             me = NnSync(email, nickname, opts)
-            click.echo("%s sync started" % me.nickname)
+            click.echo("%s: start sync" % me.nickname)
             while True:
                 try:
                     data = ingress.get(block=True,
@@ -218,14 +219,14 @@ class NnSync():
                 except queue.Empty:
                     click.echo('%s: pull' % me.nickname)
                     me.pull()
-            click.echo("%s sync stopped" % me.nickname)
+            click.echo("%s: stop sync" % me.nickname)
+
         ingress = queue.Queue()
         egress = queue.Queue()
         thread = threading.Thread(daemon=True,
-                                       target=lambda: __sync(self.email,
-                                                             self.nickname,
-                                                             self.opts,
-                                                             ingress,
-                                                             egress))
+                                  target=lambda: __sync(self.email,
+                                                        self.nickname,
+                                                        deepcopy(self.opts),
+                                                        ingress, egress))
         thread.start()
         return (thread, ingress, egress)
