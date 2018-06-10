@@ -151,7 +151,7 @@ class Gmail:
             sys.argv = argv
         return creds
 
-    def check_reachable(self):
+    def reachable(self):
         service = build('gmail', 'v1', http=Http())
         url = urlparse.urlparse(service._baseUrl)
         host = url.hostname
@@ -162,18 +162,9 @@ class Gmail:
             return False
         return True
 
-    def reachable(retval=None):
-        def wrap(func):
-            def func_wrap(self, *args, **kwargs):
-                if self.check_reachable():
-                    return func(self, *args, **kwargs)
-                return retval
-            return func_wrap
-        return wrap
-
     def authorize(self):
         "Authorize the service to access the user's mailbox."
-        if self.check_reachable() and not self.service:
+        if not self.service:
             self.creds = self.get_credentials()
             http = self.creds.authorize(Http())
             self.service = build('gmail', 'v1', http=http)
@@ -220,7 +211,6 @@ class Gmail:
                 msg = self.get_message(mset[0]['id'])
                 return int(msg['historyId'])
 
-    @reachable([])
     @authorized
     def get_history_since(self, start=0):
         hist = self.service.users().history()
@@ -243,7 +233,6 @@ class Gmail:
             else:
                 raise Gmail.GenericException(ex)
 
-    @reachable([])
     @authorized
     def list_messages(self, limit=1):
         "Returns a list of messages (max = limit)."
@@ -266,7 +255,6 @@ class Gmail:
             if limit is not None and total >= limit:
                 break
 
-    @reachable({})
     @authorized
     def get_message(self, id, format='minimal'):
         try:
@@ -281,7 +269,6 @@ class Gmail:
             else:
                 raise ex
 
-    @reachable({})
     @authorized
     def get_thread(self, id, format='metadata'):
         try:
@@ -296,7 +283,6 @@ class Gmail:
             else:
                 raise ex
 
-    @reachable([])
     @authorized
     def get_messages(self, ids, format):
         "Get a collection of messages."

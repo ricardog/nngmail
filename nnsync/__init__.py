@@ -149,6 +149,9 @@ class NnSync():
         return(int(history[-1]['id']), deleted, added, updated)
 
     def pull(self):
+        if not self.gmail.reachable():
+            return
+
         self.sync_labels()
 
         if self.sql3.get_history_id() == 0:
