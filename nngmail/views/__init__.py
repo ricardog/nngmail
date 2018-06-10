@@ -26,11 +26,11 @@ app.add_url_rule(base + '/accounts/<int:account_id>', view_func=account_view,
 ## Message resource
 message_view = MessageAPI.as_view('message_api')
 app.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-                 view_func=message_view, methods=['GET',])
+                 view_func=message_view, methods=['GET', 'PUT'])
 app.add_url_rule(base + '/messages/<int:message_id>',
                  defaults={'account_id': None},
                  view_func=message_view,
-                 methods=['GET', 'DELETE'])
+                 methods=['GET', 'PUT', 'DELETE'])
 
 label_view = LabelAPI.as_view('label_api')
 app.add_url_rule(acct_base + '/labels/', defaults={'label_id': None},
