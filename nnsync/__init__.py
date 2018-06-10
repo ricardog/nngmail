@@ -174,6 +174,7 @@ class NnSync():
         self.update_labels(updated)
         bar.close()
         self.sql3.set_history_id(hid)
+        self.read(added.keys())
 
     def full_pull(self):
         history_id = 0
