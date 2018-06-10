@@ -9,7 +9,7 @@ from nngmail.views.label import LabelAPI
 
 @app.route('/')
 def index():
-    return 'Hello World!'
+    return 'Hello World!\n\n'
 
 base = '/api/v1.0'
 acct_base = base + '/accounts/<int:account_id>'
