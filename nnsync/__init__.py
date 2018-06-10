@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import base64
 import click
@@ -13,6 +12,7 @@ from . import remote
 import pdb
 
 class _tqdm(tqdm):
+    """Dummy version of tqdm that does not print."""
     @staticmethod
     def status_printer(file):
         def print_status(s):
@@ -44,20 +44,16 @@ class NnSync():
         for label in self.gmail.get_labels():
             self.sql3.new_label(name=label['name'], gid=label['id'])
 
-    def sync_history_id(self):
-        history_id = self.sql3.get_history_id()
-        self.sql3.set_history_id(self.gmail.get_history_id(history_id))
-
-    def cacheable(self, msg):
-        return True
-
     def read(self, ids):
+        if not ids:
+            return
+        if '__getitem__' not in dir(ids):
+            gids = (ids, )
         msgs = self.sql3.find(ids)
         id_map = dict(((m.google_id, m) for m in msgs))
         assert len(msgs) == len(ids)
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
-        raw = {}
         bar = self.bar(leave=True, total=len(needed), desc="caching messages")
         for batch in self.gmail.get_messages(needed, format='raw'):
             for msg in batch:
@@ -67,7 +63,6 @@ class NnSync():
         # Store raw message data fetch during read
         self.sql3.commit()
         bar.close()
-        #return [raw[msg.id] if msg.id in raw else msg.raw for msg in msgs]
 
     def create_or_update(self, gids, create=True, sync_labels=False):
         history_id = self.sql3.get_history_id()
