@@ -219,10 +219,17 @@ class NnSync():
                     data = ingress.get(block=True,
                                        timeout=me.gmail.poll_interval)
                     if not data:
+                        ingress.task_done()
                         break
                     # Process cmd
                     cmd, args = data
                     click.echo("%s: received cmd %s" % (me.nickname, cmd))
+                    if cmd == 'read':
+                        me.read(args)
+                    else:
+                        click.echo('%s: unknown command %s' %
+                                   me.nickname, cmd)
+                    ingress.task_done()
                     egress.put(cmd)
                 except queue.Empty:
                     click.echo('%s: pull' % me.nickname)
