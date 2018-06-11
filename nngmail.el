@@ -337,8 +337,11 @@ read from gmail."
   "Query the server to map a Message-ID to the message's ID (the
 primary key in the database)."
   (let* ((query (format "message_id=%s" article))
-	 (message (nngmail-fetch-resource "message" nil account
-					  `((q . ,query)))))
+	 (resource (nngmail-fetch-resource "message" nil
+					  (nngmail-get-account-id account)
+					  `((q . ,query))))
+	 (messages (plist-get resource 'messages))
+	 (message (aref messages 0)))
     (plist-get message 'id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
@@ -348,7 +351,7 @@ primary key in the database)."
   (when (not server)
     (setq server (or server nngmail-last-account)))
   (when (stringp article)
-    (setq article (nngmail-message-id-to-id article article server)))
+    (setq article (nngmail-message-id-to-id article server)))
   (let* ((dest-buffer (or to-buffer nntp-server-buffer))
 	 (url (nngmail-url-for "message" article nil '((format . "raw"))))
 	 (buffer (nngmail-fetch-article url)))
