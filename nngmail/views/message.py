@@ -36,7 +36,7 @@ class MessageAPI(MethodView):
 
             if messages and messages[0].account.nickname in zync:
                 ids = [m.id for m in messages]
-                zync[messages[0].account.nickname][1].put(['read', ids])
+                #zync[messages[0].account.nickname][1].put(['read', ids])
 
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'nov':
@@ -55,6 +55,9 @@ class MessageAPI(MethodView):
                 message = Message.query.options(undefer('_raw')).get(message_id)
                 # FIXME: use stream_with_context?
                 if message.raw is None:
+                    if message.account.nickname in zync:
+                        zync[message.account.nickname][1].put(['read',
+                                                               [message.id]])
                     return make_response(jsonify({'error':
                                                   'Message not available'}),
                                          409)
