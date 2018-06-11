@@ -109,12 +109,18 @@ class Sqlite3():
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID', 'References']
         for msg in msgs:
+            if 'headers' not in msg['payload']:
+                ## Some message s(drafts?) don't have any headers (nor
+                ## labels).
+                msg['payload']['headers'] = {}
             headers = dict((hh['name'], hh['value']) for hh in
                            filter(lambda h: h['name'] in keepers,
                                   msg['payload']['headers']))
             default_id = '<%s@mail.gmail.com>' % msg['id']
             senders = self.__new_contacts(headers.get('From',
                                                       headers.get('from', '')))
+            if not senders:
+                senders.append(None)
             adds = {}
             for hdr in ('To', 'CC', 'BCC'):
                 adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
@@ -133,8 +139,7 @@ class Sqlite3():
                                                        default_id),
                                 subject=headers.get('Subject',
                                                     headers.get('subject', '')),
-                                references=headers.get('References',
-                                                       headers.get('References', '')),
+                                references=headers.get('References', ''),
                                 size=msg.get('sizeEstimate', 0),
                                 date=timestamp, sender=senders[0],
                                 snippet=msg['snippet'], labels=labels,
