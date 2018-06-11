@@ -27,18 +27,22 @@ class NnSync():
     def __init__(self, email, nickname, opts):
         self.email = email
         self.nickname = nickname
-        self.opts = opts
-        local_opts = opts.get('local', {})
+        self.opts = deepcopy(opts)
+        local_opts = self.opts.get('local', {})
         local_opts.update({'email': self.email,
                            'nickname': self.nickname})
-        gmail_opts = opts.get('gmail', {})
+        gmail_opts = self.opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
         self.sql3 = local.Sqlite3(**local_opts)
         self.gmail = remote.Gmail(**gmail_opts)
-        if opts['verbose']:
+        if self.opts['verbose']:
             self.bar = tqdm
         else:
             self.bar = _tqdm
+
+    @classmethod
+    def from_account(cls, account, config):
+        return cls(account.email, account.nickname, config)
 
     def sync_labels(self):
         for label in self.gmail.get_labels():
@@ -48,7 +52,7 @@ class NnSync():
         if not ids:
             return
         if '__getitem__' not in dir(ids):
-            gids = (ids, )
+            ids = (ids, )
         msgs = self.sql3.find(ids)
         id_map = dict(((m.google_id, m) for m in msgs))
         assert len(msgs) == len(ids)
@@ -245,7 +249,7 @@ class NnSync():
         thread = threading.Thread(daemon=True,
                                   target=lambda: __sync(self.email,
                                                         self.nickname,
-                                                        deepcopy(self.opts),
+                                                        self.opts,
                                                         ingress, egress))
         thread.start()
         return (thread, ingress, egress)
