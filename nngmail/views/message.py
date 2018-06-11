@@ -21,7 +21,14 @@ class MessageAPI(MethodView):
     def get(self, account_id, message_id):
         if not message_id:
             ## Return list
-            if 'limit' in request.args:
+            if 'q' in request.args:
+                ## FIXME: generalize search query parameters
+                #import pdb; pdb.set_trace()
+                q = urllib.parse.unquote(request.args['q'])
+                click.echo('searching for messages %s' % q)
+                args = dict([q.split('=', 1)])
+                query = Message.query.filter_by(**args)
+            elif 'limit' in request.args:
                 query = Message.query.filter_by(account_id=account_id).\
                     order_by(Message.id.desc()).\
                     limit(request.args.get('limit', 200))
