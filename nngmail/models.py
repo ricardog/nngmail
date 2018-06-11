@@ -339,13 +339,16 @@ class Message(TimestampMixin, Serializeable, db.Model):
 
     @staticmethod
     def unread(account_id=None):
+        return Message.by_label(account_id, 'UNREAD')
+
+    @staticmethod
+    def by_label(account_id=None, label_name='INBOX'):
         query = Message.query.join(label_association).join(Label)
         if account_id:
             query = query.filter(Message.account_id == account_id)
-        query = query.filter(Label.name == 'UNREAD').\
-            order_by(Message.id.desc())
+        query = query.filter(Label.name == label_name)
         return query
-
+    
     def serialize(self):
         return Serializeable.serialize(self, omit=('_raw', 'raw',
                                                           'account',

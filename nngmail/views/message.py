@@ -21,30 +21,24 @@ class MessageAPI(MethodView):
     def get(self, account_id, message_id):
         if not message_id:
             ## Return list
+            filters = {}
+            if 'label' in request.args:
+                query = Message.by_label(account_id, request.args['label'])
+            else:
+                query = Message.query.filter_by(account_id=account_id)
             if 'q' in request.args:
                 ## FIXME: generalize search query parameters
                 #import pdb; pdb.set_trace()
                 q = urllib.parse.unquote(request.args['q'])
-                click.echo('searching for messages %s' % q)
-                args = dict([q.split('=', 1)])
-                query = Message.query.filter_by(**args)
-            elif 'limit' in request.args:
-                query = Message.query.filter_by(account_id=account_id).\
-                    order_by(Message.id.desc()).\
-                    limit(request.args.get('limit', 200))
-            elif 'id' in request.args:
+                filters.update(dict([q.split('=', 1)]))
+                query = query.filter_by(**filters)
+            if 'id' in request.args:
                 ids = sum(map(lambda r: to_range(r),
                               map(lambda s: s.split(':'),
                                   request.args['id'].split(','))), ())
-                query = Message.query.filter_by(account_id=account_id).\
-                    filter(Message.id.in_(ids)).order_by(Message.id.desc())
-            else:
-                query = Message.unread(account_id)
-            messages = query.all()
-
-            if messages and messages[0].account.nickname in zync:
-                ids = [m.id for m in messages]
-                #zync[messages[0].account.nickname][1].put(['read', ids])
+                query = query.filter(Message.id.in_(ids))
+            query = query.order_by(Message.id.desc())
+            messages = query.limit(request.args.get('limit', 200)).all()
 
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'nov':
