@@ -20,6 +20,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json_encoder = MyJSONEncoder
 db = SQLAlchemy(app)
 zync = dict()
+get_sync = lambda account: NnSync.from_account(account, sync_config)
 
 from nnsync import NnSync
 import nngmail.views
@@ -61,6 +62,7 @@ def load_config():
     except IOError:
         print('Error: reading config file (%s)' % config_file)
         return {}
-    
+sync_config = load_config()
+
 app.cli.add_command(init_db_command)
 app.cli.add_command(import_email)
