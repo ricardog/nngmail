@@ -107,7 +107,7 @@ class Sqlite3():
             msgs = (msgs, )
         session = db.session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
-                   'Message-ID', 'References']
+                   'Message-ID', 'Message-Id', 'References']
         for msg in msgs:
             if 'headers' not in msg['payload']:
                 ## Some message s(drafts?) don't have any headers (nor
@@ -117,6 +117,8 @@ class Sqlite3():
                            filter(lambda h: h['name'] in keepers,
                                   msg['payload']['headers']))
             default_id = '<%s@mail.gmail.com>' % msg['id']
+            message_id = headers.get('Message-ID',
+                                     headers.get('Message-Id', default_id))
             senders = self.__new_contacts(headers.get('From',
                                                       headers.get('from', '')))
             if not senders:
@@ -135,8 +137,7 @@ class Sqlite3():
 
             session.add(Message(account=self.account, google_id=msg['id'],
                                 thread=thread,
-                                message_id=headers.get('Message-ID',
-                                                       default_id),
+                                message_id=message_id,
                                 subject=headers.get('Subject',
                                                     headers.get('subject', '')),
                                 references=headers.get('References', ''),
