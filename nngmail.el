@@ -15,6 +15,7 @@
   (require 'cl))
 
 (require 'ht)
+(require 'url-http)
 (require 'nnheader)
 (require 'gnus-util)
 (require 'gnus)
@@ -145,7 +146,6 @@ What I call an account in the server is what gnus calls a server.  This list has
  be called in a `save-excursion', in the download buffer.  It
  will move point to somewhere in the headers."
    ;; We assume HTTP here.
-   (require 'url-http)
    (let ((response (url-http-parse-response)))
      (when (or (< response 200) (>= response 300))
        (let ((json-object-type 'plist)
@@ -247,7 +247,7 @@ store in `nngmail-servers` for fast access."
   (let ((servers (nngmail-get-accounts)))
     (when (not (assoc server servers))
       (nnheader-report
-       'nngmail (format "You are ntot syncing %s" server)))
+       'nngmail (format "You are not syncing %s" server)))
     (push (cons server (cdr (assoc server servers))) nngmail-servers))
   (progn
     (and
@@ -294,19 +294,65 @@ accounts alist."
   (or (nngmail-get-account-message (or server nngmail-last-account))
       nngmail-status-string))
 
+(defun nngmail-handle-article-request-response (buffer)
+  "Check for errors when fetching articles."
+  (let (rbuffer)
+    (with-current-buffer buffer
+      (let ((response (url-http-parse-response)))
+	(cond
+	 ((= response 409)
+	  ;; Message not available, retry
+	  (setq rbuffer nil))
+	 ((or (< response 200) (>= response 300))
+	  (let ((json-object-type 'plist)
+		(json-key-type 'symbol)
+		(json-array-type 'vector))
+	    (goto-char (point-min))
+	    (re-search-forward "^$")
+	    (setq nngmail-status-string
+		  (nngmail-get-error-string (json-read)))
+	    (setq rbuffer nil)))
+	 (t
+	  ;;(error "Error: nngmail server responded with error"))))
+	  (setq rbuffer buffer)))))
+    (when (not rbuffer)
+      (kill-buffer buffer))
+    rbuffer))
+
+(defun nngmail-fetch-article (url)
+  "Issue an http request for article.  Check the response and
+retry if necessary--which happens when the article needs to be
+read from gmail."
+  (let ((retries 2)
+	buffer)
+    (while (and (not buffer) (> retries 0))
+      (setq buffer (nngmail-handle-article-request-response
+		    (url-retrieve-synchronously url t)))
+      (setq retries (- retries 1))
+      (when (not buffer)
+	(sleep-for 0 400)))
+    buffer))
+
+(defun nngmail-message-id-to-id (article account)
+  "Query the server to map a Message-ID to the message's ID (the
+primary key in the database)."
+  (let* ((query (format "message_id=%s" article))
+	 (message (nngmail-fetch-resource "message" nil account
+					  `((q . ,query)))))
+    (plist-get message 'id)))
+ 
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
+  (when (not server)
+    (setq server (or server nngmail-last-account)))
   (when (stringp article)
-    (let* ((account (or server nngmail-last-account))
-	   (query (format "message_id=%s" article))
-	   (message (nngmail-fetch-resource "message" nil account
-					    `((q . ,query)))))
-      (setq article (plist-get message 'id))))
-  (let* ((url (nngmail-url-for "message" article nil '((format . "raw"))))
-	 (buffer (url-retrieve-synchronously url t)))
-    (with-current-buffer (or to-buffer nntp-server-buffer)
+    (setq article (nngmail-message-id-to-id article article server)))
+  (let* ((dest-buffer (or to-buffer nntp-server-buffer))
+	 (url (nngmail-url-for "message" article nil '((format . "raw"))))
+	 (buffer (nngmail-fetch-article url)))
+    (with-current-buffer dest-buffer
       (erase-buffer)
       (url-insert-buffer-contents buffer url nil)
       (kill-buffer buffer)
