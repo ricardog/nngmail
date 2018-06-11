@@ -3,8 +3,9 @@ import click
 from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
 from sqlalchemy.orm import undefer
+import urllib
 
-from nngmail import db, zync
+from nngmail import db, get_sync, zync
 from nngmail.models import Account, Message
 
 # FIXME: To create a url for a resource use
@@ -55,12 +56,9 @@ class MessageAPI(MethodView):
                 message = Message.query.options(undefer('_raw')).get(message_id)
                 # FIXME: use stream_with_context?
                 if message.raw is None:
-                    if message.account.nickname in zync:
-                        zync[message.account.nickname][1].put(['read',
-                                                               [message.id]])
-                    return make_response(jsonify({'error':
-                                                  'Message not available'}),
-                                         409)
+                    click.echo('fetching message %d' % message.id)
+                    sync = get_sync(message.account).read(message.id)
+                    message = Message.query.get(message_id)
                 return make_response(message.raw)
             return jsonify(message)
 
