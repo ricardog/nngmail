@@ -436,7 +436,8 @@ primary key in the database)."
 	 (url (nngmail-url-for "message" nil
 			      (nngmail-get-account-id account)
 			      `((format . "nov")
-				(id . ,ids))))
+				(id . ,ids)
+				(label . ,group))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
       (erase-buffer)
