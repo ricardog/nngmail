@@ -343,9 +343,9 @@ primary key in the database)."
 	 (resource (nngmail-fetch-resource "message" nil
 					  (nngmail-get-account-id account)
 					  `((q . ,query))))
-	 (messages (plist-get resource 'messages))
-	 (message (aref messages 0)))
-    (plist-get message 'id)))
+	 (messages (plist-get resource 'messages)))
+    (and (> (length messages) 0)
+	 (plist-get (aref messages 0) 'id))))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
