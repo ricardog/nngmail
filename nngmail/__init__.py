@@ -13,11 +13,22 @@ class MyJSONEncoder(JSONEncoder):
             return o.serialize()
         return super(MyJSONEncoder, self).default(o)
 
+class SQLiteAlchemy(SQLAlchemy):
+    def apply_driver_hacks(self, app, info, options):
+        options.update({
+            #'isolation_level': 'AUTOCOMMIT', 
+            #'encoding': 'latin1', 
+            'echo': True
+        })
+        super(SQLiteAlchemy, self).apply_driver_hacks(app, info, options)
+
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../data/nngmail.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SQLALCHEMY_ECHO'] = True
 app.json_encoder = MyJSONEncoder
+#db = SQLiteAlchemy(app)
 db = SQLAlchemy(app)
 zync = dict()
 get_sync = lambda account: NnSync.from_account(account, sync_config)
