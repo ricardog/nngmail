@@ -194,7 +194,7 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     account = db.relationship('Account',
                               backref=backref('labels', cascade='all,delete'))
     messages = db.relationship('Message', secondary=label_association,
-                               lazy='selectin', passive_deletes=True,
+                               lazy='dynamic', passive_deletes=True,
                                back_populates='labels')
 
     @classmethod
@@ -351,9 +351,10 @@ class Message(TimestampMixin, Serializeable, db.Model):
             query = query.filter(Message.account_id == account_id)
         query = query.filter(Label.name == label_name)
         return query
-    
+
     def serialize(self):
         return Serializeable.serialize(self, omit=('_raw', 'raw',
                                                           'account',
                                                           'thread',
                                                           'addressees'))
+
