@@ -131,9 +131,12 @@ What I call an account in the server is what gnus calls a server.  This list has
   (let ((base-url (if account-id
 		      (format "%s/accounts/%d" nngmail-base-url account-id)
 		    nngmail-base-url))
-	(url-args (mapconcat (function (lambda (value)
-					 (format "%s=%s" (car value)
-						 (cdr value))))
+	(url-args
+	 (mapconcat (function (lambda (value)
+				(format "%s=%s" (car value)
+					(if (stringp (cdr value))
+					    (url-hexify-string (cdr value))
+					  (cdr value)))))
 			     args "&")))
     (if id
 	(format "%s/%ss/%d?%s" base-url resource id url-args)
