@@ -5,6 +5,7 @@ from nngmail.models import Contact
 from nngmail.views.account import AccountAPI
 from nngmail.views.message import MessageAPI
 from nngmail.views.label import LabelAPI
+from nngmail.views.thread import ThreadAPI
 
 
 @app.route('/')
@@ -38,6 +39,14 @@ app.add_url_rule(acct_base + '/labels/', defaults={'label_id': None},
 app.add_url_rule(base + '/labels/<int:label_id>',
                  defaults={'account_id': None},
                  view_func=label_view,
+                 methods=['GET', 'DELETE'])
+
+thread_view = ThreadAPI.as_view('thread_api')
+app.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
+                 view_func=thread_view, methods=['GET',])
+app.add_url_rule(base + '/threads/<int:thread_id>',
+                 defaults={'account_id': None},
+                 view_func=thread_view,
                  methods=['GET', 'DELETE'])
 
 @app.route('/api/v1.0/contacts', methods=['GET'])
