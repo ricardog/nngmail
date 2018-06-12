@@ -355,18 +355,21 @@ primary key in the database)."
     (setq server (or server nngmail-last-account)))
   (when (stringp article)
     (setq article (nngmail-message-id-to-id article server)))
-  (let* ((dest-buffer (or to-buffer nntp-server-buffer))
-	 (url (nngmail-url-for "message" article nil '((format . "raw"))))
-	 (buffer (nngmail-fetch-article url)))
-    (with-current-buffer dest-buffer
-      (erase-buffer)
-      (url-insert-buffer-contents buffer url nil)
-      (kill-buffer buffer)
-      (goto-char (point-min))
+  (if article
+      (let* ((dest-buffer (or to-buffer nntp-server-buffer))
+	     (url (nngmail-url-for "message" article nil '((format . "raw"))))
+	     (buffer (nngmail-fetch-article url)))
+	(with-current-buffer dest-buffer
+	  (erase-buffer)
+	  (url-insert-buffer-contents buffer url nil)
+	  (kill-buffer buffer)
+	  (goto-char (point-min))
       ;;; FIXME: is this necessary?
       ;;;(nnheader-insert-buffer-substring buffer)
-      (nnheader-ms-strip-cr)))
-  (cons group article))
+	  (nnheader-ms-strip-cr))
+	(cons group article))
+    nil))
+    
 
 (deffoo nngmail-request-group (group &optional server fast info)
   "Retrieve information about GROUP."
