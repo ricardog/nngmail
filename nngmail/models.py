@@ -224,7 +224,7 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         query = query.group_by(label_association.c.label_id)
         return query
 
-class Thread(UniqueMixin, db.Model):
+class Thread(UniqueMixin, Serializeable, db.Model):
     db.UniqueConstraint('account_id', 'tid', name='tid_1')
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
@@ -251,7 +251,10 @@ class Thread(UniqueMixin, db.Model):
 
     def __repr__(self):
         return '%d: %s' % (self.id, self.tid)
-    
+
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('account', 'messages'))
+
 class Message(TimestampMixin, Serializeable, db.Model):
     db.UniqueConstraint('account_id', 'google_id', name='id_1')
 
