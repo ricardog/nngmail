@@ -455,6 +455,25 @@ primary key in the database)."
       (nnheader-remove-cr-followed-by-lf)))
   'nov)
 
+(deffoo nngmail-request-thread (header &optional group server)
+  (when group
+    (setq group (nnimap-decode-gnus-group group)))
+  (message (format "in nngmail-request-tread  %d" (elt header 0)))
+  (let* ((message (nngmail-fetch-resource "message" (elt header 0) nil))
+	 (thread-id (plist-get message 'thread_id))
+	 (url (nngmail-url-for "thread" thread-id nil
+			       `((format . "nov"))))
+	 (buffer (url-retrieve-synchronously url t)))
+    (with-current-buffer nntp-server-buffer
+      (erase-buffer)
+      (url-insert-buffer-contents buffer url nil)
+      (kill-buffer buffer)
+      (goto-char (point-min))
+      ;;; FIXME: is this necessary?
+      ;;;(nnheader-insert-buffer-substring buffer)
+      (nnheader-remove-cr-followed-by-lf)))
+  t)
+
 (deffoo nngmail-request-post (&optional server)
   (let ((account (or server nngmail-last-account)))
     (if account
