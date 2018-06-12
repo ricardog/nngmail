@@ -28,7 +28,6 @@ class MessageAPI(MethodView):
                 query = Message.query.filter_by(account_id=account_id)
             if 'q' in request.args:
                 ## FIXME: generalize search query parameters
-                #import pdb; pdb.set_trace()
                 q = urllib.parse.unquote(request.args['q'])
                 filters.update(dict([q.split('=', 1)]))
                 query = query.filter_by(**filters)
@@ -37,15 +36,20 @@ class MessageAPI(MethodView):
                               map(lambda s: s.split(':'),
                                   request.args['id'].split(','))), ())
                 query = query.filter(Message.id.in_(ids))
+            if 'thread_id' in request.args:
+                query = query.filter(thread_id=request.args('thread_id'))
             query = query.order_by(Message.id.desc())
-            messages = query.limit(request.args.get('limit', 200)).all()
+            if 'id' not in request.args:
+                query = query.limit(request.args.get('limit', 200))
+            #import pdb; pdb.set_trace()
+            messages = query.all()
 
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'nov':
                 return render_template('nov.txt', messages=messages)
             if fmt.lower() == 'header':
                 return render_template('header.txt', messages=messages)
-            return jsonify({'messages': query.all()})
+            return jsonify({'messages': messages})
         else:
             ## Return single
             message = Message.query.get(message_id)
