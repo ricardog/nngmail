@@ -14,6 +14,11 @@ class MyJSONEncoder(JSONEncoder):
         return super(MyJSONEncoder, self).default(o)
 
 class SQLiteAlchemy(SQLAlchemy):
+    """This class is for logging all the queires to STDOUT.  But see
+https://stackoverflow.com/questions/31128764/show-the-sql-generated-by-flask-sqlalchemy#31129002
+    For a different approach to retrieving information about queries.
+    """
+
     def apply_driver_hacks(self, app, info, options):
         options.update({
             #'isolation_level': 'AUTOCOMMIT', 
