@@ -438,11 +438,10 @@ primary key in the database)."
     (setq group (nngmail-decode-gnus-group group)))
   (message (format "in nngmail-retrieve-headers for %s" group))
   (let* ((account (or server nngmail-last-account))
-	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
 	 (url (nngmail-url-for "message" nil
 			      (nngmail-get-account-id account)
 			      `((format . "nov")
-				(id . ,ids)
+				(limit . ,(length articles))
 				(label . ,group))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
