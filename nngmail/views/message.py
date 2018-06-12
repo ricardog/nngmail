@@ -23,7 +23,7 @@ class MessageAPI(MethodView):
             ## Return list
             filters = {}
             if 'label' in request.args:
-                query = Message.by_label(account_id, request.args['label'])
+                query = Message.by_label(account_id, request.args['label']).distinct()
             else:
                 query = Message.query.filter_by(account_id=account_id)
             if 'q' in request.args:
@@ -41,7 +41,6 @@ class MessageAPI(MethodView):
             query = query.order_by(Message.id.desc())
             if 'id' not in request.args:
                 query = query.limit(request.args.get('limit', 200))
-            #import pdb; pdb.set_trace()
             messages = query.all()
 
             fmt = request.args.get('format', 'json')
