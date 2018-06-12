@@ -199,11 +199,10 @@ class Sqlite3():
         return sum(query.all(), ())
 
     def delete(self, gids):
-        msgs = self.find_by_gid(gids)
-        if msgs:
-            session = db.session()
-            session.delete(msgs)
-            session.commit()
+        query = Message.query.filter(Message.google_id.in_(gids)).\
+            filter_by(account=self.account).\
+            delete(synchronize_session=False)
+        db.session.commit()
 
     def __set_kv(self, key, value):
         session = db.session()
