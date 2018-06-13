@@ -13,9 +13,11 @@ class LabelAPI(MethodView):
     def get(self, account_id, label_id):
         if not label_id:
             ## Return list
-            if 'info' in request.args:
+            fmt = request.args.get('format', 'json')
+            if fmt == 'info':
                 data = Label.info(account_id).all()
-                info = tuple((dict(zip(['id', 'name', 'gid', 'min', 'max', 'count'], e)))
+                info = tuple((dict(zip(['id', 'name', 'gid', 'min',
+                                        'max', 'count'], e)))
                              for e in data)
                 return jsonify({'labels': info})
             query = Label.query.filter_by(account_id=account_id).\
@@ -39,27 +41,26 @@ class LabelAPI(MethodView):
         db.session().commit()
         return jsonify({'result': True})
 
-    @classmethod
-    def lookup_by_name(cls, account, label, view_func):
-        if isinstance(account, str):
-            account_id = Account.query.filter_by(nickname=account).\
-                first_or_404().id
-        elif isinstance(account, int):
-            account_id = account
-        elif account is None:
-            account_id = None
-        else:
-            abort(404)
+def lookup_by_name(account, label, view_func):
+    if isinstance(account, str):
+        account_id = Account.query.filter_by(nickname=account).\
+            first_or_404().id
+    elif isinstance(account, int):
+        account_id = account
+    elif account is None:
+        account_id = None
+    else:
+        abort(404)
 
-        if isinstance(label, str):
-            label_id = Label.query.filter_by(name=label).first_or_404().id
-        elif isinstance(label, int):
-            label_id = label
-        elif label is None:
-            label_id = None
-        else:
-            abort(404)
-        return view_func(account_id, label_id)
+    if isinstance(label, str):
+        label_id = Label.query.filter_by(name=label).first_or_404().id
+    elif isinstance(label, int):
+        label_id = label
+    elif label is None:
+        label_id = None
+    else:
+        abort(404)
+    return view_func(account_id, label_id)
 
 
 label_view = LabelAPI.as_view('label_api')
@@ -72,8 +73,12 @@ app.add_url_rule(base + '/labels/<int:label_id>',
     
 @app.route(acct_base + '/labels/<string:label>')
 def label_by_name(account_id, label):
-    return LabelAPI.lookup_by_name(account_id, label, label_view)
+    return lookup_by_name(account_id, label, label_view)
 
 @app.route(acct_nick_base + '/labels/<string:label>')
 def label_by_name2(nickname, label):
-    return LabelAPI.lookup_by_name(nickname, label, label_view)
+    return lookup_by_name(nickname, label, label_view)
+
+@app.route(acct_nick_base + '/labels/')
+def label_by_name3(nickname):
+    return lookup_by_name(nickname, None, label_view)
