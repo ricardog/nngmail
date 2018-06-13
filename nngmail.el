@@ -88,6 +88,9 @@ What I call an account in the server is what gnus calls a server.  This list has
 (defun nngmail-set-account-group (nickname group)
   (setcdr (assoc 'group (assoc nickname nngmail-servers)) group))
 
+(defun nngmail-get-group-id (nickname group)
+  (cdr (assq 'id (ht-get (nngmail-get-groups nickname) group))))
+
 (defun nngmail-get-group-min (nickname group)
   (cdr (assq 'min (ht-get (nngmail-get-groups nickname) group))))
 
@@ -128,9 +131,12 @@ What I call an account in the server is what gnus calls a server.  This list has
 
 (defun nngmail-url-for (resource &optional id account-id args)
   "Generate a URL to probe the resource."
-  (let ((base-url (if account-id
-		      (format "%s/accounts/%d" nngmail-base-url account-id)
-		    nngmail-base-url))
+  (let ((base-url (cond
+		   ((stringp account-id)
+		    (format "%s/accounts/%s" nngmail-base-url account-id))
+		   (account-id
+		    (format "%s/accounts/%d" nngmail-base-url account-id))
+		   (t nngmail-base-url)))
 	(url-args
 	 (mapconcat (function (lambda (value)
 				(format "%s=%s" (car value)
@@ -219,9 +225,8 @@ and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
   (message (format "in nngmail-get-groups for %s" server))
   (let* ((groups (nngmail-get-account-groups server))
-	 (account-id (nngmail-get-account-id server))
-	 (resource (nngmail-fetch-resource "label" nil account-id
-					   '((info . 1))))
+	 (resource (nngmail-fetch-resource "label" nil server
+					   '((format . "info"))))
 	 (data (plist-get resource 'labels))
 	 (tmp ()))
     (seq-map
@@ -353,22 +358,20 @@ primary key in the database)."
     (setq group (nngmail-decode-gnus-group group)))
   (when (not server)
     (setq server (or server nngmail-last-account)))
-  (when (stringp article)
-    (setq article (nngmail-message-id-to-id article server)))
-  (if article
-      (let* ((dest-buffer (or to-buffer nntp-server-buffer))
-	     (url (nngmail-url-for "message" article nil '((format . "raw"))))
-	     (buffer (nngmail-fetch-article url)))
-	(with-current-buffer dest-buffer
-	  (erase-buffer)
-	  (url-insert-buffer-contents buffer url nil)
-	  (kill-buffer buffer)
-	  (goto-char (point-min))
+  (let* ((dest-buffer (or to-buffer nntp-server-buffer))
+	 (url (nngmail-url-for "message" article server '((format . "raw"))))
+	 (buffer (nngmail-fetch-article url)))
+    (if buffer
+      (with-current-buffer dest-buffer
+	(erase-buffer)
+	(url-insert-buffer-contents buffer url nil)
+	(kill-buffer buffer)
+	(goto-char (point-min))
       ;;; FIXME: is this necessary?
       ;;;(nnheader-insert-buffer-substring buffer)
-	  (nnheader-ms-strip-cr))
+	(nnheader-ms-strip-cr)
 	(cons group article))
-    nil))
+      nil)))
     
 
 (deffoo nngmail-request-group (group &optional server fast info)
@@ -383,6 +386,8 @@ primary key in the database)."
       (when result
 	(and (not fast)
 	     (nngmail-get-groups account))
+	(when info
+	  (nngmail-update-info group account info))
 	(erase-buffer)
 	(insert (format "211 %d %d %d %S\n"
 			(nngmail-get-group-count account group)
@@ -438,6 +443,11 @@ primary key in the database)."
     (setq group (nngmail-decode-gnus-group group)))
   (message (format "in nngmail-retrieve-headers for %s" group))
   (let* ((account (or server nngmail-last-account))
+	 (limit (or (and (eq fetch-old t)
+			 (min (nngmail-get-group-count account group) 5000))
+		    fetch-old
+		    (length articles)))
+	 ;;(ids (nngmail-article-ranges (gnus-compress-sequence articles)))
 	 (url (nngmail-url-for "message" nil
 			      (nngmail-get-account-id account)
 			      `((format . "nov")
@@ -496,42 +506,86 @@ primary key in the database)."
     (download "download")
     (forward "forward")))
 
+(deffoo nngmail-retrive-groups (groups &optional server)
+  (message (format "in nngmail-retrieve-group"))
+  (nngmail-request-list server)
+  'active)
+
+(defun v2l (arg)
+  (if (vectorp arg)
+      `(,(elt arg 0) .  ,(elt arg 1))
+    arg))
+
+(defun vector-to-list (vec)
+  (cl-map 'list #'v2l vec))
+
+(deffoo nngmail-update-info (group account info)
+  (message (format "in nngmail-request-update-info for %s" group))
+  (let* ((resource (nngmail-fetch-resource
+		    "label" (nngmail-get-group-id account group)
+		    nil '((flags . 1))))
+	 (flags (plist-get resource 'flags))
+	 (marks (gnus-info-marks info)))
+    (gnus-info-set-read info (vector-to-list (plist-get flags 'seen)))
+    (dolist (type (list 'unseen 'unexist))
+      (message (symbol-name type))
+      (let ((new-list (vector-to-list (plist-get flags type))))
+	(if (assoc type marks)
+	    (setcdr (assoc type marks) new-list)
+	  (push (cons type new-list) marks))))
+    (gnus-info-set-marks info marks)
+    ))
+
+(deffoo nngmail-finish-retrieve-group-infos (server infos sequences
+						    &optional dont-insert)
+  (message (format "in nngmail-request-update-infos for %s" group))
+  ;; Iterate through all groups updating flags in group info.
+  nil)
+
 (deffoo nngmail-request-set-mark (group action &optional server)
   "Set/remove/add marks on articles."
   ;;; ACTION is a list of mark setting requests, having this format:
   ;;; (RANGE ACTION MARK)
   ;;; Gnus marks are:
+  (message (format "in nngmail-request-set-mark for %s" group))
   nil)
 
-(deffoo nngmail-request-scan (&optional group server)
+(deffoo nngmail-request-scan-fixme (&optional group server)
   "Check for new articles.  If possible only on GROUP (although
 that makes no sense for this backend since new (unread) mail will
 appear in INBOX."
+  (message (format "in nngmail-request-scan %s" group))
   nil)
 
 (deffoo nngmail-request-newsgroups (date &optional server)
   "Returns a list of newsgroups created after DATE."
+  (message (format "in nngmail-request-newsgroups %s" date))
   nil)
 
 (deffoo nngmail-request-expire-articles (articles &optional group server force)
   "Expire articles."
+  (message (format "in nngmail-request-expire-articles %s" group))
   nil)
 
 (deffoo nngmail-request-move-article (article group server accept-form
 					      &optional last)
   "Move article to a new group."
+  (message (format "in nngmail-request-move-article %d" article))
   nil)
 
 (deffoo nngmail-request-accept-article (group &optional server last)
   "Used for respooling?"
+  (message (format "in nngmail-request-accept-article %d" article))
   nil)
 
 (deffoo nngmail-request-delete-group (group force &optional server)
   ""
+  (message (format "in nngmail-request-delete-group %s" group))
   nil)
 
 (deffoo nngmail-request-rename-group (group new-name &optional server)
   ""
+  (message (format "in nngmail-request-rename-group %s" group))
   nil)
 
 
