@@ -3,8 +3,9 @@ import click
 from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
 
-from nngmail import db
+from nngmail import app, db
 from nngmail.models import Account, Thread
+from nngmail.views.utils import base, acct_base, acct_nick_base
 
 class ThreadAPI(MethodView):
     def get(self, account_id, thread_id):
@@ -32,3 +33,12 @@ class ThreadAPI(MethodView):
         db.session().delete(thread)
         db.session().commit()
         return jsonify({'result': True})
+
+thread_view = ThreadAPI.as_view('thread_api')
+app.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
+                 view_func=thread_view, methods=['GET',])
+app.add_url_rule(base + '/threads/<int:thread_id>',
+                 defaults={'account_id': None},
+                 view_func=thread_view,
+                 methods=['GET', 'DELETE'])
+    

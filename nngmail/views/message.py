@@ -1,24 +1,20 @@
 import click
-
 from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
 from sqlalchemy.orm import undefer
 import urllib
 
-from nngmail import db, get_sync, zync
+from nngmail import app, db, get_sync, zync
 from nngmail.models import Account, Message
-
-# FIXME: To create a url for a resource use
-# click.echo(url_for('message_api', account_id=1))
-# click.echo(url_for('message_api', message_id=message.id))
-
-def to_range(r):
-    if len(r) == 2:
-        return tuple(range(int(r[0]), int(r[1])+1))
-    return (int(r[0]), )
+from nngmail.views.utils import base, acct_base, acct_nick_base
 
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
+        def to_range(r):
+            if len(r) == 2:
+                return tuple(range(int(r[0]), int(r[1])+1))
+            return (int(r[0]), )
+
         if not message_id:
             ## Return list
             filters = {}
@@ -96,3 +92,20 @@ class MessageAPI(MethodView):
         db.session().delete(message)
         db.session().commit()
         return jsonify({'result': True})
+
+
+## Message resource
+message_view = MessageAPI.as_view('message_api')
+app.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
+                 view_func=message_view, methods=['GET', 'PUT'])
+app.add_url_rule(base + '/messages/<int:message_id>',
+                 defaults={'account_id': None},
+                 view_func=message_view,
+                 methods=['GET', 'PUT', 'DELETE'])
+@app.route(acct_nick_base + '/messages/<string:message_id>')
+def message_by_message_id(nickname, message_id):
+    mid = urllib.parse.unquote(message_id)
+    account = Account.query.filter_by(nickname=nickname).first_or_404()
+    return message_view(None,
+                        Message.query.filter_by(account_id=account.id).\
+                        filter_by(message_id=mid).first_or_404().id)
