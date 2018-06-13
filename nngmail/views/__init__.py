@@ -14,6 +14,7 @@ def index():
 
 base = '/api/v1.0'
 acct_base = base + '/accounts/<int:account_id>'
+acct_nick_base = base + '/accounts/<string:nickname>'
 
 ## Account resource
 account_view = AccountAPI.as_view('account_api')
@@ -41,6 +42,14 @@ app.add_url_rule(base + '/labels/<int:label_id>',
                  view_func=label_view,
                  methods=['GET', 'DELETE'])
 
+@app.route(acct_base + '/labels/<string:label>')
+def label_get_by_name(account_id, label):
+    return LabelAPI.lookup_by_name(account_id, label, label_view)
+
+@app.route(acct_nick_base + '/labels/<string:label>')
+def label_get_by_name2(nickname, label):
+    return LabelAPI.lookup_by_name(nickname, label, label_view)
+                          
 thread_view = ThreadAPI.as_view('thread_api')
 app.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
                  view_func=thread_view, methods=['GET',])
