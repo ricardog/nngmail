@@ -191,10 +191,8 @@ What I call an account in the server is what gnus calls a server.  This list has
 	 retval)
      ,@clean-up))
 
-(defun nngmail-fetch-resource (resource &optional id account-id args)
-  "Retrieve a resource from the nngmail server."
-  (let* ((url (nngmail-url-for resource id account-id args))
-	 (buffer (condition-case ex
+(defun nngmail-fetch-resource-url (url)
+  (let* ((buffer (condition-case ex
 		     (url-retrieve-synchronously url t)
 		   ('file-error
 		    (message (format "Connection error fetching %s" url))
@@ -209,6 +207,11 @@ What I call an account in the server is what gnus calls a server.  This list has
 			(kill-buffer buffer)
 			))))
     response))
+
+(defun nngmail-fetch-resource (resource &optional id account-id args)
+  "Retrieve a resource from the nngmail server."
+  (let* ((url (nngmail-url-for resource id account-id args)))
+    (nngmail-fetch-resource-url url)))
 
 (defun nngmail-get-accounts ()
   "Get a list of accounts, with their respective ID's, nicknames,
@@ -525,8 +528,10 @@ primary key in the database)."
 
 (deffoo nngmail-update-info (group account info)
   (message (format "in nngmail-request-update-info for %s" group))
-  (let* ((resource (nngmail-fetch-resource "label"  group account
-					   '((flags . 1))))
+  (let* ((url (concat
+	       (substring (nngmail-url-for "label" group account) 0 -1)
+	       "/flags"))
+	 (resource (nngmail-fetch-resource-url url))
 	 (flags (plist-get resource 'flags))
 	 (marks (gnus-info-marks info)))
     (gnus-info-set-read info (vector-to-list (plist-get flags 'seen)))
