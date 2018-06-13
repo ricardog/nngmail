@@ -29,8 +29,6 @@ class LabelAPI(MethodView):
             if not label:
                 return make_response(jsonify({'error': 'Label not found'}),
                                      404)
-            if 'flags' in request.args:
-                return jsonify({'flags': flags(label_id)})
             return jsonify(label)
 
     def delete(self, account_id, label_id):
