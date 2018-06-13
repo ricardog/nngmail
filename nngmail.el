@@ -144,9 +144,13 @@ What I call an account in the server is what gnus calls a server.  This list has
 					    (url-hexify-string (cdr value))
 					  (cdr value)))))
 			     args "&")))
-    (if id
-	(format "%s/%ss/%d?%s" base-url resource id url-args)
-      (format "%s/%ss/?%s" base-url resource url-args))))
+    (cond
+     ((stringp id)
+      (format "%s/%ss/%s?%s" base-url resource id url-args))
+     (id
+      (format "%s/%ss/%d?%s" base-url resource id url-args))
+     (t
+      (format "%s/%ss/?%s" base-url resource url-args)))))
 
 (defun nngmail-handle-response ()
   "Handle the response from a `url-retrieve-synchronously' call.
@@ -521,9 +525,8 @@ primary key in the database)."
 
 (deffoo nngmail-update-info (group account info)
   (message (format "in nngmail-request-update-info for %s" group))
-  (let* ((resource (nngmail-fetch-resource
-		    "label" (nngmail-get-group-id account group)
-		    nil '((flags . 1))))
+  (let* ((resource (nngmail-fetch-resource "label"  group account
+					   '((flags . 1))))
 	 (flags (plist-get resource 'flags))
 	 (marks (gnus-info-marks info)))
     (gnus-info-set-read info (vector-to-list (plist-get flags 'seen)))
@@ -550,11 +553,17 @@ primary key in the database)."
   (message (format "in nngmail-request-set-mark for %s" group))
   nil)
 
-(deffoo nngmail-request-scan-fixme (&optional group server)
+(deffoo nngmail-request-scan (group &optional server info)
   "Check for new articles.  If possible only on GROUP (although
 that makes no sense for this backend since new (unread) mail will
 appear in INBOX."
   (message (format "in nngmail-request-scan %s" group))
+  (when group
+    (setq group (nngmail-decode-gnus-group group)))
+  (let ((account (or server nngmail-last-account)))
+    (nngmail-get-groups account)
+    (when info
+      (nnimap-update-info group account info)))
   nil)
 
 (deffoo nngmail-request-newsgroups (date &optional server)
