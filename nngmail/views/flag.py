@@ -42,4 +42,4 @@ def flags(label_id):
         unexist = all_mids - mids
     flags = {'seen': find_ranges(seen), 'unseen': find_ranges(unseen),
              'unexist': find_ranges(unexist)}
-    return jsonify({'flags': flags(label_id)})
+    return jsonify({'flags': flags})
