@@ -110,7 +110,8 @@ def message_by_id(nickname, message_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return message_view(None, Message.query.get_or_404(message_id).id)
 
-@app.route(acct_nick_base + '/messages/<string:message_id>')
+@app.route(acct_nick_base + '/messages/<string:message_id>',
+           methods=['GET', 'PUT', 'DELETE'])
 def message_by_message_id(nickname, message_id):
     mid = urllib.parse.unquote(message_id)
     account = Account.query.filter_by(nickname=nickname).first_or_404()
