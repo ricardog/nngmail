@@ -1,4 +1,5 @@
 import click
+from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
 
@@ -22,7 +23,8 @@ def find_ranges(seq):
 @app.route(acct_nick_base + '/labels/<string:label>/flags')
 def flags_by_name(nickname, label):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return flags(Label.query.filter(Label.account == account).first_or_404().id)
+    return flags(Label.query.filter(Label.account == account).\
+                 filter_by(name=label).first_or_404().id)
 
 @app.route(acct_base + '/labels/<int:label_id>/flags')
 def flags(label_id):
@@ -33,13 +35,24 @@ def flags(label_id):
                      messages.with_entities(Message.id).\
                      order_by(Message.id.asc()).all(), ()))
     if not mids:
-        unseen = ()
         unexist = ()
     else:
         all_mids = set(range(min(mids), max(mids) + 1))
-        seen = all_mids - mids
-        unseen = mids & unread
         unexist = all_mids - mids
-    flags = {'seen': find_ranges(seen), 'unseen': find_ranges(unseen),
-             'unexist': find_ranges(unexist)}
-    return jsonify({'flags': flags})
+    flags = {'unexist': find_ranges(unexist)}
+
+    if ('timestamp_low' in request.args and
+        'timestamp_high' in request.args):
+        low = request.args.get('timestamp_low', 0, int)
+        high = request.args.get('timestamp_high', 0, int) << 16
+        timestamp = datetime.fromtimestamp(low + high)
+        click.echo("low : %d" % low)
+        click.echo("high: %d" % high)
+        click.echo(timestamp)
+        unseen = set(sum(Label.query.get_or_404(label_id).messages.\
+                         with_entities(Message.id).\
+                         filter(Message.date > timestamp).\
+                         order_by(Message.id.asc()).all(), ()))
+        flags.update({'unseen': find_ranges(unseen)})
+
+    return jsonify(flags)
