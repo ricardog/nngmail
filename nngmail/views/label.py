@@ -68,15 +68,11 @@ app.add_url_rule(base + '/labels/<int:label_id>',
                  defaults={'account_id': None},
                  view_func=label_view,
                  methods=['GET', 'DELETE'])
-    
-@app.route(acct_base + '/labels/<string:label>')
-def label_by_name(account_id, label):
-    return lookup_by_name(account_id, label, label_view)
-
-@app.route(acct_nick_base + '/labels/<string:label>')
-def label_by_name2(nickname, label):
-    return lookup_by_name(nickname, label, label_view)
 
 @app.route(acct_nick_base + '/labels/')
-def label_by_name3(nickname):
+def account_labels(nickname):
     return lookup_by_name(nickname, None, label_view)
+
+@app.route(acct_nick_base + '/labels/<string:label>')
+def label_by_name(nickname, label):
+    return lookup_by_name(nickname, label, label_view)
