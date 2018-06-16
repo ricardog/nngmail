@@ -129,7 +129,7 @@ What I call an account in the server is what gnus calls a server.  This list has
 		 (max . ,max)
 		 (count . ,count)))))
 
-(defun nngmail-url-for (resource &optional id account-id args)
+(defun nngmail-url-for (resource &optional account-id id args)
   "Generate a URL to probe the resource."
   (let ((base-url (cond
 		   ((stringp account-id)
@@ -137,6 +137,7 @@ What I call an account in the server is what gnus calls a server.  This list has
 		   (account-id
 		    (format "%s/accounts/%d" nngmail-base-url account-id))
 		   (t nngmail-base-url)))
+	(res-name (symbol-name resource))
 	(url-args
 	 (mapconcat (function (lambda (value)
 				(format "%s=%s" (car value)
@@ -146,11 +147,11 @@ What I call an account in the server is what gnus calls a server.  This list has
 			     args "&")))
     (cond
      ((stringp id)
-      (format "%s/%ss/%s?%s" base-url resource id url-args))
+      (format "%s/%ss/%s?%s" base-url res-name id url-args))
      (id
-      (format "%s/%ss/%d?%s" base-url resource id url-args))
+      (format "%s/%ss/%d?%s" base-url res-name id url-args))
      (t
-      (format "%s/%ss/?%s" base-url resource url-args)))))
+      (format "%s/%ss/?%s" base-url res-name url-args)))))
 
 (defun nngmail-handle-response ()
   "Handle the response from a `url-retrieve-synchronously' call.
@@ -208,16 +209,16 @@ What I call an account in the server is what gnus calls a server.  This list has
 			))))
     response))
 
-(defun nngmail-fetch-resource (resource &optional id account-id args)
+(defun nngmail-fetch-resource (resource &optional account-id id args)
   "Retrieve a resource from the nngmail server."
-  (let* ((url (nngmail-url-for resource id account-id args)))
+  (let* ((url (nngmail-url-for resource account-id id args)))
     (nngmail-fetch-resource-url url)))
 
 (defun nngmail-get-accounts ()
   "Get a list of accounts, with their respective ID's, nicknames,
 and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
-  (let* ((resource (nngmail-fetch-resource "account"))
+  (let* ((resource (nngmail-fetch-resource 'account))
 	 (accounts (plist-get resource 'accounts))
 	 servers)
     (seq-map
@@ -232,7 +233,7 @@ and email addresses, from the server.  The list of accounts is
 store in `nngmail-servers` for fast access."
   (message (format "in nngmail-get-groups for %s" server))
   (let* ((groups (nngmail-get-account-groups server))
-	 (resource (nngmail-fetch-resource "label" nil server
+	 (resource (nngmail-fetch-resource 'label server nil
 					   '((format . "info"))))
 	 (data (plist-get resource 'labels))
 	 (tmp ()))
@@ -351,7 +352,7 @@ read from gmail."
 (defun nngmail-message-id-to-id (article account)
   "Query the server to map a Message-ID to the message's ID (the
 primary key in the database)."
-  (let* ((message (nngmail-fetch-resource "message" article account)))
+  (let* ((message (nngmail-fetch-resource 'message account article)))
     (plist-get message 'id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
@@ -471,7 +472,7 @@ primary key in the database)."
   (when group
     (setq group (nnimap-decode-gnus-group group)))
   (message (format "in nngmail-request-tread  %d" (elt header 0)))
-  (let* ((message (nngmail-fetch-resource "message" (elt header 0) nil))
+  (let* ((message (nngmail-fetch-resource 'message nil (elt header 0)))
 	 (thread-id (plist-get message 'thread_id))
 	 (url (nngmail-url-for "thread" thread-id nil
 			       `((format . "nov"))))
@@ -531,7 +532,7 @@ primary key in the database)."
 				(elt timestamp 1) (elt timestamp 0)))
 		    "?"))
 	 (url (concat
-	       (substring (nngmail-url-for "label" group account) 0 -1)
+	       (substring (nngmail-url-for 'label account group) 0 -1)
 	       (format "/flags%s" args)))
 	 (flags (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
@@ -559,6 +560,48 @@ primary key in the database)."
   ;;; Gnus marks are:
   (message (format "in nngmail-request-set-mark for %s" group))
   nil)
+
+(deffoo nngmail-request-update-mark (group article mark)
+  (let ((name (cond
+	       ((eq mark gnus-unread-mark)
+		"unread")
+	       ((eq mark gnus-ticked-mark)
+		"ticked")
+	       ((eq mark gnus-dormant-mark)
+		"dorman")
+	       ((eq mark gnus-del-mark)
+		"del")
+	       ((eq mark gnus-read-mark)
+		"read")
+	       ((eq mark gnus-expirable-mark)
+		"expirable")
+	       ((eq mark gnus-killed-mark)
+		"killed")
+	       ((eq mark gnus-spam-mark)
+		"spam")
+	       ((eq mark gnus-kill-file-mark)
+		"kill-file")
+	       ((eq mark gnus-low-score-mark)
+		"low score")
+	       ((eq mark gnus-catchup-mark)
+		"catchup")
+	       ((eq mark gnus-replied-mark)
+		"replied")
+	       ((eq mark gnus-forwarded-mark)
+		"forwarded")
+	       ((eq mark gnus-recent-mark)
+		"recent")
+	       ((eq mark gnus-cached-mark)
+		"cached")
+	       ((eq mark gnus-unseen-mark)
+		"unseen")
+	       ((eq mark gnus-no-mark)
+		"no mark")
+	       (t
+		"unknown mark"))))
+	(message (format "in nngmail-request-update-mark for %s:%d %s"
+			 group article name)))
+  mark)
 
 (deffoo nngmail-request-scan (group &optional server info)
   "Check for new articles.  If possible only on GROUP (although
