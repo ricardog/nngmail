@@ -524,19 +524,25 @@ primary key in the database)."
 
 (deffoo nngmail-update-info (group account info)
   (message (format "in nngmail-request-update-info for %s" group))
-  (let* ((url (concat
+  (let* ((timestamp (gnus-group-timestamp
+		     (format "nngmail+%s:%s" account group)))
+	 (args (or (and timestamp
+			(format "?timestamp_low=%d&timestamp_high=%d"
+				(elt timestamp 1) (elt timestamp 0)))
+		    "?"))
+	 (url (concat
 	       (substring (nngmail-url-for "label" group account) 0 -1)
-	       "/flags"))
-	 (resource (nngmail-fetch-resource-url url))
-	 (flags (plist-get resource 'flags))
+	       (format "/flags%s" args)))
+	 (flags (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
     (gnus-info-set-read info (vector-to-list (plist-get flags 'seen)))
-    (dolist (type (list 'unseen 'unexist))
-      (message (symbol-name type))
-      (let ((new-list (vector-to-list (plist-get flags type))))
-	(if (assoc type marks)
-	    (setcdr (assoc type marks) new-list)
-	  (push (cons type new-list) marks))))
+    (loop for (k v) on flags by (function cddr)
+          do
+	  (progn
+	    (let ((new-list (vector-to-list v)))
+	      (if (assoc k marks)
+		  (setcdr (assoc k marks) new-list)
+		(push (cons k new-list) marks)))))
     (gnus-info-set-marks info marks)
     ))
 
