@@ -41,4 +41,12 @@ app.add_url_rule(base + '/threads/<int:thread_id>',
                  defaults={'account_id': None},
                  view_func=thread_view,
                  methods=['GET', 'DELETE'])
-    
+
+@app.route(acct_nick_base + '/threads/<string:tid>',
+           methods=['GET', 'DELETE'])
+def thread_by_name(nickname, tid):
+    account = Account.query.filter_by(nickname=nickname).first_or_404()
+    thread = Thread.query.filter_by(account_id=account.id).\
+        filter_by(tid=tid).first_or_404()
+    return thread_view(None, thread.id)
+                       
