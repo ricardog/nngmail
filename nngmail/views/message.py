@@ -97,15 +97,16 @@ class MessageAPI(MethodView):
 ## Message resource
 message_view = MessageAPI.as_view('message_api')
 app.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-                 view_func=message_view, methods=['GET', 'PUT'])
+                 view_func=message_view, methods=['GET'])
 app.add_url_rule(acct_base + '/messages/<int:message_id>',
-                 view_func=message_view, methods=['GET', 'PUT'])
+                 view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
 app.add_url_rule(base + '/messages/<int:message_id>',
                  defaults={'account_id': None},
                  view_func=message_view,
                  methods=['GET', 'PUT', 'DELETE'])
 
-@app.route(acct_nick_base + '/messages/<int:message_id>')
+@app.route(acct_nick_base + '/messages/<int:message_id>',
+           methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, message_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return message_view(None, Message.query.get_or_404(message_id).id)
