@@ -351,13 +351,8 @@ read from gmail."
 (defun nngmail-message-id-to-id (article account)
   "Query the server to map a Message-ID to the message's ID (the
 primary key in the database)."
-  (let* ((query (format "message_id=%s" article))
-	 (resource (nngmail-fetch-resource "message" nil
-					  (nngmail-get-account-id account)
-					  `((q . ,query))))
-	 (messages (plist-get resource 'messages)))
-    (and (> (length messages) 0)
-	 (plist-get (aref messages 0) 'id))))
+  (let* ((message (nngmail-fetch-resource "message" article account)))
+    (plist-get message 'id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for the raw article body."
@@ -366,6 +361,7 @@ primary key in the database)."
   (when (not server)
     (setq server (or server nngmail-last-account)))
   (let* ((dest-buffer (or to-buffer nntp-server-buffer))
+	 (article-id (nngmail-message-id-to-id article server))
 	 (url (nngmail-url-for "message" article server '((format . "raw"))))
 	 (buffer (nngmail-fetch-article url)))
     (if buffer
@@ -377,7 +373,7 @@ primary key in the database)."
       ;;; FIXME: is this necessary?
       ;;;(nnheader-insert-buffer-substring buffer)
 	(nnheader-ms-strip-cr)
-	(cons group article))
+	(cons group article-id))
       nil)))
     
 
