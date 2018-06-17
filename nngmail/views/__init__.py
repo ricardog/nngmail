@@ -6,6 +6,7 @@ import nngmail.views.account
 import nngmail.views.flag
 import nngmail.views.message
 import nngmail.views.label
+import nngmail.views.query
 import nngmail.views.thread
 
 @app.route('/')
