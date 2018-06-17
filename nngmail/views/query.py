@@ -9,7 +9,9 @@ from nngmail.views.utils import acct_base, acct_nick_base
 class QueryAPI(MethodView):
     def get(self, account_id):
         label_arg = request.args.get('labels', '')
-        labels = urllib.parse.unquote(label_arg).split(',')
+        label_names = urllib.parse.unquote(label_arg).split(',')
+        labels = sum(Label.query.with_entities(Label.gid).\
+                     filter(Label.name.in_(label_names)).all(), ())
         query = request.args.get('q', '')
         gmail = get_sync(Account.query.get(account_id))
         gids = gmail.search(query, labels)
