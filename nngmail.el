@@ -363,7 +363,7 @@ primary key in the database)."
     (setq server (or server nngmail-last-account)))
   (let* ((dest-buffer (or to-buffer nntp-server-buffer))
 	 (article-id (nngmail-message-id-to-id article server))
-	 (url (nngmail-url-for "message" article server '((format . "raw"))))
+	 (url (nngmail-url-for 'message server article '((format . "raw"))))
 	 (buffer (nngmail-fetch-article url)))
     (if buffer
       (with-current-buffer dest-buffer
