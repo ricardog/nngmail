@@ -451,12 +451,11 @@ primary key in the database)."
 			 (min (nngmail-get-group-count account group) 5000))
 		    fetch-old
 		    (length articles)))
-	 ;;(ids (nngmail-article-ranges (gnus-compress-sequence articles)))
-	 (url (nngmail-url-for "message" nil
-			      (nngmail-get-account-id account)
-			      `((format . "nov")
-				(limit . ,(length articles))
-				(label . ,group))))
+	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
+	 (url (nngmail-url-for 'message (nngmail-get-account-id account) nil
+			       `((format . "nov")
+				 (id . ,ids)
+				 (label . ,group))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
       (erase-buffer)
