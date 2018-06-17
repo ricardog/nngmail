@@ -96,7 +96,12 @@ class NnSync():
         return self.create_or_update(gids, False, sync_labels)
 
     def update_labels(self, updated):
-        self.sql3.update(updated)
+        # updated is a hash of the form
+        # {'163e42f92b6526f8': ['IMPORTANT', 'STARRED', 'CATEGORY_UPDATES',
+        #                       'INBOX']}
+        # So convert to pseudo messages
+        msgs = [{'id': k, 'labelIds': v} for k, v in updated.items()]
+        self.sql3.update(msgs)
 
     def delete(self, gids):
         self.sql3.delete(gids)
@@ -179,8 +184,10 @@ class NnSync():
         self.create(tuple(added.keys()))
         bar.update(len(added))
         self.update_labels(updated)
+        bar.update(len(updated.keys()))
         bar.close()
         self.sql3.set_history_id(hid)
+        click.echo('new historyId: %d' % hid)
         self.read(added.keys())
 
     def full_pull(self):
