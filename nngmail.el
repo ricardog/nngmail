@@ -646,25 +646,25 @@ appear in INBOX."
   (message (format "in nngmail-request-rename-group %s" group))
   nil)
 
-(defun nnir-run-nngmail (query srv &optional groups)
+(defun nnir-run-gmail (query srv &optional groups)
   (let ((qstring (cdr (assq 'query query)))
 	(server (cadr (gnus-server-to-method srv)))
 	(defs (caddr (gnus-server-to-method srv)))
-	(creteria (or (cdr (asq 'creteria query))
-		      (cdr (assoc nnir-nngmail-default-search-key
-				  nnir-nngmail-search-arguments))))
-
-	(groups (mapconcat gnus-group-short-name
-			   (or groups (nnir-get-active-srv) ","))))
+	(groups (mapconcat (lambda (group) (gnus-group-short-name group))
+			   (or groups (nnir-get-active srv)) ",")))
     (let ((response (nngmail-fetch-resource 'query server nil
-					    '((query . ,qstring)
+					    `((q . ,qstring)
 					      (labels . ,groups))))
 	  result)
-      (mapcar (lambda (res)
-		(vector (format "nngmail+%s:%s" server (elt res 0))
-			(elt res 1) 100))
-	      (plist-get 'result response)
-	      ))))
+      (vconcat
+       (mapcar (lambda (res)
+		 (let ((group (gnus-group-full-name (elt res 1) srv))
+		       (id (elt res 0)))
+		   (vector group id 100)))
+	       (plist-get response 'result)
+	       )))))
+(push (cons 'nngmail 'gmail) nnir-method-default-engines)
+(push (list 'gmail 'nnir-run-gmail nil)  nnir-engines)
 
 (provide 'nngmail)
 ;;; nngmail.el ends here
