@@ -253,3 +253,6 @@ class NnSync():
                                                         ingress, egress))
         thread.start()
         return (thread, ingress, egress)
+
+    def search(self, query, labels=[]):
+        return self.gmail.search(query, labels)

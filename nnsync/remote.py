@@ -20,6 +20,7 @@ from urllib.request import urlopen
 import pdb
 
 from apiclient.discovery import build
+from apiclient import errors
 import googleapiclient
 from httplib2 import Http
 from oauth2client import file, client, tools
@@ -351,3 +352,28 @@ class Gmail:
             if isinstance(resp, Exception):
                 raise resp
             yield resp
+
+    @authorized
+    def search(self, query, labels=[]):
+        qstring = query + ' ' + self.opts.query
+        if labels:
+            query += ' (' + ' OR '.join(['label:' + l for l in labels]) + ')'
+        print(query)
+        cmd = self.service.users().messages()
+        try:
+            results = cmd.list(userId='me', q=query,
+                               includeSpamTrash=True).execute()
+            if 'messages' not in results:
+                return []
+            gids = [m['id'] for m in results['messages']]
+        
+            while 'nextPageToken' in results:
+                page_token = results['nextPageToken']
+                results = cmd.list(userId='me', q=query,
+                                   pageToken=page_token,
+                                   includeSpamTrash=True).execute()
+                gids.extend([m['id'] for m in results['messages']])
+            return gids
+        except errors.HttpError as ex:
+            print('An error occurred: %s' % ex)
+        return []
