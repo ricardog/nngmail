@@ -8,7 +8,7 @@ from flask.views import MethodView
 from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.api.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base
                                                              
 class LabelAPI(MethodView):
     def get(self, account_id, label_id):
@@ -65,7 +65,7 @@ def lookup_by_name(account, label, view_func):
 label_view = LabelAPI.as_view('label')
 api_bp.add_url_rule(acct_base + '/labels/', defaults={'label_id': None},
                     view_func=label_view, methods=['GET',])
-api_bp.add_url_rule(base + '/labels/<int:label_id>',
+api_bp.add_url_rule('/labels/<int:label_id>',
                     defaults={'account_id': None},
                     view_func=label_view,
                     methods=['GET', 'DELETE'])

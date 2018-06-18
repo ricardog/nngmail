@@ -7,7 +7,7 @@ import urllib
 from nngmail import db, get_sync, zync
 from nngmail.api import api_bp
 from nngmail.models import Account, Message
-from nngmail.api.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base
 
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
@@ -101,7 +101,7 @@ api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
                     view_func=message_view, methods=['GET'])
 api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
                     view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
-api_bp.add_url_rule(base + '/messages/<int:message_id>',
+api_bp.add_url_rule('/messages/<int:message_id>',
                     defaults={'account_id': None},
                     view_func=message_view,
                     methods=['GET', 'PUT', 'DELETE'])

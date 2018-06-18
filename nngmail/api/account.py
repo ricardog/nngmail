@@ -4,7 +4,7 @@ from flask.views import MethodView
 from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account
-from nngmail.api.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base
 
 class AccountAPI(MethodView):
     def get(self, account_id):
@@ -64,9 +64,9 @@ class AccountAPI(MethodView):
 
 ## Account resource
 account_view = AccountAPI.as_view('account')
-api_bp.add_url_rule(base + '/accounts/', defaults={'account_id': None},
+api_bp.add_url_rule('/accounts/', defaults={'account_id': None},
                     view_func=account_view, methods=['GET',])
-api_bp.add_url_rule(base + '/accounts/', view_func=account_view,
+api_bp.add_url_rule('/accounts/', view_func=account_view,
                     methods=['POST',])
-api_bp.add_url_rule(base + '/accounts/<int:account_id>', view_func=account_view,
+api_bp.add_url_rule('/accounts/<int:account_id>', view_func=account_view,
                     methods=['GET', 'PUT', 'DELETE'])

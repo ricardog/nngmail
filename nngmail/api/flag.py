@@ -8,7 +8,7 @@ from flask import abort, jsonify, make_response, render_template, request
 from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.api.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base
 
 def find_ranges(seq):
     ranges =[]
