@@ -21,11 +21,11 @@ class QueryAPI(MethodView):
 
         if query == '':
             result = base.all()
-            return jsonify({'result': result})
-        gmail = get_sync(Account.query.get(account_id))
-        gids = gmail.search(query, labels)
-        # Convert Google ID's to message ID's.
-        result = base.filter(Message.google_id.in_(gids)).all()
+        else:
+            gmail = get_sync(Account.query.get(account_id))
+            gids = gmail.search(query, labels)
+            # Convert Google ID's to message ID's.
+            result = base.filter(Message.google_id.in_(gids)).all()
         return jsonify({'result': result})
 
 ## Query resource
