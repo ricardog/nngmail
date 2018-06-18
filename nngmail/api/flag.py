@@ -5,9 +5,10 @@ from operator import itemgetter
 
 from flask import abort, jsonify, make_response, render_template, request
 
-from nngmail import app, db
+from nngmail import db
+from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.views.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import base, acct_base, acct_nick_base
 
 def find_ranges(seq):
     ranges =[]
@@ -20,13 +21,13 @@ def find_ranges(seq):
             ranges.append((group[0], group[-1]))
     return sorted(ranges, key=lambda v: v[0] if isinstance(v, tuple) else v)
 
-@app.route(acct_nick_base + '/labels/<string:label>/flags')
+@api_bp.route(acct_nick_base + '/labels/<string:label>/flags')
 def flags_by_name(nickname, label):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return flags(Label.query.filter(Label.account == account).\
                  filter_by(name=label).first_or_404().id)
 
-@app.route(acct_base + '/labels/<int:label_id>/flags')
+@api_bp.route(acct_base + '/labels/<int:label_id>/flags')
 def flags(label_id):
     mids = set(sum(Label.query.get_or_404(label_id).messages.\
                    with_entities(Message.id).order_by(Message.id.asc()).\

@@ -4,9 +4,10 @@ from flask.views import MethodView
 from sqlalchemy.orm import undefer
 import urllib
 
-from nngmail import app, db, get_sync, zync
+from nngmail import db, get_sync, zync
+from nngmail.api import api_bp
 from nngmail.models import Account, Message
-from nngmail.views.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import base, acct_base, acct_nick_base
 
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
@@ -95,24 +96,24 @@ class MessageAPI(MethodView):
 
 
 ## Message resource
-message_view = MessageAPI.as_view('message_api')
-app.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-                 view_func=message_view, methods=['GET'])
-app.add_url_rule(acct_base + '/messages/<int:message_id>',
-                 view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
-app.add_url_rule(base + '/messages/<int:message_id>',
-                 defaults={'account_id': None},
-                 view_func=message_view,
-                 methods=['GET', 'PUT', 'DELETE'])
+message_view = MessageAPI.as_view('message')
+api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
+                    view_func=message_view, methods=['GET'])
+api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
+                    view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
+api_bp.add_url_rule(base + '/messages/<int:message_id>',
+                    defaults={'account_id': None},
+                    view_func=message_view,
+                    methods=['GET', 'PUT', 'DELETE'])
 
-@app.route(acct_nick_base + '/messages/<int:message_id>',
-           methods=['GET', 'PUT', 'DELETE'])
+@api_bp.route(acct_nick_base + '/messages/<int:message_id>',
+              methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, message_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return message_view(None, Message.query.get_or_404(message_id).id)
 
-@app.route(acct_nick_base + '/messages/<string:message_id>',
-           methods=['GET', 'PUT', 'DELETE'])
+@api_bp.route(acct_nick_base + '/messages/<string:message_id>',
+              methods=['GET', 'PUT', 'DELETE'])
 def message_by_message_id(nickname, message_id):
     mid = urllib.parse.unquote(message_id)
     account = Account.query.filter_by(nickname=nickname).first_or_404()

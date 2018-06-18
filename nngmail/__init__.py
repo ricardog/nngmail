@@ -39,8 +39,11 @@ zync = dict()
 get_sync = lambda account: NnSync.from_account(account, sync_config)
 
 from nnsync import NnSync
+from nngmail.api import api_bp
 import nngmail.views
 import nngmail.background
+
+app.register_blueprint(api_bp)
 
 @app.errorhandler(404)
 def not_found(error):

@@ -5,9 +5,10 @@ from operator import itemgetter
 from flask import abort, jsonify, make_response, render_template, request
 from flask.views import MethodView
 
-from nngmail import app, db
+from nngmail import db
+from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.views.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import base, acct_base, acct_nick_base
                                                              
 class LabelAPI(MethodView):
     def get(self, account_id, label_id):
@@ -61,18 +62,18 @@ def lookup_by_name(account, label, view_func):
     return view_func(account_id, label_id)
 
 
-label_view = LabelAPI.as_view('label_api')
-app.add_url_rule(acct_base + '/labels/', defaults={'label_id': None},
-                 view_func=label_view, methods=['GET',])
-app.add_url_rule(base + '/labels/<int:label_id>',
-                 defaults={'account_id': None},
-                 view_func=label_view,
-                 methods=['GET', 'DELETE'])
+label_view = LabelAPI.as_view('label')
+api_bp.add_url_rule(acct_base + '/labels/', defaults={'label_id': None},
+                    view_func=label_view, methods=['GET',])
+api_bp.add_url_rule(base + '/labels/<int:label_id>',
+                    defaults={'account_id': None},
+                    view_func=label_view,
+                    methods=['GET', 'DELETE'])
 
-@app.route(acct_nick_base + '/labels/')
+@api_bp.route(acct_nick_base + '/labels/')
 def account_labels(nickname):
     return lookup_by_name(nickname, None, label_view)
 
-@app.route(acct_nick_base + '/labels/<string:label>')
+@api_bp.route(acct_nick_base + '/labels/<string:label>')
 def label_by_name(nickname, label):
     return lookup_by_name(nickname, label, label_view)

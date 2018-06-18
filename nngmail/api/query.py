@@ -2,9 +2,10 @@ from flask import jsonify, request
 from flask.views import MethodView
 import urllib
 
-from nngmail import app, db, get_sync
+from nngmail import db, get_sync
+from nngmail.api import api_bp
 from nngmail.models import Account, label_association, Label, Message
-from nngmail.views.utils import acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base
 
 class QueryAPI(MethodView):
     def get(self, account_id):
@@ -24,11 +25,11 @@ class QueryAPI(MethodView):
         return jsonify({'result': result})
 
 ## Query resource
-query_view = QueryAPI.as_view('query_api')
-app.add_url_rule(acct_base + '/querys/', view_func=query_view,
-                 methods=['GET'])
+query_view = QueryAPI.as_view('query')
+api_bp.add_url_rule(acct_base + '/querys/', view_func=query_view,
+                    methods=['GET'])
 
-@app.route(acct_nick_base + '/querys/', methods=['GET'])
+@api_bp.route(acct_nick_base + '/querys/', methods=['GET'])
 def query_with_nick(nickname):
     return query_view(Account.query.filter_by(nickname=nickname).\
                       first_or_404().id)

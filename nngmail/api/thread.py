@@ -3,9 +3,10 @@ import click
 from flask import jsonify, make_response, render_template, request
 from flask.views import MethodView
 
-from nngmail import app, db
+from nngmail import db
+from nngmail.api import api_bp
 from nngmail.models import Account, Thread
-from nngmail.views.utils import base, acct_base, acct_nick_base
+from nngmail.api.utils import base, acct_base, acct_nick_base
 
 class ThreadAPI(MethodView):
     def get(self, account_id, thread_id):
@@ -34,16 +35,16 @@ class ThreadAPI(MethodView):
         db.session().commit()
         return jsonify({'result': True})
 
-thread_view = ThreadAPI.as_view('thread_api')
-app.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
-                 view_func=thread_view, methods=['GET',])
-app.add_url_rule(base + '/threads/<int:thread_id>',
-                 defaults={'account_id': None},
-                 view_func=thread_view,
-                 methods=['GET', 'DELETE'])
+thread_view = ThreadAPI.as_view('thread')
+api_bp.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
+                    view_func=thread_view, methods=['GET',])
+api_bp.add_url_rule(base + '/threads/<int:thread_id>',
+                    defaults={'account_id': None},
+                    view_func=thread_view,
+                    methods=['GET', 'DELETE'])
 
-@app.route(acct_nick_base + '/threads/<string:tid>',
-           methods=['GET', 'DELETE'])
+@api_bp.route(acct_nick_base + '/threads/<string:tid>',
+              methods=['GET', 'DELETE'])
 def thread_by_name(nickname, tid):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     thread = Thread.query.filter_by(account_id=account.id).\
