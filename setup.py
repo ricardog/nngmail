@@ -11,6 +11,7 @@ setup(
         'flask-sqlalchemy',
         'google-api-python-client',
         'options',
+        'pytest',
         'pyyaml',
         'sqlalchemy',
         'tqdm'
