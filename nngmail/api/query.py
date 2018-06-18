@@ -14,14 +14,18 @@ class QueryAPI(MethodView):
         labels = sum(Label.query.with_entities(Label.gid).\
                      filter(Label.name.in_(label_names)).all(), ())
         query = request.args.get('q', '')
+        base = Message.query.filter_by(account_id=account_id).\
+            join(label_association).join(Label).\
+            with_entities(Message.id, Label.name).\
+            filter(Label.name.in_(labels)).order_by(Message.id.desc())
+
+        if query == '':
+            result = base.all()
+            return jsonify({'result': result})
         gmail = get_sync(Account.query.get(account_id))
         gids = gmail.search(query, labels)
         # Convert Google ID's to message ID's.
-        result = Message.query.filter_by(account_id=account_id).\
-            join(label_association).join(Label).\
-            with_entities(Message.id, Label.name).\
-            filter(Message.google_id.in_(gids)).\
-            filter(Label.name.in_(labels)).order_by(Message.id.desc()).all()
+        result = base.filter(Message.google_id.in_(gids)).all()
         return jsonify({'result': result})
 
 ## Query resource
