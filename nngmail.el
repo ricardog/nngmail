@@ -129,6 +129,25 @@ What I call an account in the server is what gnus calls a server.  This list has
 		 (max . ,max)
 		 (count . ,count)))))
 
+(defun nngmail-get-message-params (elem)
+  (let ((id (plist-get elem 'id))
+	(google_id (plist-get elem 'google_id))
+	(name (plist-get (plist-get elem 'sender) 'name))
+	(email (plist-get (plist-get elem 'sender) 'email))
+	(from (format "%s <%s>"
+		      (plist-get (plist-get elem 'sender) 'name)
+		      (plist-get (plist-get elem 'sender) 'email)))
+	(subject (plist-get elem 'subject))
+	(snippet (plist-get elem 'snippet))
+	)
+    (cons id `((id . ,id)
+	       (google_id . ,google_id)
+	       (from . ,from)
+	       (name . ,name)
+	       (email . ,email)
+	       (subject . ,subject)
+	       (snippet . ,snippet)))))
+
 (defun nngmail-url-for (resource &optional account-id id args)
   "Generate a URL to probe the resource."
   (let ((base-url (cond
@@ -665,6 +684,116 @@ appear in INBOX."
 	       )))))
 (push (cons 'nngmail 'gmail) nnir-method-default-engines)
 (push (list 'gmail 'nnir-run-gmail nil)  nnir-engines)
+
+(defun nngmail-get-messages (server group)
+  (let ((url (concat
+	      (substring (nngmail-url-for 'label server group) 0 -1)
+	      (format "/messages/"))))
+    (cons server
+	  (mapcar (lambda (result)
+		    (cdr (nngmail-get-message-params result)))
+		  (plist-get (nngmail-fetch-resource-url url) 'messages)))
+    ))
+
+(defun flatten (list)
+  (mapcan (lambda (x) (if (listp x) x nil)) list))
+
+(defun trunc (len s &optional ellipsis)
+  "If S is longer than LEN, cut it down and add ELLIPSIS to the end.
+The resulting string, including ellipsis, will be LEN characters
+long.
+When not specified, ELLIPSIS defaults to ‘...’."
+  (unless ellipsis
+    (setq ellipsis "..."))
+  (if (> (length s) len)
+      (format "%s%s" (substring s 0 (- len (length ellipsis))) ellipsis)
+    s))
+
+(defun helm-nngmail-format-message (message)
+  (let ((text (format "[%-20s] %-55s\n  %-78s"
+		      (trunc 20 (or (cdr (assq 'name message))
+				    (cdr (assq 'email message))))
+		      (trunc 55 (cdr (assq 'subject message)))
+		      (trunc 78 (cdr (assq 'snippet message))))))
+    (message text)
+    text))
+
+(defun helm-source-nngmail-get-candidates (account group messages)
+  (mapcar (lambda (message)
+	    (cons (helm-nngmail-format-message message)
+		  (list account group (cdr (assq 'id message)))))
+	  messages))
+  
+(defun helm-source-nngmail-build (&optional group)
+  (let ((data (mapcar (lambda (srv)
+			      (nngmail-get-messages (car srv) (or group "UNREAD")))
+		      (nngmail-get-accounts))))
+    (message "fetched accounts")
+    (mapcar (lambda (srv)
+	      (let* ((account (car srv))
+		     (messages (cdr srv))
+		     (candidates (helm-source-nngmail-get-candidates account
+								     (or group "UNREAD") messages)))
+		`((name . ,account)
+		  (candidates . ,candidates)
+		  (multilne . 2)
+		  (action
+		   ("Read" . helm-nngmail-action-read)
+		   ("Mark read" . helm-nngmail-action-mark-read)
+		   ("Delete" . helm-nngmail-action-expire)))))
+	    data)
+    ))
+
+(defun xx-helm-source-nngmail-build ()
+  (let ((candidates (mapcar (lambda (srv)
+			      (nngmail-get-unread (car srv)))
+			    (nngmail-get-accounts))))
+    (message "fetched accounts")
+    (mapcar (lambda (srv)
+	      (let ((account (car srv))
+		    (messages (cdr srv)))
+		(mapcar (lambda (message)
+			  (helm-nngmail-format-message message))
+			messages)))
+	    candidates)
+    ))
+
+(defun helm-nngmail-action-read (candidate)
+  (message (format "read nngmail+%s:%s %d"
+		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+  )
+
+(defun helm-nngmail-action-mark-read (candidate)
+  (message (format "mark read nngmail+%s:%s %d"
+		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+  )
+
+(defun helm-nngmail-action-expire (candidate)
+  (message (format "expire nngmail+%s:%s %d"
+		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+  )
+
+(defvar helm-nngmail-actions
+  '(("Read" . (lambda (candidate)
+		(helm-nngmail-action-read candidate)))
+    ("Mark read" . (lambda (candidate)
+		     (helm-nngmail-action-mark-read candidate)))
+    ("Delete" . (lambda (candidate)
+		  (helm-nngmail-action-expire candidate)))))
+
+(defvar helm-nngmail-history-input nil)
+
+(defun helm-nngmail-unread (&optional input-pattern)
+  (interactive)
+  (helm :sources (helm-source-nngmail-build)
+	:buffer "*helm-nngmail*"
+	:prompt "Unread messages: "
+	:history 'helm-nngmail-history-input
+	:helm-candidate-number-limit 200))
+
+;;(defun helm-nngmail-unread ()
+;;  (interactive)
+;;  (helm-other-buffer 'helm-source-nngmail-unread "*helm nngmail*"))
 
 (provide 'nngmail)
 ;;; nngmail.el ends here
