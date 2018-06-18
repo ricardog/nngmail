@@ -1,5 +1,6 @@
 .python-version
 __pycache__/
+.pytest_cache/
 client-secret.json
 credentials.json
 *.sqlite3
