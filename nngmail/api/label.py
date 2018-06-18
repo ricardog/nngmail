@@ -77,3 +77,13 @@ def account_labels(nickname):
 @api_bp.route(acct_nick_base + '/labels/<string:label>')
 def label_by_name(nickname, label):
     return lookup_by_name(nickname, label, label_view)
+
+@api_bp.route(acct_nick_base + '/labels/<string:label>/messages/')
+def label_messages(nickname, label):
+    limit = request.args.get('limit', 200)
+    account = Account.query.filter_by(nickname=nickname).first_or_404()
+    query = Label.query.filter(Label.account_id==account.id).\
+            filter(Label.name==label).first_or_404().\
+            messages.order_by(Message.id.desc()).\
+            limit(limit).all()
+    return jsonify({'messages': query})
