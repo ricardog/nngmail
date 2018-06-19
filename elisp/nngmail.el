@@ -140,6 +140,10 @@ What I call an account in the server is what gnus calls a server.  This list has
 		      (plist-get (plist-get elem 'sender) 'email)))
 	(subject (plist-get elem 'subject))
 	(snippet (plist-get elem 'snippet))
+	(labels (mapcar (lambda (label)
+			  (cons (plist-get label 'gid)
+				(plist-get label 'name)))
+			(plist-get elem 'labels)))
 	)
     (cons id `((id . ,id)
 	       (google_id . ,google_id)
@@ -147,7 +151,8 @@ What I call an account in the server is what gnus calls a server.  This list has
 	       (name . ,name)
 	       (email . ,email)
 	       (subject . ,subject)
-	       (snippet . ,snippet)))))
+	       (snippet . ,snippet)
+	       (labels . ,labels)))))
 
 (defun nngmail-url-for (resource &optional account-id id args)
   "Generate a URL to probe the resource."
@@ -697,5 +702,36 @@ appear in INBOX."
 (push (cons 'nngmail 'gmail) nnir-method-default-engines)
 (push (list 'gmail 'nnir-run-gmail nil) nnir-engines)
 
+;;; Functions used by helm interface
+(defun nngmail-get-messages (server group)
+  (let ((url (concat
+	      (substring (nngmail-url-for 'label server group) 0 -1)
+	      (format "/messages/"))))
+    (cons server
+	  (mapcar (lambda (result)
+		    (let ((msg (cdr (nngmail-get-message-params result))))
+		      (push `(server . ,server) msg)
+		      (push `(group . ,group) msg)))
+		  (plist-get (nngmail-fetch-resource-url url) 'messages)))
+    ))
+
+(defun flatten (list)
+  (mapcan (lambda (x) (if (listp x) x nil)) list))
+
+(defun nngmail-get-all-labels ()
+  (let ((servers (nngmail-get-accounts))
+	)
+    (delq nil
+	  (sort
+	   (delete-dups
+	    (flatten
+	     (mapcar (lambda (server)
+		       (let ((account (car server)))
+			 (nngmail-get-groups account)
+			 (ht-keys (nngmail-get-account-groups account))))
+		     servers)))
+	   'string<))
+    ))
+     
 (provide 'nngmail)
 ;;; nngmail.el ends here

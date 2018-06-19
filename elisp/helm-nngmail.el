@@ -31,18 +31,6 @@
 (require 'helm)
 (require 'nngmail)
 
-(defun nngmail-get-messages (server group)
-  (let ((url (concat
-	      (substring (nngmail-url-for 'label server group) 0 -1)
-	      (format "/messages/"))))
-    (cons server
-	  (mapcar (lambda (result)
-		    (cdr (nngmail-get-message-params result)))
-		  (plist-get (nngmail-fetch-resource-url url) 'messages)))
-    ))
-
-(defun flatten (list)
-  (mapcan (lambda (x) (if (listp x) x nil)) list))
 
 (defun trunc (len s &optional ellipsis)
   "If S is longer than LEN, cut it down and add ELLIPSIS to the end.
@@ -56,18 +44,21 @@ When not specified, ELLIPSIS defaults to ‘...’."
     s))
 
 (defun helm-nngmail-format-message (message)
-  (let ((text (format "[%-20s] %-55s\n  %-78s"
+  (let ((text (format "[%-20s] %-55s\n  %-78s\n%-78s"
 		      (trunc 20 (or (cdr (assq 'name message))
 				    (cdr (assq 'email message))))
 		      (trunc 55 (cdr (assq 'subject message)))
-		      (trunc 78 (cdr (assq 'snippet message))))))
-    (message text)
+		      (trunc 78 (cdr (assq 'snippet message)))
+		      (trunc 78 (mapconcat 'cdr
+					   (cdr (assq 'labels message))
+					    " ")
+				 ))
+	      ))
     text))
 
 (defun helm-source-nngmail-get-candidates (account group messages)
   (mapcar (lambda (message)
-	    (cons (helm-nngmail-format-message message)
-		  (list account group (cdr (assq 'id message)))))
+	    (cons (helm-nngmail-format-message message) message))
 	  messages))
   
 (defun helm-source-nngmail-build (&optional group)
@@ -82,7 +73,7 @@ When not specified, ELLIPSIS defaults to ‘...’."
 								     (or group "UNREAD") messages)))
 		`((name . ,account)
 		  (candidates . ,candidates)
-		  (multilne . 2)
+		  (multilne . 3)
 		  (action
 		   ("Read" . helm-nngmail-action-read)
 		   ("Mark read" . helm-nngmail-action-mark-read)
@@ -90,33 +81,25 @@ When not specified, ELLIPSIS defaults to ‘...’."
 	    data)
     ))
 
-(defun xx-helm-source-nngmail-build ()
-  (let ((candidates (mapcar (lambda (srv)
-			      (nngmail-get-unread (car srv)))
-			    (nngmail-get-accounts))))
-    (message "fetched accounts")
-    (mapcar (lambda (srv)
-	      (let ((account (car srv))
-		    (messages (cdr srv)))
-		(mapcar (lambda (message)
-			  (helm-nngmail-format-message message))
-			messages)))
-	    candidates)
-    ))
-
 (defun helm-nngmail-action-read (candidate)
   (message (format "read nngmail+%s:%s %d"
-		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+		   (cdr (assq 'server candidate))
+		   (cdr (assq 'group candidate))
+		   (cdr (assq  'id candidate))))
   )
 
 (defun helm-nngmail-action-mark-read (candidate)
   (message (format "mark read nngmail+%s:%s %d"
-		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+		   (cdr (assq 'server candidate))
+		   (cdr (assq 'group candidate))
+		   (cdr (assq  'id candidate))))
   )
 
 (defun helm-nngmail-action-expire (candidate)
   (message (format "expire nngmail+%s:%s %d"
-		   (elt candidate 0) (elt candidate 1) (elt candidate 2)))
+		   (cdr (assq 'server candidate))
+		   (cdr (assq 'group candidate))
+		   (cdr (assq  'id candidate))))
   )
 
 (defvar helm-nngmail-actions
@@ -128,12 +111,19 @@ When not specified, ELLIPSIS defaults to ‘...’."
 		  (helm-nngmail-action-expire candidate)))))
 
 (defvar helm-nngmail-history-input nil)
+(defvar helm-nngmail-label-history nil)
 
-(defun helm-nngmail-unread (&optional input-pattern)
+(defun helm-nngmail (&optional label)
   (interactive)
-  (helm :sources (helm-source-nngmail-build)
-	:buffer "*helm-nngmail*"
-	:prompt "Unread messages: "
-	:history 'helm-nngmail-history-input
-	:helm-candidate-number-limit 200))
+  (let ((label (if current-prefix-arg
+		   (completing-read "Label : "
+				    (nngmail-get-all-labels)
+				    nil t nil
+				    helm-nngmail-label-history)
+		 "UNREAD")))
+    (helm :sources (helm-source-nngmail-build label)
+	  :buffer "*helm-nngmail*"
+	  :prompt "Messages matching: "
+	  :history 'helm-nngmail-history-input
+	  :helm-candidate-number-limit 200)))
 
