@@ -380,7 +380,7 @@ primary key in the database)."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
   (when (not server)
-    (setq server (or server nngmail-last-account)))
+    (setq server nngmail-last-account))
   (let* ((dest-buffer (or to-buffer nntp-server-buffer))
 	 (article-id (nngmail-message-id-to-id article server))
 	 (url (nngmail-url-for 'message server article '((format . "raw"))))
