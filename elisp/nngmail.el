@@ -643,7 +643,18 @@ appear in INBOX."
 (deffoo nngmail-request-expire-articles (articles &optional group server force)
   "Expire articles."
   (message (format "in nngmail-request-expire-articles %s" group))
-  nil)
+  (when (not server)
+    (setq server nngmail-last-account))
+  (let ((url-request-method "DELETE"))
+    (delq nil
+	  (mapcar (lambda (article)
+		    (let ((result
+			   (nngmail-fetch-resource 'message server article)))
+		      (if (eq (car result) 'exception)
+			  article
+			nil)))
+		  articles)))
+  )
 
 (deffoo nngmail-request-move-article (article group server accept-form
 					      &optional last)
