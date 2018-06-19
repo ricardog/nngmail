@@ -192,11 +192,22 @@ class Sqlite3():
                                          Message.account == self.account)).all()
 
     def find_cacheable(self):
-        td = timedelta(days=self.opts.cache_timeout)
+        td = datetime.now() - timedelta(days=self.opts.cache_timeout)
         query = Message.query.with_entities(Message.id).\
-                filter(Message.date > datetime.now() - td).\
+                filter(or_(Message.date > td,
+                           Message.updated > td)).\
                 filter(Message.account == self.account)
         return sum(query.all(), ())
+
+    def expire_cache(self):
+        td = datetime.now() - timedelta(days=self.opts.cache_timeout)
+        query = Message.query.\
+                filter(Message._raw.isnot(None)).\
+                filter(Message.date < td).filter(Message.updated < td).\
+                filter(Message.account == self.account)
+        for message in query.all():
+            self.raw = None
+        db.session.commit()
 
     def delete(self, gids):
         query = Message.query.filter(Message.google_id.in_(gids)).\

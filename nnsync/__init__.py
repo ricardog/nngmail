@@ -263,3 +263,6 @@ class NnSync():
 
     def search(self, query, labels=[]):
         return self.gmail.search(query, labels)
+
+    def expire_cache(self):
+        self.sql3.expire_cache()
