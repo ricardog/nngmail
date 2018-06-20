@@ -560,7 +560,7 @@ primary key in the database)."
 	       (format "/flags%s" args)))
 	 (flags (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
-    (gnus-info-set-read info (vector-to-list (plist-get flags 'seen)))
+    (gnus-info-set-read info (vector-to-list (plist-get flags 'read)))
     (loop for (k v) on flags by (function cddr)
           do
 	  (progn
@@ -568,7 +568,7 @@ primary key in the database)."
 	      (if (assoc k marks)
 		  (setcdr (assoc k marks) new-list)
 		(push (cons k new-list) marks)))))
-    (gnus-info-set-marks info marks)
+    (gnus-info-set-marks info marks t)
     ))
 
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
