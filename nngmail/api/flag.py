@@ -37,10 +37,13 @@ def flags(label_id):
                      order_by(Message.id.asc()).all(), ()))
     if not mids:
         unexist = ()
+        read = ()
     else:
         all_mids = set(range(min(mids), max(mids) + 1))
         unexist = all_mids - mids
-    flags = {'unexist': find_ranges(unexist)}
+        read = all_mids - unread
+    flags = {'unexist': find_ranges(unexist),
+             'read': find_ranges(read)}
 
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
