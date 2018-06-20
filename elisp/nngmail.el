@@ -266,7 +266,7 @@ store in `nngmail-servers` for fast access."
      (lambda (elem)
        (push (nngmail-get-group-params elem) tmp))
      data)
-    (nngmail-set-account-groups server (ht-from-alist tmp))
+    (ht-from-alist tmp)
     ))
 
 (defun nngmail-touch-server (server)
@@ -414,7 +414,8 @@ primary key in the database)."
     (with-current-buffer nntp-server-buffer
       (when result
 	(and (not fast)
-	     (nngmail-get-groups account))
+	     (nngmail-set-account-groups account
+					 (nngmail-get-groups account)))
 	(when info
 	  (nngmail-update-info group account info))
 	(erase-buffer)
@@ -439,7 +440,7 @@ primary key in the database)."
     (if account
 	(with-current-buffer nntp-server-buffer
 	  (message (format "in nngmail-request list for %s" account))
-	  (nngmail-get-groups account)
+	  (nngmail-set-account-groups account (nngmail-get-groups account))
 	  (erase-buffer)
 	  (maphash (lambda (key value)
 		     (insert (format "%S %d %d n\n"
@@ -635,7 +636,7 @@ appear in INBOX."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
   (let ((account (or server nngmail-last-account)))
-    (nngmail-get-groups account)
+    (nngmail-set-account-groups account (nngmail-get-groups account))
     (when info
       (nnimap-update-info group account info)))
   nil)
@@ -726,9 +727,7 @@ appear in INBOX."
 	   (delete-dups
 	    (flatten
 	     (mapcar (lambda (server)
-		       (let ((account (car server)))
-			 (nngmail-get-groups account)
-			 (ht-keys (nngmail-get-account-groups account))))
+		       (ht-keys (nngmail-get-groups (car server))))
 		     servers)))
 	   'string<))
     ))
