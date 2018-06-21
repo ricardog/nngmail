@@ -1,12 +1,12 @@
 import click
-from flask import jsonify, make_response, render_template, request
+from flask import abort, jsonify, make_response, render_template, request
 from flask.views import MethodView
 from sqlalchemy.orm import undefer
 import urllib
 
 from nngmail import db, get_sync, zync
 from nngmail.api import api_bp
-from nngmail.models import Account, Message
+from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
 
 class MessageAPI(MethodView):
@@ -65,26 +65,35 @@ class MessageAPI(MethodView):
 
     def put(self, account_id, message_id):
         if account_id and not message_id:
-            account = Account.query.get(account_id)
-            if not account:
-                return make_response(jsonify({'error':
-                                              'Account %d not found' % account_id}),
-                                     404)
-            if account.nickname not in zync:
-                return make_response(jsonify({'error': 'Account %s not syncing' %
-                                              account.nickname}), 406)
+            abort(404)
+        else:
             if not request.json:
                 return make_response(jsonify({'error':
-                                              'No data on message put'}),
+                                              'No data on message update'}),
                                      400)
-            if ('cache' in request.json and
-                isinstance(request.json['cache'], list)):
-                ids = request.json['cache']
-                zync[account.nickname][1].put(['read', ids])
-            return jsonify({'result': True})
-        else:
-            return make_response(jsonify({'error': 'Not available'}),
-                                 404)         
+            if ('add_labels' not in request.json and
+                'rm_labels' not in request.json):
+                return make_response(jsonify({'error':
+                                              'Bad account nickname (%s)' %
+                                              nickname}),
+                                     400)
+            message = Message.query.get_or_404(message_id)
+            if 'add_labels' in request.json:
+                labels = request.json.get('add_labels').split(',')
+                for label in labels:
+                    lid = Label.query.filter_by(name=label).first_or_404()
+                    message.labels.append(lid)
+            if 'rm_labels' in request.json:
+                labels = request.json.get('rm_labels').split(',')
+                for label in labels:
+                    lid = Label.query.filter_by(name=label).first_or_404()
+                    if lid not in message.labels:
+                        return make_response(jsonify({'error':
+                                                      'Message does not have label %s' %
+                                                      label}),
+                                             400)
+                    message.labels.remove(lid)
+            return jsonify({'result': message})
 
     def delete(self, account_id, message_id):
         message = Message.query.get(message_id)
