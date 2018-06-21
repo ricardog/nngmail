@@ -218,7 +218,8 @@ What I call an account in the server is what gnus calls a server.  This list has
      ,@clean-up))
 
 (defun nngmail-fetch-resource-url (url)
-  (let* ((buffer (condition-case ex
+  (let* ((url-mime-accept-string "application/json")
+	 (buffer (condition-case ex
 		     (url-retrieve-synchronously url t)
 		   ('file-error
 		    (message (format "Connection error fetching %s" url))
