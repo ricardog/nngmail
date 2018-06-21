@@ -225,11 +225,11 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         return query
 
 class Thread(UniqueMixin, Serializeable, db.Model):
-    db.UniqueConstraint('account_id', 'tid', name='tid_1')
+    db.UniqueConstraint('account_id', 'thread_id', name='tid_1')
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
-    tid = db.Column(db.String, index=True)
+    thread_id = db.Column(db.String, index=True)
 
     account = db.relationship('Account',
                               backref=backref('threads', cascade='all,delete'))
@@ -242,15 +242,15 @@ class Thread(UniqueMixin, Serializeable, db.Model):
     labels = association_proxy('messages', 'labels')
 
     @classmethod
-    def unique_hash(cls, account, tid):
-        return hash((account, tid))
+    def unique_hash(cls, account, thread_id):
+        return hash((account, thread_id))
 
     @classmethod
-    def unique_filter(cls, query, account, tid):
-        return query.filter_by(tid=tid, account=account)
+    def unique_filter(cls, query, account, thread_id):
+        return query.filter_by(thread_id=thread_id, account=account)
 
     def __repr__(self):
-        return '%d: %s' % (self.id, self.tid)
+        return '%d: %s' % (self.id, self.thread_id)
 
     def serialize(self):
         return Serializeable.serialize(self, omit=('account', 'messages'))

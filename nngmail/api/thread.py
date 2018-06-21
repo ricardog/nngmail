@@ -43,11 +43,11 @@ api_bp.add_url_rule('/threads/<int:thread_id>',
                     view_func=thread_view,
                     methods=['GET', 'DELETE'])
 
-@api_bp.route(acct_nick_base + '/threads/<string:tid>',
+@api_bp.route(acct_nick_base + '/threads/<string:thread_id>',
               methods=['GET', 'DELETE'])
-def thread_by_name(nickname, tid):
+def thread_by_name(nickname, thread_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     thread = Thread.query.filter_by(account_id=account.id).\
-        filter_by(tid=tid).first_or_404()
+        filter_by(thread_id=thread_id).first_or_404()
     return thread_view(None, thread.id)
                        

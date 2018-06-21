@@ -127,7 +127,7 @@ class Sqlite3():
             for hdr in ('To', 'CC', 'BCC'):
                 adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
             labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
-            thread = Thread.as_unique(session, tid=msg['threadId'],
+            thread = Thread.as_unique(session, thread_id=msg['threadId'],
                                       account=self.account)
             if 'internalDate' in msg:
                 timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
