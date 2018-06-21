@@ -1,5 +1,5 @@
+;;; helm-nngmail --- helm browse unread email using nngmail back end
 ;;; -*- lexical-binding: t *-*
-;;; helm-nngmail --- helm browse unread email using nngmail back end 
 
 ;; Copyright © 2018 Ricardo E. Gonzalez
 ;;
@@ -7,7 +7,7 @@
 ;; URL: http://www.github.com/ricardog00/nngmail.git
 ;; Version: 0.1
 ;; Keywords: Helm, Gnus, Gmail
-;; Package-Requires: 
+;; Package-Requires:
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -44,15 +44,12 @@ When not specified, ELLIPSIS defaults to ‘...’."
     s))
 
 (defun helm-nngmail-format-message (message)
-  (let ((text (format "[%-20s] %-55s\n  %-78s\n%-78s"
+  (let ((text (format "[%-20s] %-55s\n  %-78s"
 		      (trunc 20 (or (cdr (assq 'name message))
 				    (cdr (assq 'email message))))
 		      (trunc 55 (cdr (assq 'subject message)))
 		      (trunc 78 (cdr (assq 'snippet message)))
-		      (trunc 78 (mapconcat 'cdr
-					   (cdr (assq 'labels message))
-					    " ")
-				 ))
+		      )
 	      ))
     text))
 
@@ -73,7 +70,7 @@ When not specified, ELLIPSIS defaults to ‘...’."
 								     (or group "UNREAD") messages)))
 		`((name . ,account)
 		  (candidates . ,candidates)
-		  (multilne . 3)
+		  (multilne . 2)
 		  (action
 		   ("Read" . helm-nngmail-action-read)
 		   ("Mark read" . helm-nngmail-action-mark-read)
