@@ -478,7 +478,7 @@ primary key in the database)."
 		    fetch-old
 		    (length articles)))
 	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
-	 (url (nngmail-url-for 'message (nngmail-get-account-id account) nil
+	 (url (nngmail-url-for 'message account nil
 			       `((format . "nov")
 				 (id . ,ids)
 				 (label . ,group))))
