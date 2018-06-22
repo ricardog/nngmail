@@ -256,11 +256,12 @@ class Thread(UniqueMixin, Serializeable, db.Model):
         return Serializeable.serialize(self, omit=('account', 'messages'))
 
 class Message(TimestampMixin, Serializeable, db.Model):
-    db.UniqueConstraint('account_id', 'google_id', name='id_1')
+    db.UniqueConstraint('account_id', 'google_id', name='gid_1')
+    db.UniqueConstraint('account_id', 'id', name='gid_1')
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, unique=False, nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
-                           index=True, nullable=False)
+                           index=True, nullable=False, primary_key=True)
     google_id = db.Column(db.String(20), index=True)
     message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)

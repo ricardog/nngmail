@@ -27,12 +27,14 @@ def flags_by_name(nickname, label):
     return flags(Label.query.filter(Label.account == account).\
                  filter_by(name=label).first_or_404().id)
 
-@api_bp.route(acct_base + '/labels/<int:label_id>/flags')
+@api_bp.route('/labels/<int:label_id>/flags')
 def flags(label_id):
-    mids = set(sum(Label.query.get_or_404(label_id).messages.\
+    label = Label.query.get_or_404(label_id)
+    mids = set(sum(label.messages.\
                    with_entities(Message.id).order_by(Message.id.asc()).\
                    all(), ()))
-    unread = set(sum(Label.query.filter_by(name='UNREAD').first().\
+    unread = set(sum(Label.query.filter_by(name='UNREAD').\
+                     filter_by(account=label.account).first().\
                      messages.with_entities(Message.id).\
                      order_by(Message.id.asc()).all(), ()))
     if not mids:

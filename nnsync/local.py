@@ -96,11 +96,15 @@ class Sqlite3():
             return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
-        session = db.session()
-        values = [{'google_id': gid, 'account_id': self.account.id,}
-                  for gid in gids]
-        insert = Message.__table__.insert().values(values)
-        session.execute(insert)
+        with db.engine.begin() as connection:
+            current_id = Message.query.\
+                with_entities(db.func.max(Message.id)).\
+                filter_by(account_id=self.account.id).first()[0] or 0
+            ids = range(current_id + 1, current_id + 1 + len(gids))
+            values = [{'id': id, 'google_id': gid,
+                       'account_id': self.account.id, 'message_id': ''}
+                      for id, gid in zip(ids, gids)]
+            connection.execute(Message.__table__.insert().values(values))
 
     def create(self, msgs):
         if '__getitem__' not in dir(msgs):
@@ -108,7 +112,11 @@ class Sqlite3():
         session = db.session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID', 'Message-Id', 'References']
-        for msg in msgs:
+        objs = Message.query.\
+            filter(Message.google_id.in_([msg['id'] for msg in msgs])).all()
+        assert len(objs) == len(msgs)
+        for obj, msg in zip(sorted(objs, key=lambda o: o.google_id),
+                            sorted(msgs, key=lambda m: m['id'])):
             if 'headers' not in msg['payload']:
                 ## Some message s(drafts?) don't have any headers (nor
                 ## labels).
@@ -135,17 +143,19 @@ class Sqlite3():
             else:
                 timestamp = datetime.now()
 
-            session.add(Message(account=self.account, google_id=msg['id'],
-                                thread=thread,
-                                message_id=message_id,
-                                subject=headers.get('Subject',
-                                                    headers.get('subject', '')),
-                                references=headers.get('References', ''),
-                                size=msg.get('sizeEstimate', 0),
-                                date=timestamp, sender=senders[0],
-                                snippet=msg['snippet'], labels=labels,
-                                tos=adds['To'], ccs=adds['CC'],
-                                bccs=adds['BCC']))
+            obj.thread = thread
+            obj.message_id = message_id
+            obj.subject = headers.get('Subject',
+                                      headers.get('subject', ''))
+            obj.references = headers.get('References', '')
+            obj.size = msg.get('sizeEstimate', 0)
+            obj.date = timestamp
+            obj.sender = senders[0]
+            obj.snippet = msg['snippet']
+            obj.labels = labels
+            obj.tos = adds['To']
+            obj.ccs = adds['CC']
+            obj.bccs = adds['BCC']
         session.commit()
 
     def update(self, msgs):

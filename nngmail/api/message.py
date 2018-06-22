@@ -48,7 +48,7 @@ class MessageAPI(MethodView):
             return jsonify({'messages': messages})
         else:
             ## Return single
-            message = Message.query.get(message_id)
+            message = Message.query.get((message_id, account_id))
             if not message:
                 return make_response(jsonify({'error': 'Message not found'}),
                                      404)
@@ -77,7 +77,7 @@ class MessageAPI(MethodView):
                                               'Bad account nickname (%s)' %
                                               nickname}),
                                      400)
-            message = Message.query.get_or_404(message_id)
+            message = Message.query.get_or_404((message_id, account_id))
             if 'add_labels' in request.json:
                 labels = request.json.get('add_labels').split(',')
                 for label in labels:
@@ -110,22 +110,28 @@ api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
                     view_func=message_view, methods=['GET'])
 api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
                     view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
-api_bp.add_url_rule('/messages/<int:message_id>',
-                    defaults={'account_id': None},
+api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
                     view_func=message_view,
                     methods=['GET', 'PUT', 'DELETE'])
+
+@api_bp.route(acct_nick_base + '/messages/',
+              methods=['GET'])
+def messages(nickname):
+    account = Account.query.filter_by(nickname=nickname).first_or_404()
+    return message_view(account.id, None)
 
 @api_bp.route(acct_nick_base + '/messages/<int:message_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, message_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(None, Message.query.get_or_404(message_id).id)
+    return message_view(account.id, Message.query.get_or_404((message_id,
+                                                              account.id)).id)
 
 @api_bp.route(acct_nick_base + '/messages/<string:message_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_message_id(nickname, message_id):
     mid = urllib.parse.unquote(message_id)
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(None,
+    return message_view(account.id,
                         Message.query.filter_by(account_id=account.id).\
                         filter_by(message_id=mid).first_or_404().id)

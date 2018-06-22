@@ -90,6 +90,7 @@ class NnSync():
         return history_id
 
     def create(self, gids, sync_labels=False):
+        self.sql3.placeholder(gids)
         return self.create_or_update(gids, True, sync_labels)
 
     def update(self, gids, sync_labels=False):
