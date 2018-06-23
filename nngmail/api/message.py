@@ -54,12 +54,13 @@ class MessageAPI(MethodView):
                                      404)
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'raw':
-                message = Message.query.options(undefer('_raw')).get(message_id)
+                message = Message.query.options(undefer('_raw')).\
+                    get((message_id, account_id))
                 # FIXME: use stream_with_context?
                 if message.raw is None:
                     click.echo('fetching message %d' % message.id)
                     sync = get_sync(message.account).read(message.id)
-                    message = Message.query.get(message_id)
+                    message = Message.query.get((message_id, account_id))
                 return make_response(message.raw)
             return jsonify(message)
 
