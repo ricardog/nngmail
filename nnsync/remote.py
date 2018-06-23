@@ -138,6 +138,19 @@ class Gmail:
     def poll_interval(self):
         return self.opts.poll_interval
 
+    @property
+    def scopes(self):
+        return [scope.rsplit('/', 1)[1] for scope in self.opts.scopes]
+
+    @property
+    def writable(self):
+        return 'gmail.modify' in self.scopes
+
+    @property
+    def can_send(self):
+        return ('gmail.compose' in self.scopes or
+                'gmail.send' in self.scopes)
+    
     def get_credentials(self):
         "Read, or create one if it does not exist, the credentials file."
         store = file.Storage(self.opts.credentials_path)
