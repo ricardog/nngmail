@@ -20,7 +20,8 @@ RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
 class Sqlite3():
     options = Options(email=None, nickname=None, db_url=None, account=None,
-                      cache_timeout=60, cache_max_size=0)
+                      cache_timeout=60, cache_max_size=0,
+                      writable=False, can_send=False)
 
     @staticmethod
     def __new_contacts(header):
@@ -56,7 +57,9 @@ class Sqlite3():
         self.opts = self.options.push(flatten(kwargs))
         self.opts.set(account=Account.as_unique(db.session(),
                                                 email=self.opts.email,
-                                                nickname=self.opts.nickname))
+                                                nickname=self.opts.nickname,
+                                                writable=self.opts.writable,
+                                                can_send=False))
         self.label_map = {}
         self.label_imap = {}
 

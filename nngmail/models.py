@@ -82,6 +82,8 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
     nickname = db.Column(db.String(100), nullable=True)
+    writable = db.Column(db.Boolean, default = False)
+    can_send = db.Column(db.Boolean, default = False)
 
     @db.validates('email')
     def validates_email(self, key, email):
@@ -91,11 +93,12 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         return email
 
     @classmethod
-    def unique_hash(cls, email, nickname):
+    def unique_hash(cls, email, nickname, writable=None, can_send=None):
         return email
 
     @classmethod
-    def unique_filter(cls, query, email, nickname):
+    def unique_filter(cls, query, email, nickname, writable=None,
+                      can_send=None):
         return query.filter(Account.email == email)
 
     def __repr__(self):
@@ -104,7 +107,7 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     def serialize(self):
         return Serializeable.serialize(self, omit=('messages', 'threads',
                                                    'labels', 'keys'))
-        
+
 class Contact(UniqueMixin, db.Model, Serializeable):
     db.UniqueConstraint('name', 'email', name='unique_1')
     id = db.Column(db.Integer, primary_key=True)

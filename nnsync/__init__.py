@@ -28,13 +28,15 @@ class NnSync():
         self.email = email
         self.nickname = nickname
         self.opts = deepcopy(opts)
-        local_opts = self.opts.get('local', {})
-        local_opts.update({'email': self.email,
-                           'nickname': self.nickname})
         gmail_opts = self.opts.get('gmail', {})
         gmail_opts.update({'email': self.email})
-        self.sql3 = local.Sqlite3(**local_opts)
         self.gmail = remote.Gmail(**gmail_opts)
+        local_opts = self.opts.get('local', {})
+        local_opts.update({'email': self.email,
+                           'nickname': self.nickname,
+                           'writable': self.gmail.writable,
+                           'can_send': self.gmail.can_send})
+        self.sql3 = local.Sqlite3(**local_opts)
         if self.opts['verbose']:
             self.bar = tqdm
         else:
