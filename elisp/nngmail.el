@@ -77,6 +77,12 @@ What I call an account in the server is what gnus calls a server.  This list has
 (defun nngmail-get-account-groups (nickname)
   (cdr (assq 'groups (nngmail-get-account nickname))))
 
+(defun nngmail-get-account-writable (nickname)
+  (cdr (assq 'writable (nngmail-get-account nickname))))
+
+(defun nngmail-get-account-can-send (nickname)
+  (cdr (assq 'can-send (nngmail-get-account nickname))))
+
 (defun nngmail-get-account-message (nickname)
   (cdr (assq 'message (nngmail-get-account nickname))))
 
@@ -108,10 +114,14 @@ What I call an account in the server is what gnus calls a server.  This list has
   (let ((nickname (plist-get elem 'nickname))
 	(email (plist-get elem 'email))
 	(id (plist-get elem 'id))
+	(writable (plist-get elem 'writable))
+	(can-send (plist-get elem 'can_send))
 	(groups (ht)))
-    (cons nickname `((id      . ,id)
-		     (email   . ,email)
-		     (groups  . ,groups)
+    (cons nickname `((id       . ,id)
+		     (email    . ,email)
+		     (groups   . ,groups)
+		     (writable . ,writable)
+		     (can-send . ,can-send)
 		     (message)
 		     (group)
 		     ))))
@@ -444,10 +454,14 @@ primary key in the database)."
 	  (nngmail-set-account-groups account (nngmail-get-groups account))
 	  (erase-buffer)
 	  (maphash (lambda (key value)
-		     (insert (format "%S %d %d n\n"
+		     (insert (format "%S %d %d %s\n"
 				     key
 				     (cdr (assq 'max value))
-				     (cdr (assq 'min value)))))
+				     (cdr (assq 'min value))
+				     (if (nngmail-get-account-writable account)
+					 "y"
+				       "n")
+				     )))
 		   (nngmail-get-account-groups account))
 	  (nngmail-touch-server account))
       t)))
@@ -519,6 +533,8 @@ primary key in the database)."
 	(nngmail-set-account-message "Read-only server")))
   nil)
 
+;; This function is not needed because the back-end is defined as
+;; mail-only.  But will leave it here for now.
 (deffoo nngmail-request-type (group &optional article)
   'mail)
 
