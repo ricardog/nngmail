@@ -156,6 +156,7 @@ class Sqlite3():
             obj.tos = adds['To']
             obj.ccs = adds['CC']
             obj.bccs = adds['BCC']
+            obj.updated = None
         session.commit()
 
     def update(self, msgs):
