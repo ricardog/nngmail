@@ -586,13 +586,50 @@ primary key in the database)."
 	(push flag flags)))
     flags))
 
-(deffoo nngmail-request-set-mark (group action &optional server)
+(deffoo nngmail-request-set-mark (group actions &optional server)
   "Set/remove/add marks on articles."
   ;;; ACTION is a list of mark setting requests, having this format:
-  ;;; (RANGE ACTION MARK)
+  ;;; (RANGE ACTION MARK), e.g.
+  ;;; ((((2157 . 2160)) add (read)))
   ;;; Gnus marks are:
   (message (format "in nngmail-request-set-mark for %s" group))
-  nil)
+  (setq server (or server nngmail-last-account))
+  (let (failures)
+    (dolist (action actions)
+      (destructuring-bind (range action marks) action
+	(let ((url-request-method "PUT")
+	      (labels (nngmail-marks-to-labels marks)))
+	  ;; Invert add/del for "read" marks since Gmail u
+	  (when (and (eq action 'add)
+		     (member "-UNREAD" labels))
+	    (push (nngmail-request-set-mark
+		   group `((,range del ('unread))) server)
+		  failures)
+	    (setq labels (delete "-UNREAD" labels)))
+	  (when (and (eq action 'del)
+		     (member "-UNREAD" labels))
+	    (push (nngmail-request-set-mark
+		   group `((,range add (unread))) server)
+		  failures)
+	    (setq labels (delete "-UNREAD" labels)))
+	  (when labels
+	    (let* ((articles (nngmail-article-ranges range))
+		   (data `((id . ,articles)
+			   (add_labels . ,(if (eq action 'add) labels ()))
+			   (rm_labels . ,(if (eq action 'del) labels ()))))
+		   (entity (json-encode data))
+		   (url-request-extra-headers
+		    '(("Content-Type" . "application/json")))
+		   (url-request-data (encode-coding-string entity 'utf-8)))
+	      (let ((response (nngmail-fetch-resource 'message server)))
+		(when (eq (car response) 'exception)
+		  ;; FIXME: Determine which updates failes and return
+		  ;; the appropriate list to Gnus.  For now assume all
+		  ;; articles failed update.  Fortunately Gnus does not
+		  ;; use the return value of this function.
+		  (push range failures)))))
+	  )))
+    (flatten failures)))
 
 (deffoo nngmail-request-update-mark (group article mark)
   (let ((name (cond
