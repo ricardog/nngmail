@@ -28,7 +28,7 @@
 (require 'nnmail)
 
 (nnoo-declare nngmail)
-(gnus-declare-backend "nngmail" 'mail 'address)
+(gnus-declare-backend "nngmail" 'mail 'address 'server-marks)
 
 (defvoo nngmail-host "localhost"
   "The address of the gmail proxy.")
