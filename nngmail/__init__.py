@@ -50,6 +50,10 @@ def not_found(error):
     return make_response(jsonify({'error': 'The requested URL was not '
                                   'found on the server.'}), 404)
 
+@app.errorhandler(403)
+def permission_denied(error):
+    return make_response(jsonify({'error': error.description}), error.code)
+
 @app.cli.command('init-db')
 def init_db_command():
     """Clear the existing data and create new tables."""
