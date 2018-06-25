@@ -525,10 +525,11 @@ primary key in the database)."
 ;;; Optional functions in gnus back end API
 ;;;
 (defvar nngmail-mark-alist
-  '((read "UNREAD")
-    (tick "FLAGGED")
-    (reply "Answered")
-    (expire "expired")
+  '((read "-UNREAD")
+    (unread "UNREAD")
+    (tick "IMPORTANT")
+    (reply "answered")
+    (expire "TRASH")
     (dormant "dormant")
     (score "score")
     (save "save")
@@ -577,6 +578,13 @@ primary key in the database)."
   (message (format "in nngmail-request-update-infos for %s" group))
   ;; Iterate through all groups updating flags in group info.
   nil)
+
+(defun nngmail-marks-to-labels (marks)
+  (let (flags flag)
+    (dolist (mark marks)
+      (when (setq flag (cadr (assq mark nngmail-mark-alist)))
+	(push flag flags)))
+    flags))
 
 (deffoo nngmail-request-set-mark (group action &optional server)
   "Set/remove/add marks on articles."
