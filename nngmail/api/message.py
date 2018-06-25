@@ -9,13 +9,18 @@ from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
 
+def to_range(r):
+    if len(r) == 2:
+        return tuple(range(int(r[0]), int(r[1])+1))
+    return (int(r[0]), )
+
+def get_ids(arg):
+    return sum(map(lambda r: to_range(r),
+                   map(lambda s: s.split(':'),
+                       arg.split(','))), ())
+    
 class MessageAPI(MethodView):
     def get(self, account_id, message_id):
-        def to_range(r):
-            if len(r) == 2:
-                return tuple(range(int(r[0]), int(r[1])+1))
-            return (int(r[0]), )
-
         if not message_id:
             ## Return list
             filters = {}
@@ -29,9 +34,7 @@ class MessageAPI(MethodView):
                 filters.update(dict([q.split('=', 1)]))
                 query = query.filter_by(**filters)
             if 'id' in request.args:
-                ids = sum(map(lambda r: to_range(r),
-                              map(lambda s: s.split(':'),
-                                  request.args['id'].split(','))), ())
+                ids = get_ids(request.args['id'])
                 query = query.filter(Message.id.in_(ids))
             if 'thread_id' in request.args:
                 query = query.filter(thread_id=request.args('thread_id'))
@@ -65,41 +68,60 @@ class MessageAPI(MethodView):
             return jsonify(message)
 
     def put(self, account_id, message_id):
+        def process_message(message, added, removed):
+            for label in added:
+                message.labels.append(label)
+            for label in removed:
+                if label not in message.labels:
+                    return None
+                message.labels.remove(label)
+            return message
+
+        if not request.json:
+            click.echo('no json')
+            return make_response(jsonify({'error':
+                                          'No data for message update'}),
+                                 400)
+        click.echo(request.json)
+        if ('add_labels' not in request.json and
+            'rm_labels' not in request.json):
+            return make_response(jsonify({'error':
+                                          'Specify add_labels or rm_labels'}),
+                                 400)
+        added = [Label.query.filter_by(name=name).first_or_404()
+                 for name in request.json.get('add_labels', []) or []]
+        removed = [Label.query.filter_by(name=name).first_or_404()
+                   for name in request.json.get('rm_labels', []) or []]
+
+        sync = get_sync(Account.query.get(account_id))
         if account_id and not message_id:
-            abort(404)
+            if 'id' not in request.json:
+                abort(404)
+            ids = get_ids(request.json['id'])
         else:
-            if not request.json:
-                return make_response(jsonify({'error':
-                                              'No data on message update'}),
-                                     400)
-            if ('add_labels' not in request.json and
-                'rm_labels' not in request.json):
-                return make_response(jsonify({'error':
-                                              'Bad account nickname (%s)' %
-                                              nickname}),
-                                     400)
-            message = Message.query.get_or_404((message_id, account_id))
-            if 'add_labels' in request.json:
-                labels = request.json.get('add_labels').split(',')
-                for label in labels:
-                    lid = Label.query.filter_by(name=label).first_or_404()
-                    message.labels.append(lid)
-            if 'rm_labels' in request.json:
-                labels = request.json.get('rm_labels').split(',')
-                for label in labels:
-                    lid = Label.query.filter_by(name=label).first_or_404()
-                    if lid not in message.labels:
-                        return make_response(jsonify({'error':
-                                                      'Message does not have label %s' %
-                                                      label}),
-                                             400)
-                    message.labels.remove(lid)
-            return jsonify({'result': message})
+            ids = [message_id]
+        messages = Message.query.filter_by(account_id=account_id).\
+            filter(Message.id.in_(ids)).all()
+        resp = sync.remote_batch_update([m.google_id
+                                         for m in messages],
+                                        [l.gid for l in added],
+                                        [l.gid for l in removed])
+        if resp:
+            click.echo('remote update failed')
+            abort(resp[0], resp[1]),
+        session = db.session()
+        resp = [process_message(m, added, removed) for m in messages]
+        session.commit()
+        failures = filter(lambda r: r == None, resp)
+        return jsonify({'failures': failures})
 
     def delete(self, account_id, message_id):
-        message = Message.query.get(message_id)
+        click.echo('delete message %d in account %d' % (message_id, account_id))
+        message = Message.query.get((message_id, account_id))
         if not message:
             return make_response(jsonify({'error': 'Message not found'}), 404)
+        sync = get_sync(Account.query.get(account_id))
+        sync.remote_delete(message.google_id)
         db.session().delete(message)
         db.session().commit()
         return jsonify({'result': True})
@@ -108,15 +130,12 @@ class MessageAPI(MethodView):
 ## Message resource
 message_view = MessageAPI.as_view('message')
 api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-                    view_func=message_view, methods=['GET'])
+                    view_func=message_view, methods=['GET', 'PUT'])
 api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
                     view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
-api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
-                    view_func=message_view,
-                    methods=['GET', 'PUT', 'DELETE'])
 
 @api_bp.route(acct_nick_base + '/messages/',
-              methods=['GET'])
+              methods=['GET', 'PUT'])
 def messages(nickname):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return message_view(account.id, None)

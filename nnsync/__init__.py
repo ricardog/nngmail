@@ -107,6 +107,21 @@ class NnSync():
     def delete(self, gids):
         self.sql3.delete(gids)
 
+    def remote_batch_update(self, ids, add_labels, rm_labels):
+        if not self.gmail.writable:
+            return None
+        return self.gmail.update_messages(ids, add_labels, rm_labels)
+
+    def remote_update(self, id, labels):
+        if not self.gmail.writable:
+            return None
+        return self.gmail.update_message(id, labels)
+
+    def remote_delete(self, id):
+        if not self.gmail.writable:
+            return None
+        return self.gmail.delete_message(id)
+
     def get_history(self):
         history = []
         no_history = False

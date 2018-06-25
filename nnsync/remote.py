@@ -354,6 +354,18 @@ class Gmail:
             yield resp
 
     @authorized
+    def update_message(self, id, labels):
+        return(507, 'Not implemented')
+
+    @authorized
+    def update_messages(self, ids, add_labels, rm_labels):
+        return (506, 'Not implemented')
+
+    @authorized
+    def delete_message(self, id):
+        return (506, 'Not implemented')
+
+    @authorized
     def search(self, query, labels=[]):
         qstring = query + ' ' + self.opts.query
         if labels:
