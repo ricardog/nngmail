@@ -206,7 +206,12 @@ class Sqlite3():
                                          Message.account == self.account)).all()
 
     def find_cacheable(self):
-        td = datetime.now() - timedelta(days=self.opts.cache_timeout)
+        if self.opts.cache_timeout == 0:
+            return ()
+        if self.opts.cache_timeout < 0:
+            td = datetime.fromtimestamp(0)
+        else:
+            td = datetime.now() - timedelta(days=self.opts.cache_timeout)
         query = Message.query.with_entities(Message.id).\
                 filter(or_(Message.date > td,
                            Message.updated > td)).\
