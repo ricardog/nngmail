@@ -51,6 +51,24 @@ the *destructive* branch.  Use with caution, it may well eat your email.
 Once there is a nice test suite, I will enable write-mode by default.
 Until then, you will have to opt-in to life on the edge.
 
+The server stores the name and email of everyone you correspond with (so
+you could use it as a local address book).  But it is rather simplistic
+in how it handles multiple email addresses and names.  This can cause
+the From field to appear a bit funny at times.  For example, if a
+company changes how the send notifications.
+
+### Documentation
+
+Yeah, as you guessed there is no documentation other than this
+[README](README) file and the code is not very well commented.
+
+There are a number of configuration options which you can tweak.  See
+`data/config.yaml` for some.  There is support for parallel requests
+when importing an account.  However, it does not yet handle errors due
+to too many simultaneous user requests o it's best to leave the setting
+as is.
+
+
 ## Motivation
 
 I wrote this because I felt frustrated with how long it takes to read
@@ -215,6 +233,18 @@ is, the nngmail lisp code never talks to the Gmail API directly.  It
 runs a background thread per account to regularly synchronize changes
 made elsewhere to the account.
 
+For now the synchronization exports Gmail-specific labels, like
+*CATEGORY_PERSONAL`.  But it mangles the name in an attempt to make them
+more readable.  Here is the mapping of category names:
+
+| Category          | New label      |
+|-------------------|----------------|
+| CATEGORY_PERSONAL | Inbox:Personal |
+| CATEGORY_SOCIAL   | Inbox:Social   |
+| CATEGORY_FORUMS   | Inbox:Forums   |
+| CATEGORY_UPDATES  | Inbox:Updates  |
+| CATEGORY_PROMOTIO | Inbox:Promotio |
+
 
 ## Performance
 
@@ -258,3 +288,4 @@ Note that the local server does not (yet) support offline mode.  It
 relies on synchronous calls to Gmail to update state.  I plan to
 implement support for offline mode so marks set while Gmail is not
 reachable will be synchronized next time the API is available.
+
