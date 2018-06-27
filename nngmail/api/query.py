@@ -9,6 +9,7 @@ from nngmail.api.utils import acct_base, acct_nick_base
 
 class QueryAPI(MethodView):
     def get(self, account_id):
+        #import pdb; pdb.set_trace()
         label_arg = request.args.get('labels', '')
         label_names = urllib.parse.unquote(label_arg).split(',')
         labels = sum(Label.query.with_entities(Label.gid).\
@@ -17,7 +18,9 @@ class QueryAPI(MethodView):
         base = Message.query.filter_by(account_id=account_id).\
             join(label_association).join(Label).\
             with_entities(Message.id, Label.name).\
-            filter(Label.name.in_(labels)).order_by(Message.id.desc())
+            order_by(Message.id.desc())
+        if labels:
+            base = base.filter(Label.name.in_(labels))
 
         if query == '':
             result = base.all()
