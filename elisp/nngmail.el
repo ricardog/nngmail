@@ -1,7 +1,48 @@
-;;; package --- Summary
+;;; package --- A Gmail REST API back end for Gnus
+
+;; Copyright (C) 2018  Itineris, Inc.
+
+;; Author: Ricardo E. Gonzalez  <ricardog@itinerisinc.com>
+;; URL: https://bitbucket.org/ricardog00/nngmail/nngmail.git
+;; Version: 0.1
+;; Keywords: Gnus, Gmail, mail
+;; Package-Requires: ((emacs "25.3") (gnus "5.13") (ht 2.3")
 
 ;;; Commentary:
 
+;;; This file provides a Gnus back end for reading email via the Gmail
+;;; REST API.  It relies on a local synchronization services that store
+;;; all message metadata plus caches recent messages.  Recent refers to
+;;; recently received or recently read.
+
+;;; This code implements as well an nnir back end (`nnir-run-gmail')
+;;; which will run searches on Gmail from within Gnus (similar to the
+;;; nnimap interface.  This allows powerful searching capabilities with
+;;; minimal effort.  The search query is passed as-is to Gmail, except
+;;; that we limit the search to specified labels (for example if you
+;;; want to search for messages in one group only).
+
+;;; This file also implements a few functions used by the `helm-nngmail'
+;;; source for quickly dealing with email.
+
+;;; To use this back end you must first set up the synchronizing proxy
+;;; (see the README for details).  Once that is setup and running, all
+;;; something like the following to your `gnus-secondary-methods'
+
+;;;		(nngmail "personal"
+;;;			 (nngmail-email "personal@example.com")
+;;;			 (nngmail-address "localhost")
+;;;			 (nngmail-server-port 5000)
+;;;			 )
+;;;		(nngmail "work"
+;;;			 (nngmail-email "work@example.com")
+;;;			 (nngmail-address "localhost")
+;;;			 (nngmail-server-port 5000)
+;;;			 )
+
+;;; The next time you run Gnus it should be able to open the "servers"
+;;; and you can subscribe to whatever groups you want.  Like the Gmail
+;;; IMAP interface, Gmail labels are mapped to groups.
 
 ;;; Code:
 (eval-and-compile
@@ -31,7 +72,7 @@
 (gnus-declare-backend "nngmail" 'mail 'address 'server-marks)
 
 (defvoo nngmail-host "localhost"
-  "The address of the gmail proxy.")
+  "The address of the gmail proxy / sync server (nnsync).")
 
 (defvoo nngmail-user nil
   "Username to use for authentication to the IMAP server.")
@@ -45,72 +86,111 @@
 
 (defvoo nngmail-split-methods nil
   "How mail is split.
-Uses the same syntax as `nnmail-split-methods'.")
+Uses the same syntax as `nnmail-split-methods'.  Not supported as
+because nngmail is not a respooling source.")
 
 (defvoo nngmail-split-fancy nil
-  "Uses the same syntax as `nnmail-split-fancy'.")
+  "Uses the same syntax as `nnmail-split-fancy'.  Not supported
+  because nngmail is not a respooling source. ")
 
 (defun nngmail-decode-gnus-group (group)
+  "Function to decode a GROUP name.
+Stolen from nnimap."
   (decode-coding-string group 'utf-8))
 
 (defun nngmail-encode-gnus-group (group)
+  "Function to encode a GROUP name.
+Stolen from nnimap."
   (encode-coding-string group 'utf-8))
 
-(defvar nngmail-last-account-id nil)
-(defvar nngmail-last-account nil)
+(defvar nngmail-last-account-id nil
+  "ID of last nngmail account used by any Gnus-initiated operation.")
+(defvar nngmail-last-account nil
+  "Nickname of last nngmail account used by any Gnus-initiated operation.")
 
-(defvar nngmail-status-string "")
+(defvar nngmail-status-string ""
+  "Last error string repoted by this source.")
 
 (defvar nngmail-servers ()
   "An alist of accounts the server knows about.
-What I call an account in the server is what gnus calls a server.  This list has all the accounts the server we connect to synchs.")
+What I call an account in the server is what gnus calls a server.
+This list has all the accounts the server we connect to synchs.")
 
+;; These functions should get turned into a macro
 (defun nngmail-get-account (nickname)
+  "Get info alist for account NICKNAME."
   (cdr (assoc nickname nngmail-servers)))
 
+(defun nngmail-get-account-x (nickname what)
+  "Get parameter WHAT for account NICKNAME."
+  (cdr (assq what (nngmail-get-account nickname))))
+
 (defun nngmail-get-account-id (nickname)
-  (cdr (assq 'id (nngmail-get-account nickname))))
+  "Get ID of account NICKNAME."
+  (nngmail-get-account-x nickname 'id))
 
 (defun nngmail-get-account-email (nickname)
-  (cdr (assq 'email (nngmail-get-account nickname))))
+  "Get email of account NICKNAME."
+  (nngmail-get-account-x nickname 'email))
 
 (defun nngmail-get-account-groups (nickname)
-  (cdr (assq 'groups (nngmail-get-account nickname))))
+  "Get groups hash table of account NICKNAME."
+  (nngmail-get-account-x nickname 'groups))
 
 (defun nngmail-get-account-writable (nickname)
-  (cdr (assq 'writable (nngmail-get-account nickname))))
+  "Get writable flag of account NICKNAME."
+  (nngmail-get-account-x nickname 'writable))
 
 (defun nngmail-get-account-can-send (nickname)
-  (cdr (assq 'can-send (nngmail-get-account nickname))))
+  "Get can-send flag of account NICKNAME."
+  (nngmail-get-account-x nickname 'can-send))
 
 (defun nngmail-get-account-message (nickname)
-  (cdr (assq 'message (nngmail-get-account nickname))))
+  "Get error string of account NICKNAME."
+  (nngmail-get-account-x nickname 'message))
 
 (defun nngmail-get-account-group (nickname)
-  (cdr (assq 'group (nngmail-get-account nickname))))
+  "Get last group we switch to for account NICKNAME."
+  (nngmail-get-account-x nickname 'group))
 
 (defun nngmail-set-account-groups (nickname groups)
+  "Set GROUPS hash table for account NICKNAME."
   (setcdr (assoc 'groups (assoc nickname nngmail-servers)) groups))
 
 (defun nngmail-set-account-group (nickname group)
+  "Switch to GROUP in account NICKNAME."
   (setcdr (assoc 'group (assoc nickname nngmail-servers)) group))
 
+(defun nngmail-get-group-x (nickname group what)
+  "Get parameter WHAT from GROUP for account NICKNAME."
+  (cdr (assq what (ht-get (nngmail-get-groups nickname) group))))
+
 (defun nngmail-get-group-id (nickname group)
-  (cdr (assq 'id (ht-get (nngmail-get-groups nickname) group))))
+  "Get ID of GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'id))
 
 (defun nngmail-get-group-min (nickname group)
-  (cdr (assq 'min (ht-get (nngmail-get-groups nickname) group))))
+  "Get min article number in GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'min))
 
 (defun nngmail-get-group-max (nickname group)
-  (cdr (assq 'max (ht-get (nngmail-get-groups nickname) group))))
+  "Get max article number in GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'max))
 
 (defun nngmail-get-group-count (nickname group)
-  (cdr (assq 'count (ht-get (nngmail-get-groups nickname) group))))
+  "Get article count in GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'count))
 
 (defun nngmail-get-error-string (response)
+  "Get the error string of a JSON RESPONSE from the proxy."
   (plist-get response 'error))
   
 (defun nngmail-get-account-params (elem)
+  "Get account parameters from plist ELEM.
+The JSON parser returns a plist.  This function extracts the
+account parameters we want to keep around and stores them in an
+alist.  It's all a bit bogus at the moment and I should perhas
+change the JSON parser to return an alist and be done."
   (let ((nickname (plist-get elem 'nickname))
 	(email (plist-get elem 'email))
 	(id (plist-get elem 'id))
@@ -127,6 +207,11 @@ What I call an account in the server is what gnus calls a server.  This list has
 		     ))))
 
 (defun nngmail-get-group-params (elem)
+  "Get group parameters from plist ELEM.
+The JSON parser returns a plist.  This function extracts the
+group parameters we want to keep around and stores them in an
+alist.  It's all a bit bogus at the moment and I should perhas
+change the JSON parser to return an alist and be done."
   (let ((id (plist-get elem 'id))
 	(name (plist-get elem 'name))
 	(google_id (plist-get elem 'gid))
@@ -141,6 +226,11 @@ What I call an account in the server is what gnus calls a server.  This list has
 		 (count . ,count)))))
 
 (defun nngmail-get-message-params (elem)
+  "Get message parameters from plist ELEM.
+The JSON parser returns a plist.  This function extracts the
+message parameters we want to keep around and stores them in an
+alist.  It's all a bit bogus at the moment and I should perhas
+change the JSON parser to return an alist and be done."
   (let ((id (plist-get elem 'id))
 	(google_id (plist-get elem 'google_id))
 	(name (plist-get (plist-get elem 'sender) 'name))
@@ -165,7 +255,13 @@ What I call an account in the server is what gnus calls a server.  This list has
 	       (labels . ,labels)))))
 
 (defun nngmail-url-for (resource &optional account-id id args)
-  "Generate a URL to probe the resource."
+  "Generate a URL for a RESOURCE.
+Optional ACCOUNT-ID and resource ID are used to construct the URL
+by convention.  If given, ARGS should be an alist of URL
+parameters to send to the server.
+
+FiXME: Use discovery to get te URL for parameters so we don't
+have to hard-code URL rules."
   (let ((base-url (cond
 		   ((stringp account-id)
 		    (format "%s/accounts/%s" nngmail-base-url account-id))
@@ -190,10 +286,10 @@ What I call an account in the server is what gnus calls a server.  This list has
 
 (defun nngmail-handle-response ()
   "Handle the response from a `url-retrieve-synchronously' call.
- Parse the HTTP response and throw if an error occurred.  The url
- package seems to require extra processing for this.  This should
- be called in a `save-excursion', in the download buffer.  It
- will move point to somewhere in the headers."
+Parse the HTTP response and throw if an error occurred.  The url
+package seems to require extra processing for this.  This should
+be called in a `save-excursion', in the download buffer.  It will
+move point to somewhere in the headers."
    ;; We assume HTTP here.
    (let ((response (url-http-parse-response)))
      (when (or (< response 200) (>= response 300))
@@ -207,6 +303,8 @@ What I call an account in the server is what gnus calls a server.  This list has
        (error "Error: nngmail server responded with error"))))
 
 (defun nngmail-parse-json (buffer)
+  "Parse JSON response in BUFFER.
+Currently converts objects to plists and arrays to vectors."
   (with-current-buffer buffer
     (nngmail-handle-response)
     (goto-char url-http-end-of-headers)
@@ -216,6 +314,9 @@ What I call an account in the server is what gnus calls a server.  This list has
       (json-read))))
 
 (defmacro safe-parse (fn &rest clean-up)
+  "Call function FN to parse a response.
+If the request failed (or the parser fails) call CLEAN-UP
+function."
   `(unwind-protect
        (let (retval)
 	 (condition-case ex
@@ -228,6 +329,10 @@ What I call an account in the server is what gnus calls a server.  This list has
      ,@clean-up))
 
 (defun nngmail-fetch-resource-url (url)
+  "Fetch a URL resource by URL.
+This assumed we already have a URL to tickle.  Most use cases
+should prefer `nngmail-fetch-resource' which will generate the
+URL for the resource."
   (let* ((url-mime-accept-string "application/json")
 	 (buffer (condition-case ex
 		     (url-retrieve-synchronously url t)
@@ -246,14 +351,18 @@ What I call an account in the server is what gnus calls a server.  This list has
     response))
 
 (defun nngmail-fetch-resource (resource &optional account-id id args)
-  "Retrieve a resource from the nngmail server."
+  "Retrieve a RESOURCE from the nngmail server.
+
+See `nngmail-url-for' for a description of optional
+arguments (ACCOUNT-ID, ID, ARGS)."
   (let* ((url (nngmail-url-for resource account-id id args)))
     (nngmail-fetch-resource-url url)))
 
 (defun nngmail-get-accounts ()
-  "Get a list of accounts, with their respective ID's, nicknames,
-and email addresses, from the server.  The list of accounts is
-store in `nngmail-servers` for fast access."
+  "Get a list of accounts for the server.
+Each account will have an ID, a nickname, and and email
+addresses.  The list of accounts is stored in `nngmail-servers'
+for fast access."
   (let* ((resource (nngmail-fetch-resource 'account))
 	 (accounts (plist-get resource 'accounts))
 	 servers)
@@ -264,9 +373,15 @@ store in `nngmail-servers` for fast access."
     servers))
 
 (defun nngmail-get-groups (server)
-  "Get a list of groups/labels, with their respective ID's, nicknames,
-and email addresses, from the server.  The list of accounts is
-store in `nngmail-servers` for fast access."
+  "Get a list of groups/labels for account SERVER.
+
+SERVER is the Gnus virtual server name that maps to the email
+account we are retrieving information for.
+
+Each group has an ID, an article range(min, max) and an article
+count.  The function returns a hash table with information for
+all groups.  Gnus-related functions store the hash table in
+`nngmail-servers' for fast access."
   (message (format "in nngmail-get-groups for %s" server))
   (let* ((groups (nngmail-get-account-groups server))
 	 (resource (nngmail-fetch-resource 'label server nil
@@ -281,11 +396,19 @@ store in `nngmail-servers` for fast access."
     ))
 
 (defun nngmail-touch-server (server)
+  "Mark SERVER as the last used server.
+
+Gnus back end API function signatures often have an optional
+server.  So we need to remember which account we last used in
+case an API function is called without an explicit server."
   (when (nngmail-get-account-id server)
     (setq nngmail-last-account-id (nngmail-get-account server)
 	  nngmail-last-account server)))
 
 (defun nngmail-change-group (server group)
+  "Verify GROUP exists for SERVER and switch to it.
+Switching is implemented by remembering the group name for future
+reference."
   (message (format "in nngmail-change-groups for %s %s" server group))
   (and (ht-get (nngmail-get-account-groups server) group)
        (nngmail-set-account-group server group)))
@@ -294,7 +417,9 @@ store in `nngmail-servers` for fast access."
 ;;; Required functions in gnus back end API
 ;;;
 (deffoo nngmail-open-server (server &rest definitions)
-  "Verify the nngmail server syncs the account."
+  "Verify the nngmail server syncs the account SERVER.
+
+FIXME: Understand what gets passed in DEFINITIONS and use the data."
   (message (format "in nngmail-open-server for %s" server))
   (let ((servers (nngmail-get-accounts)))
     (when (not (assoc server servers))
@@ -347,7 +472,18 @@ accounts alist."
       nngmail-status-string))
 
 (defun nngmail-handle-article-request-response (buffer)
-  "Check for errors when fetching articles."
+  "Check for errors when fetching articles.
+
+This functions takes as input a pointer to a BUFFER with the
+response from `url-retrieve-synchronously'.
+
+Fetching articles retruns plain text (text/plain) on success and
+JSON on error hence we can't use the normal response parsing
+routine.  If an error occurred (via the response code), parse the
+JSON and extract the error message.  Without error, return a
+pointer to the BUFFER.
+
+FIXME: Remove re-try mechanism (no longer used)."
   (let (rbuffer)
     (with-current-buffer buffer
       (let ((response (url-http-parse-response)))
@@ -372,9 +508,10 @@ accounts alist."
     rbuffer))
 
 (defun nngmail-fetch-article (url)
-  "Issue an http request for article.  Check the response and
-retry if necessary--which happens when the article needs to be
-read from gmail."
+  "Request and article body from the server using URL.
+
+Check the response and retry if necessary--which happens when the
+article needs to be fetched from gmail."
   (let ((retries 2)
 	buffer)
     (while (and (not buffer) (> retries 0))
@@ -385,20 +522,38 @@ read from gmail."
 	(sleep-for 0 400)))
     buffer))
 
-(defun nngmail-message-id-to-id (article account)
-  "Query the server to map a Message-ID to the message's ID (the
-primary key in the database)."
-  (let* ((message (nngmail-fetch-resource 'message account article)))
+(defun nngmail-message-id-to-id (message-id account)
+  "Fetch the ID (article number) for message with MESSAGE-ID in ACCOUNT..
+
+In this context message-ID refers to the mail header value.  To
+get the ID request the metadata for the article and extrat the
+ID.
+
+This function is used when fetching referring articles."
+  (let* ((message (nngmail-fetch-resource 'message account message-id)))
     (plist-get message 'id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
-  "Issue an HTTP request for the raw article body."
+  "Issue an HTTP request for ARTICLE body.
+
+Optional GROUP and SERVER specify the group and server for the
+article.  If not given, use the last switched-to group and
+server.
+
+ARTICLE can be either an article number or a Message-ID (the
+header value).  If the latter, first map it to the article number
+using `nngmail-message-id-to-id'.
+
+If TO-BUFFER is non-`nil' place the data there instead of the
+normal data buffer. "
   (when group
     (setq group (nngmail-decode-gnus-group group)))
   (when (not server)
     (setq server nngmail-last-account))
   (let* ((dest-buffer (or to-buffer nntp-server-buffer))
-	 (article-id (nngmail-message-id-to-id article server))
+	 (article-id (if (stringp article)
+			 (nngmail-message-id-to-id article server)
+		       article))
 	 (url (nngmail-url-for 'message server article '((format . "raw"))))
 	 (buffer (nngmail-fetch-article url)))
     (if buffer
@@ -415,7 +570,11 @@ primary key in the database)."
     
 
 (deffoo nngmail-request-group (group &optional server fast info)
-  "Retrieve information about GROUP."
+  "Retrieve information about GROUP.
+
+If FAST is non`nil', refresh the group information from the
+server.  Otherwise use data previously fetched and stored in
+`nngmail-servers'."
   ;;; 211 56 1000 1059 ifi.discussion
   (when group
     (setq group (nngmail-decode-gnus-group group)))
@@ -438,11 +597,15 @@ primary key in the database)."
     (nngmail-touch-server account)))
   
 (deffoo nngmail-close-group (group &optional server)
-  "Close the group.  A nop."
+  "Close the group.  A nop for this back end."
   (message (format "in nngmail-close-group for %s" group)))
 
 (deffoo nngmail-request-list (&optional server)
-  "Return a list of all groups available on SERVER."
+  "Return a list of all groups available on SERVER.
+
+Each Gmail label is considered a group.  If the account was
+created as read-only, i.e. it did not specify modify scope on
+creation, then list all groups as read-only."
   ;;; An example of a server with two groups
   ;;;
   ;;; ifi.test 0000002200 0000002000 y
@@ -467,6 +630,10 @@ primary key in the database)."
       t)))
 
 (defun nngmail-article-ranges (ranges)
+  "Convert article RANGES to a string representation.
+
+The result is a comma-separated list of ranges.  Each range is
+either a single number, or a pair (low, high) separated by ':'."
   (let (result)
     (cond
      ((numberp ranges)
@@ -483,7 +650,10 @@ primary key in the database)."
       (mapconcat #'identity (nreverse result) ",")))))
 
 (deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
-  "Retrieve headers for the specified group (label)."
+  "Retrieve headers for the specified group (label).
+
+The server is kind enough to return NOV format so twe don't need
+to grovel over the response."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
   (message (format "in nngmail-retrieve-headers for %s" group))
@@ -509,12 +679,26 @@ primary key in the database)."
   'nov)
 
 (deffoo nngmail-request-thread (header &optional group server)
+  "Request a list of messages for thread HEADER.
+
+This function is not described in the Info node `(Gnus) Back End
+Interface' but is implemented in `nnimap' and gets called when
+the user invokes \\[gnus-summary-refer-thread].
+
+The HEADER argument is a Gnuism whose first element is the
+article ID.  First fetch the article metadata and extract the
+thread ID.  Then request a list of messages (in NOV format) for
+that thread.
+
+Most of the work is done by the server.  All we do here is do two
+requests from the server."
   (when group
     (setq group (nnimap-decode-gnus-group group)))
+  (setq server (or server nngmail-last-account))
   (message (format "in nngmail-request-tread  %d" (elt header 0)))
-  (let* ((message (nngmail-fetch-resource 'message nil (elt header 0)))
+  (let* ((message (nngmail-fetch-resource 'message server (elt header 0)))
 	 (thread-id (plist-get message 'thread_id))
-	 (url (nngmail-url-for "thread" thread-id nil
+	 (url (nngmail-url-for 'thread thread-id nil
 			       `((format . "nov"))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
@@ -528,6 +712,7 @@ primary key in the database)."
   t)
 
 (deffoo nngmail-request-post (&optional server)
+  "Unused."
   (let ((account (or server nngmail-last-account)))
     (if account
 	(nngmail-set-account-message "Read-only server")))
@@ -536,6 +721,10 @@ primary key in the database)."
 ;; This function is not needed because the back-end is defined as
 ;; mail-only.  But will leave it here for now.
 (deffoo nngmail-request-type (group &optional article)
+  "Return the type of a GROUP for follow-ups.
+
+This refers to how to do follow-ups.  Because we declare 'nngmail
+to be a mail only back end, this function never gets called."
   'mail)
 
 ;;;
@@ -551,22 +740,38 @@ primary key in the database)."
     (score "score")
     (save "save")
     (download "download")
-    (forward "forward")))
+    (forward "forward"))
+  "Map from Gnus marks to Gmail labels.
+
+Gnus uses a read mark while Gmail uses an UNREAD label.  This
+causes a bit of complexity when dealing with updating marks.")
 
 (deffoo nngmail-retrive-groups (groups &optional server)
+  "Retrieve information for GROUPS.
+
+This calls `nngmailrequest-list' for SERVER and returns 'active
+to Gnus can make sense of the data."
   (message (format "in nngmail-retrieve-group"))
   (nngmail-request-list server)
   'active)
 
 (defun v2l (arg)
+  "Convert vector ARG to a list."
   (if (vectorp arg)
       `(,(elt arg 0) .  ,(elt arg 1))
     arg))
 
 (defun vector-to-list (vec)
+  "Convert vector VEC to a list."
   (cl-map 'list #'v2l vec))
 
 (deffoo nngmail-update-info (group account info)
+  "Update the GROUP info structure.
+
+Given an info structure (INFO) for GROUP in ACCOUNT, update the
+structure with marks from the server, c.f. Info node `(Gnus)
+Group Info'.  Currently this propagates read and unexist marks,
+but I may implement support for other marks in the future."
   (message (format "in nngmail-request-update-info for %s" group))
   (let* ((timestamp (gnus-group-timestamp
 		     (format "nngmail+%s:%s" account group)))
@@ -592,11 +797,13 @@ primary key in the database)."
 
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
 						    &optional dont-insert)
+  "FIXME: what is this function for?"
   (message (format "in nngmail-request-update-infos for %s" group))
   ;; Iterate through all groups updating flags in group info.
   nil)
 
 (defun nngmail-marks-to-labels (marks)
+  "Convert Gnus MARKS to labels using `nngmail-mark-alist'."
   (let (flags flag)
     (dolist (mark marks)
       (when (setq flag (cadr (assq mark nngmail-mark-alist)))
@@ -604,7 +811,20 @@ primary key in the database)."
     flags))
 
 (deffoo nngmail-request-set-mark (group actions &optional server)
-  "Set/remove/add marks on articles."
+  "Set/remove/add marks from ACTIONS for GROUP.
+
+This function is called when exiting a group and propagates marks
+to the server.  Should only be called when the group is declared
+a non read-only.  If function gets called when the group is
+read-only the requests will fail.  Unfortunately there is no way
+to signal to Gnus that this happened.  Well, there is a way but
+Gnus drop the data on the floor, c.f. Info node `(Gnus) Optional
+Back End Functions'.
+
+Because Gnus uses a read mark but Gmail uses an UNREAD label, we
+need to invert the action, e.g. add becomes del.  The way I
+handle this is to call the function recursively with the inverted
+action."
   ;;; ACTION is a list of mark setting requests, having this format:
   ;;; (RANGE ACTION MARK), e.g.
   ;;; ((((2157 . 2160)) add (read)))
@@ -649,6 +869,12 @@ primary key in the database)."
     (flatten failures)))
 
 (deffoo nngmail-request-update-mark (group article mark)
+  "Filter MARK for GROUP.
+
+This function is called whenever a mark is set, e.g. as soon as
+an article is displayed it is mark as read.
+
+FIXME: unsed."
   (let ((name (cond
 	       ((eq mark gnus-unread-mark)
 		"unread")
@@ -691,9 +917,10 @@ primary key in the database)."
   mark)
 
 (deffoo nngmail-request-scan (group &optional server info)
-  "Check for new articles.  If possible only on GROUP (although
-that makes no sense for this backend since new (unread) mail will
-appear in INBOX."
+  "Check for new articles.
+
+If possible only on GROUP (although that makes no sense for this
+backend since new (unread) mail will appear in INBOX."
   (message (format "in nngmail-request-scan %s" group))
   (when group
     (setq group (nngmail-decode-gnus-group group)))
@@ -709,7 +936,10 @@ appear in INBOX."
   nil)
 
 (deffoo nngmail-request-expire-articles (articles &optional group server force)
-  "Expire articles."
+  "Expire ARTICLES in optional GROUP and SERVER.
+
+Make a DELETE request for each article and let the server handle
+things."
   (message (format "in nngmail-request-expire-articles %s" group))
   (when (not server)
     (setq server nngmail-last-account))
@@ -726,38 +956,51 @@ appear in INBOX."
 
 (deffoo nngmail-request-move-article (article group server accept-form
 					      &optional last)
-  "Move article to a new group."
+  "Move article to a new group.
+
+FIXME: not implemented."
   (message (format "in nngmail-request-move-article %d" article))
   nil)
 
 (deffoo nngmail-request-accept-article (group &optional server last)
-  "Used for respooling?"
+  "Used for respooling?
+
+FIXME: not implemented."
   (message (format "in nngmail-request-accept-article %d" article))
   nil)
 
 (deffoo nngmail-request-delete-group (group force &optional server)
-  ""
+  "Delete the GROUP.
+
+Will remove the label from the Gmail account.
+
+FIXME: not implemented."
   (message (format "in nngmail-request-delete-group %s" group))
   nil)
 
 (deffoo nngmail-request-rename-group (group new-name &optional server)
-  ""
+  "Renae GROUP in SERVER to NEW-NAME.
+
+Rename the label in the Gmail account.
+
+FIXME: not implemented."
   (message (format "in nngmail-request-rename-group %s" group))
   nil)
  
 (defun nnir-run-gmail (query srv &optional groups)
   "Implements the back end for nnir search.
 
-In the common case we are passed a query via to search for
-articles/messages via Gmail.  The local nnsync server will query
-Gmail and return a list, where each element is a two-element list
-conssting of [id, group].  SRV is the name of the server (acount
-or nickname) and GROUPS specifies which groups to search.
+In the common case we are passed a query string in QUERY and pass
+that along to the local proxy.  The local nnsync server will
+query Gmail and return a list, where each element is a
+two-element tuple (list in JSON) conssting of (id, group).  SRV
+is the name of the server (acount or nickname) and GROUPS
+specifies which groups to search.
 
 This function also acts as the back end for the helm read action.
-In this case the QUERY alist includes an anetry (articles) with a
-list of tuples (group id).  The group should be a full group
-name."
+In this case the QUERY alist includes an entry (articles) with a
+list of cons cells consisting of (group . id).  The group should
+be a full group name."
   (let ((qstring (cdr (assq 'query query)))
 	(articles (cdr (assq 'articles query)))
 	(server (cadr (gnus-server-to-method srv)))
@@ -768,7 +1011,7 @@ name."
     (if articles
 	(vconcat
 	 (mapcar (lambda (art)
-		   (vector (elt art 0) (elt art 1) 100))
+		   (vector (car art) (cdr art) 100))
 		 articles))
       (let ((response (nngmail-fetch-resource 'query server nil
 					      `((q . ,qstring)
@@ -781,11 +1024,21 @@ name."
 		     (vector group id 100)))
 		 (plist-get response 'result)
 		 ))))))
+
+;;;
+;;; Add nngmail back end to nnir.
+;;;
 (push (cons 'nngmail 'gmail) nnir-method-default-engines)
 (push (list 'gmail 'nnir-run-gmail nil) nnir-engines)
 
+;;;
 ;;; Functions used by helm interface
+;;;
 (defun nngmail-get-messages (server group)
+  "Return a list of messages for GROUP in SERVER.
+
+This returns an alist for each message.  Unlike the
+Gnus-equivalent which return NOV data in a buffer.  The data is used to construct the list of candidates for te `helm-nngmail' source."
   (let ((url (concat
 	      (substring (nngmail-url-for 'label server group) 0 -1)
 	      (format "/messages/"))))
@@ -798,9 +1051,14 @@ name."
     ))
 
 (defun flatten (list)
+  "Flatten LIST."
   (mapcan (lambda (x) (if (listp x) x nil)) list))
 
 (defun nngmail-get-all-labels ()
+  "Return a list of all labels in all accounts.
+
+The return list is used to construct the completion list of
+`helm-nngmail' so only valid labels can be searched for."
   (let ((servers (nngmail-get-accounts))
 	)
     (delq nil

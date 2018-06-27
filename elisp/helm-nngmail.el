@@ -1,13 +1,13 @@
 ;;; helm-nngmail --- helm browse unread email using nngmail back end
 ;;; -*- lexical-binding: t *-*
 
-;; Copyright © 2018 Ricardo E. Gonzalez
+;; Copyright © 2018 Itineris, Inc.
 ;;
 ;; Author: Ricardo E. Gonzalez <ricardog@itinerisinc.com>
 ;; URL: http://www.github.com/ricardog00/nngmail.git
 ;; Version: 0.1
 ;; Keywords: Helm, Gnus, Gmail
-;; Package-Requires:
+;; Package-Requires: ((emacs "25.3") (helm) (gnus "5.13") (nngmail "0.1"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -25,6 +25,27 @@
 ;; This file is not part of GNU Emacs.
 
 ;;; Commentary:
+
+;;; Provides a helm source for quickly processing email based on nngmail
+;;; Gnus back end.  Because the message metadata is kept in a local
+;;; database, search are very quick which makes the helm interaction
+;;; model possible.
+
+;;; Once the user selects one (or more) messages to process we fall back
+;;; on Gnus (via nnir) to display them.  Some actions, such as marking
+;;; as read or deleting (expiring in Gnus parlance) are implemented
+;;; directly.  There is need to rely on Gnus since the operations are
+;;; straightforward in elisp.
+
+;;; To get a helm buffer with all your UNREAD messages (from all
+;;; accounts) simply run M-x helm-nngmail.  With a prefix-arg it will
+;;; prompt for a label to display (also across all accounts).
+
+;;; The way I use this is to quickly process emails as they arrive.  A
+;;; couple of times per day I run M-x helm-nngmail and dispose of
+;;; messages (reply, delete, mark for follow-up, etc.)  More
+;;; infrequently I open Gnus to deal with messages that require more
+;;; interaction.
 
 ;; 
 ;;; Code:
@@ -110,7 +131,7 @@ Read the list of selected/marked candidates from
 				  (group
 				   (helm-nngmail-candidate-group candidate))
 				  (id (cdr (assq 'id candidate))))
-			      (list group id)))
+			      (cons group id)))
 			  candidates))
 	  ;; Pick first server and group of selected candidates because
 	  ;; (I think) we need to pass something to nnir-run-query
@@ -149,10 +170,15 @@ Read the list of selected/marked candidates from
     ("Delete" . (lambda (candidate)
 		  (helm-nngmail-action-expire candidate)))))
 
-(defvar helm-nngmail-history-input nil)
-(defvar helm-nngmail-label-history nil)
+(defvar helm-nngmail-history-input nil
+  "Helm nngmail filter history.")
+(defvar helm-nngmail-label-history nil
+  "Helm nngmail label history.")
 
 (defun helm-nngmail (&optional label)
+  "Build a helm source from messagesin all nngmail accounts.
+With optional LABEL fetch messages with that label or UNREAD by
+default."
   (interactive)
   (let ((label (if current-prefix-arg
 		   (completing-read "Label : "
@@ -166,3 +192,5 @@ Read the list of selected/marked candidates from
 	  :history 'helm-nngmail-history-input
 	  :helm-candidate-number-limit 200)))
 
+(provide 'helm-nngmail)
+;;; helm-nngmail.el ends here
