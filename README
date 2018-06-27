@@ -58,6 +58,12 @@ in how it handles multiple email addresses and names.  This can cause
 the From field to appear a bit funny at times.  For example, if a
 company changes how the send notifications.
 
+### Security
+
+**The serves responds to un-authenticated http requests and makes no
+attempt at preventing unauthorized access to your email.** The only
+(small) nod at security is to listen on the local interface only.
+
 ### Documentation
 
 Yeah, as you guessed there is no documentation other than this
