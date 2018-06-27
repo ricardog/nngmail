@@ -1,0 +1,57 @@
+## Check messages without headers
+
+{'id': 'f4f66d150d1a4ac', 'threadId': 'f4f66d150d1a4ac', 'snippet': 'build &quot;barriers&quot; to separate their investment bankers from their stock analysts. They won', 'historyId': '0', 'internalDate': '1052106364000', 'payload': {'mimeType': 'text/plain', 'headers': {}}, 'sizeEstimate': 5966}
+
+## Test messages without from: field
+
+## Test messages without subject: field
+
+## Test messages without no date
+
+## Test message with illegal label??
+   May have been created after label sync
+
+## Test message with pre-epoch date
+
+## Test empty responses (no messages, threads)
+
+## Test search query strings
+
+   - Invalid query string
+   - empty query string
+
+## Test invalid google ID on message update, i.e. message not found
+
+## Test cache expiration
+
+## Test caching
+
+## Test weird histories
+
+   - What's weird?
+   
+## Test error handling
+
+   - Authorization error (shouldn't happen for read?)
+   - Batch error
+   - Batch rate error
+
+## test handling of sync after history expired
+
+## test parallel batch executor
+
+## test handling of disconnect during requests
+
+## Test Handling of requests while disconnected
+
+## Test error handling in update_message
+
+   - Not authorized
+   - Not found (bad ID)
+   - Bad labels
+
+## Test error handling in update_messages
+
+## Test error handling in delete_message
+
+
