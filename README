@@ -1,0 +1,253 @@
+# nngmail
+
+## Introduction
+
+**nngmail** is a **Gnus** back end for reading email using the **Gmail**
+REST API. If you read email with Gnus and use a Gmail-hosted account,
+you can use nngmail instead of nnimap.
+
+nngmail does not access the Gmail servers directly.  Instead it relies
+on a local server that stores the metadata information and caches some
+messages in a sqlite database.  This makes reading mail feels almost
+instantaneous since the data is retrieved locally.  Synchronous requests
+from Gmail are required to:
+
+ - Read a message that is not in the local cache
+ - Search your email
+ 
+Cached messages are kept in the sqlite database in ziped format to save
+space.
+ 
+The local server can sync multiple Gmail accounts simultaneously and you
+access them by setting up multiple servers in Gnus.  The server does not
+provide for real synchronization support and offline mode (see
+[Destructive mode](#destructive-mode) below)
+
+While the local server is meant for use with the nngmail back end, it
+provides a generic interface for reading messages that may be of use for
+other tools.  In a pinch, you can read your mail by simple running
+sqlite.
+
+## Status 
+
+I use this on a daily basis but you should consider it pre-alpha.  I
+wrote it in a bit of a hurry as I was more interested in how much work
+would be required to write a new Gnus back end.  Now that I have
+convinced myself it's possible and worthwhile effort, I will go back and
+develop a test suite.
+
+This software will **not** delete your mail--no matter how buggy it is.
+By default the system will request read-only access to your Gmail
+account.  The Gmail API service will thus deny requests to modify or
+delete messages.
+
+There is experimental^2 support for updating and deleting messages in
+the *destructive* branch.  Use with caution, it may well eat your email.
+
+Once there is a nice test suite, I will enable write-mode by default.
+Until then, you will have to opt-in to life on the edge.
+
+## Motivation
+
+I wrote this because I felt frustrated with how long it took to read
+email with Gnus.  My mail reading was state-of-the-art 30 or 40 years
+ago but it feels like it hasn't improved with time (although it clearly
+has).  My main frustration was how long it takes to check for new
+messages.  And so I wanted a system that would allow me to read email
+quickly and with low overhead.  In particular, I want:
+
+ - Fast access to recent email 
+ 
+ - Fast and accurate search for everything else
+
+I tried offlineimap and notmuch but neither seemed to be what I was
+looking for.  I don't want to keep an entire copy of all my Gmail
+accounts on my laptop (someday soon this won't be a problem but right
+now it would be a significant fraction of my available storage space).
+Which ruled out both offlineimap and notmuch.  Plus I find search works
+best in Gmail because it can search through attachments.
+
+Which brings up the topic of why Gmail since Google we should be wary of
+providing Google too much of our personal and private information.  This
+is absolutely true.  However, when I looked at all the email I received,
+a significant portion of it originated or was delivered to Gmail anyway.
+That is, even if I move my account elsewhere Google will still have my
+information.
+
+The system should be easy to extend to other mail service providers.
+ 
+## Installation
+
+1. Clone this repo
+
+2. Enable Gmail API access for your account.
+
+    2.1 Visit the [Google Developer Console]
+		(https://console.developers.google.com/).  From there, you need
+		to create a project (or choose an existing one) and go to the
+		APIs section.  Choose “Gmail API” under the Google Apps APIs
+		section and click the “Enable API” button.
+	
+    2.2 Go to the [Credential page]
+		(https://console.developers.google.com/apis/credentials) and
+		click *Create credentials > API key* and select the
+		appropriate key type.
+
+    2.3 Store the credentials under `data/client-secret.json`.  If you
+		choose a different location update the `config.yaml` file.
+
+	Please se ethe instructions on the [Using API
+	Keys](https://developers.google.com/api-client-library/python/auth/api-keys)
+	section of the Gmail API socumentation if you have questions.
+
+3. Setup the local server
+
+	3.1 Create a new virtual environment (virtualenv).  I recommend *pyenv*
+		to set this up, but virtualenv works well too.
+	
+	3.2 Install nngmail by running
+
+		cd <repo>
+		pip install -e .
+	
+	3.3 If everything was installed correctly you should be able to run
+
+		FLASK_ENV=development FLASK_APP=src/nngmail:app flask routes
+	
+4. Import your mail.
+
+	4.1 Create the database with
+
+		FLASK_ENV=development FLASK_APP=src/nngmail:app flask init-db
+	
+	4.2 For each account you want to sync locally run
+
+		FLASK_ENV=development FLASK_APP=src/nngmail:app flask import user@exampke.com nickname --init-cache
+	
+	Where you clearly need to replace your user name.  You will be
+	directed to a web browser where you will login to Google and
+	authorize the application (nngmail or whatever you called it in step
+	1) to access your mail.  In some instances (I have only seen this on
+	Ubuntu) you will be asked to copy-paste a URL into your browser.
+
+	Pick a different nickname for each account as you will use it to
+	identify the accounts to Gnus.
+
+	If things went as expected the client will start synchronizing your
+	email.  By default it will download all message metadata and cache
+	messages received by the Gmail SMTP servers in the last 120 days
+	(edit `config.yaml` to change cache retention timeout).  If
+	cache_timeout is set to `0` it will not cache any messages.  If set
+	to `-1` it will cache all messages.
+
+	Initial synchronization time depends on how much email you have.
+	For small accounts (~2500 messages) it takes < 1 minutes.  Large
+	accounts (~50k messages) takes about 15 minutes.  YMMV.
+
+	Repeat the import command once for each account you want to
+	synchronize/read via nngmail.
+
+5. Configure Gnus to read mail via nngmail.
+
+	5.1 Load nngmail.el into your Emacs session.  For now `M-x find-file RET
+	elisp/nngmail.el` and then `M-x eval-buffer`.
+
+	5.2 Configure one virtual server per account.  Add something like this
+	to `gnus-secondary-select-methods`.  You need one server per account
+
+		(nngmail "personal"
+			 (nngmail-email "personal@example.com")
+			 (nngmail-address "localhost")
+			 (nngmail-server-port 5000)
+			 )
+		(nngmail "work"
+			 (nngmail-email "work@example.com")
+			 (nngmail-address "localhost")
+			 (nngmail-server-port 5000)
+			 )
+
+	The virtual server name ('personal', 'work' in the example above)
+	and the email address must match what you used in the command to
+	import the account.
+
+	Don't forget to eval the assignment to
+    `gnus-secondary-select-methods`.
+
+6. Subscribe to new "groups" in Gnus.  The local server turns each Gmail
+   label into a newsgroup you can read with Gnus (similar to how the
+   IMAP interface works).  If you open *server mode* (with `^` in the
+   group buffer) you should see one server per nickname (or account).
+   If they are not listed as *opened* something went wrong.
+
+   Because by default nngmail request read-only access to your
+   account(s) messages will not be marked as read permanently (they are
+   marked as read  until you check for new news). 
+
+7. Setup fast access via helm.  This package also provides a helm source
+   you can use to read/deal with email (still a bit incomplete).  My
+   goal is to provide a quick mechanism for reading and processing email
+   without having to open Gnus.  To try this out load `helm-nngmail.el`
+   and then run `M-x helm-nngmail`.  It will show you unread messages in
+   all your accounts.  You can select one or more messages to process
+   and typing filters the list of messages. 
+   
+   The helm interface is still in it's infancy, but I have great hopes
+   for what it can do.
+
+## Details
+
+One challenge with using Gnus and Gmail is Gnus requires nice
+monotonically increasing article ID's--preferably without too many
+gaps.  The need for a local database arose from having to map from the
+Gmail message ID's to something that looks like an article number. 
+
+In the database each message is tracked via a `(id, account_id)` tuple.
+The `id` corresponds to the article number passed to Gnus.  Each
+row in the table stores the Gmail ID required to talk to the Gmail API.  
+
+The local server provides a very simple interface for accessing the
+local sqlite database.  And it acts as a proxy for the Gmail API.  That
+is, the nngmail lisp code never talks to the Gmail API directly.  It
+runs a background thread per account to regularly synchronize changes
+made elsewhere to the account.
+
+
+## Performance
+
+I haven't done performance testing, but subjectively there is a world of
+difference between using nnimap and nngmail due to the local cache.  On
+my i7-5600U-based laptop (8G of DRAM) I can comfortably read folders
+with 5000 emails (Gnus will show the Summary buffer almost
+instantaneously).
+	
+Selecting "articles" (in Gnus parlance) which are in the local cache
+should be almost instantaneous.  Selecting articles not in the cache
+will synchronously request the message from Gmail using the REST API.
+
+I believe Gnus has support for locally caching articles and such.  But I
+have never been able to make it work seamlessly.  Plus sqlite is a much
+better way to store and index the data.
+
+## Destructive mode
+
+To enable desctructive, a.k.a. read-write mode, edit the
+`data/config.yaml` file to add the modify scope. The scopes section
+should look like this
+
+    scopes:
+      - https://www.googleapis.com/auth/gmail.readonly
+      - https://www.googleapis.com/auth/gmail.modify
+
+Note that the refresh token used to authenticate you remembers the
+original scopes not the currently requested scopes.  If you initially
+logged into Gmail using tread-only mode, you will need to delete the
+credentials file (`data/<account-emai>-creds.json`) and re-authorize
+the application to access your account.
+
+If you enable *destructive* mode Gnus marks get propagated to the server
+for posterity.
+
+Note that the local server does not (yet) support offline mode.  It
+relies on synchronous calls to Gmail to update state.  I plan to
+iplement support for offline mode so marks set while Gmail is not
+reachable will be synchronized next time the API is available.
