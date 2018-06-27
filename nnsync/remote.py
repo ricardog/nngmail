@@ -368,15 +368,15 @@ class Gmail:
 
     @authorized
     def update_message(self, id, labels):
-        return(507, 'Not implemented')
+        return(501, 'Not implemented')
 
     @authorized
     def update_messages(self, ids, add_labels, rm_labels):
-        return (506, 'Not implemented')
+        return (501, 'Not implemented')
 
     @authorized
     def delete_message(self, id):
-        return (506, 'Not implemented')
+        return (501, 'Not implemented')
 
     @authorized
     def search(self, query, labels=[]):
