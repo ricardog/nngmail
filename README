@@ -17,8 +17,9 @@ required for:
  - Reading a message that is not in the local cache
  - Searching your email
  
-Cached messages are kept in the sqlite database in ziped format to save
-space.
+Synchronization happens via polling (the polling interval is
+configurable).  Cached messages are zipped before storing them in the
+sqlite database to save space.
  
 The local server can sync multiple Gmail accounts simultaneously.  You
 access them by setting up multiple servers in Gnus.  The server does not
