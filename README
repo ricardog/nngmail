@@ -4,39 +4,43 @@
 
 **nngmail** is a **Gnus** back end for reading email using the **Gmail**
 REST API. If you read email with Gnus and use a Gmail-hosted account,
-you can use nngmail instead of nnimap.
+you can use **nngmail** instead of **nnimap**.  **nngmail** does act as
+a transport agent.  Sending and replying to email will continue to use
+whatever method you have setup in Emacs previously.
 
 nngmail does not access the Gmail servers directly.  Instead it relies
-on a local server that stores the metadata information and caches some
-messages in a sqlite database.  This makes reading mail feels almost
-instantaneous since the data is retrieved locally.  Synchronous requests
-from Gmail are required to:
+on a local server that stores message metadata and caches some messages
+in a local sqlite database.  Because Gnus can access data locally,
+reading mail is instantaneous.  Synchronous requests to Gmail are
+required for:
 
- - Read a message that is not in the local cache
- - Search your email
+ - Reading a message that is not in the local cache
+ - Searching your email
  
 Cached messages are kept in the sqlite database in ziped format to save
 space.
  
-The local server can sync multiple Gmail accounts simultaneously and you
+The local server can sync multiple Gmail accounts simultaneously.  You
 access them by setting up multiple servers in Gnus.  The server does not
-provide for real synchronization support and offline mode (see
-[Destructive mode](#destructive-mode) below)
+(currently) provide for real synchronization support in offline mode
+(see [Destructive mode](#destructive-mode) below)
 
 While the local server is meant for use with the nngmail back end, it
-provides a generic interface for reading messages that may be of use for
-other tools.  In a pinch, you can read your mail by simple running
-sqlite.
+provides a generic REST interface for reading messages that may be of
+use for other tools.  In a pinch, you can read your mail by simple
+running sqlite!
 
 ## Status 
 
 I use this on a daily basis but you should consider it pre-alpha.  I
 wrote it in a bit of a hurry as I was more interested in how much work
 would be required to write a new Gnus back end.  Now that I have
-convinced myself it's possible and worthwhile effort, I will go back and
-develop a test suite.
+convinced myself it is a possible and worthwhile effort, I will go back
+and develop a test suite before adding more features.  Plus setup is a
+bit involved at the moment (you need to be comfortable with *shell*,
+*python*, and *Emacs*).
 
-This software will **not** delete your mail--no matter how buggy it is.
+This software will **not** delete your mail no matter how hungry it is.
 By default the system will request read-only access to your Gmail
 account.  The Gmail API service will thus deny requests to modify or
 delete messages.
@@ -49,7 +53,7 @@ Until then, you will have to opt-in to life on the edge.
 
 ## Motivation
 
-I wrote this because I felt frustrated with how long it took to read
+I wrote this because I felt frustrated with how long it takes to read
 email with Gnus.  My mail reading was state-of-the-art 30 or 40 years
 ago but it feels like it hasn't improved with time (although it clearly
 has).  My main frustration was how long it takes to check for new
@@ -57,24 +61,24 @@ messages.  And so I wanted a system that would allow me to read email
 quickly and with low overhead.  In particular, I want:
 
  - Fast access to recent email 
- 
  - Fast and accurate search for everything else
 
-I tried offlineimap and notmuch but neither seemed to be what I was
-looking for.  I don't want to keep an entire copy of all my Gmail
+I tried **offlineimap** and **notmuch** but neither seemed to be what I
+was looking for.  I don't want to keep an entire copy of all my Gmail
 accounts on my laptop (someday soon this won't be a problem but right
-now it would be a significant fraction of my available storage space).
-Which ruled out both offlineimap and notmuch.  Plus I find search works
-best in Gmail because it can search through attachments.
+now it would require a significant fraction of the available storage).
+Plus I find search works best in Gmail because since it searches through
+attachments as well.
 
-Which brings up the topic of why Gmail since Google we should be wary of
+Which brings up the topic of why Gmail since we should be wary of
 providing Google too much of our personal and private information.  This
 is absolutely true.  However, when I looked at all the email I received,
-a significant portion of it originated or was delivered to Gmail anyway.
-That is, even if I move my account elsewhere Google will still have my
-information.
+a significant portion of it originated from, or was delivered to Gmail
+anyway.  That is, even if I move my account elsewhere Google will still
+have my information.
 
-The system should be easy to extend to other mail service providers.
+When I do move elsewhere, I think the system should be easy to extend to
+other mail service providers.
  
 ## Installation
 
@@ -96,9 +100,9 @@ The system should be easy to extend to other mail service providers.
     2.3 Store the credentials under `data/client-secret.json`.  If you
 		choose a different location update the `config.yaml` file.
 
-	Please se ethe instructions on the [Using API
+	Please see the instructions on the [Using API
 	Keys](https://developers.google.com/api-client-library/python/auth/api-keys)
-	section of the Gmail API socumentation if you have questions.
+	section of the Gmail API documentation if you have questions.
 
 3. Setup the local server
 
@@ -169,7 +173,7 @@ The system should be easy to extend to other mail service providers.
 	The virtual server name ('personal', 'work' in the example above)
 	and the email address must match what you used in the command to
 	import the account.
-
+	
 	Don't forget to eval the assignment to
     `gnus-secondary-select-methods`.
 
@@ -230,7 +234,7 @@ better way to store and index the data.
 
 ## Destructive mode
 
-To enable desctructive, a.k.a. read-write mode, edit the
+To enable destructive, a.k.a. read-write mode, edit the
 `data/config.yaml` file to add the modify scope. The scopes section
 should look like this
 
@@ -241,13 +245,16 @@ should look like this
 Note that the refresh token used to authenticate you remembers the
 original scopes not the currently requested scopes.  If you initially
 logged into Gmail using tread-only mode, you will need to delete the
-credentials file (`data/<account-emai>-creds.json`) and re-authorize
-the application to access your account.
+credentials file (`data/<account-email>-creds.json`) and re-authorize the
+application to access your account.  Please note the same applies when
+going in the opposite direction.  If you want to try out *destructive
+mode* and you add `modify` scope in `config.yaml`, please remember to
+delete `-creds.json` and re-authenticate.
 
 If you enable *destructive* mode Gnus marks get propagated to the server
 for posterity.
 
 Note that the local server does not (yet) support offline mode.  It
 relies on synchronous calls to Gmail to update state.  I plan to
-iplement support for offline mode so marks set while Gmail is not
+implement support for offline mode so marks set while Gmail is not
 reachable will be synchronized next time the API is available.
