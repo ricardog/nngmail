@@ -265,8 +265,18 @@ class NnSync():
                     ingress.task_done()
                     egress.put(cmd)
                 except queue.Empty:
-                    click.echo('%s: pull' % me.nickname)
+                    ## we were just woken up.  Do nothing here, go pull
+                    ## from gmail.
+                    pass
+                click.echo('%s: pull' % me.nickname)
+                try:
                     me.pull()
+                except ConnectionResetError:
+                    ## Likely the connection died while talking to
+                    ## or trying to establish a connection with the
+                    ## server.  Go back to sleep and hope we have
+                    ## better luck next time.
+                    pass
             click.echo("%s: stop sync" % me.nickname)
 
         ingress = queue.Queue()
