@@ -318,6 +318,12 @@ class Message(TimestampMixin, Serializeable, db.Model):
 
     raw = db.synonym("_raw", descriptor=__raw)
 
+    def serialize(self):
+        return Serializeable.serialize(self, omit=('_raw', 'raw',
+                                                          'account',
+                                                          'thread',
+                                                          'addressees'))
+
     @staticmethod
     def find_labels(session, account, gid):
         # Use non-ORM (i.e. sql) syntax to bypass reading in the Message
@@ -350,20 +356,14 @@ class Message(TimestampMixin, Serializeable, db.Model):
         return
 
     @staticmethod
-    def unread(account_id=None):
-        return Message.by_label(account_id, 'UNREAD')
-
-    @staticmethod
-    def by_label(account_id=None, label_name='INBOX'):
+    def by_label(account_id, label_name='INBOX'):
         query = Message.query.join(label_association).join(Label)
         if account_id:
             query = query.filter(Message.account_id == account_id)
         query = query.filter(Label.name == label_name)
         return query
 
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('_raw', 'raw',
-                                                          'account',
-                                                          'thread',
-                                                          'addressees'))
+    @staticmethod
+    def unread(account_id=None):
+        return Message.by_label(account_id, 'UNREAD')
 
