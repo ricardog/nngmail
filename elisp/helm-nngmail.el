@@ -78,11 +78,32 @@ When not specified, ELLIPSIS defaults to ‘...’."
 	    data)
     ))
 
+(defun helm-nngmail-candidate-server (candidate)
+  (format "nngmail:%s" (cdr (assq 'server candidate))))
+
+(defun helm-nngmail-candidate-group (candidate)
+  (gnus-group-full-name (cdr (assq 'group candidate))
+			(helm-nngmail-candidate-server candidate)))
+
+
 (defun helm-nngmail-action-read (candidate)
-  (message (format "read nngmail+%s:%s %d"
-		   (cdr (assq 'server candidate))
-		   (cdr (assq 'group candidate))
-		   (cdr (assq  'id candidate))))
+  (let ((articles (mapcar (lambda (candidate)
+			    (let ((server
+				   (helm-nngmail-candidate-server candidate))
+				  (group
+				   (helm-nngmail-candidate-group candidate))
+				  (id (cdr (assq 'id candidate))))
+			      (list group id)))
+			  (helm-marked-candidates)))
+	  ;; Pick first server and group of selected candidates because (I
+	  ;; think) we need to pass something to nnir-run-query although
+	  ;; the nngmail back end doesn't care.
+	(srv (helm-nngmail-candidate-server (elt (helm-marked-candidates) 0)))
+	(grp (helm-nngmail-candidate-group (elt (helm-marked-candidates) 0))))	
+      (gnus-group-make-nnir-group
+       nil
+       `((nnir-query-spec . ((query . nil) (articles . ,articles)))
+	 (nnir-group-spec . ((,srv (,grp))))))))
   )
 
 (defun helm-nngmail-action-mark-read (candidate)

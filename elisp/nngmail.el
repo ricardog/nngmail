@@ -744,24 +744,31 @@ appear in INBOX."
   ""
   (message (format "in nngmail-request-rename-group %s" group))
   nil)
-
+ 
 (defun nnir-run-gmail (query srv &optional groups)
   (let ((qstring (cdr (assq 'query query)))
+	(articles (cdr (assq 'articles query)))
 	(server (cadr (gnus-server-to-method srv)))
 	(defs (caddr (gnus-server-to-method srv)))
 	(groups (mapconcat (lambda (group) (gnus-group-short-name group))
 			   (or groups (nnir-get-active srv)) ",")))
-    (let ((response (nngmail-fetch-resource 'query server nil
-					    `((q . ,qstring)
-					      (labels . ,groups))))
-	  result)
-      (vconcat
-       (mapcar (lambda (res)
-		 (let ((group (gnus-group-full-name (elt res 1) srv))
-		       (id (elt res 0)))
-		   (vector group id 100)))
-	       (plist-get response 'result)
-	       )))))
+    
+    (if articles
+	(vconcat
+	 (mapcar (lambda (art)
+		   (vector (elt art 0) (elt art 1) 100))
+		 articles))
+      (let ((response (nngmail-fetch-resource 'query server nil
+					      `((q . ,qstring)
+						(labels . ,groups))))
+	    result)
+	(vconcat
+	 (mapcar (lambda (res)
+		   (let ((group (gnus-group-full-name (elt res 1) srv))
+			 (id (elt res 0)))
+		     (vector group id 100)))
+		 (plist-get response 'result)
+		 ))))))
 (push (cons 'nngmail 'gmail) nnir-method-default-engines)
 (push (list 'gmail 'nnir-run-gmail nil) nnir-engines)
 
