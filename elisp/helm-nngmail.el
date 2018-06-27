@@ -31,7 +31,6 @@
 (require 'helm)
 (require 'nngmail)
 
-
 (defun trunc (len s &optional ellipsis)
   "If S is longer than LEN, cut it down and add ELLIPSIS to the end.
 The resulting string, including ellipsis, will be LEN characters
@@ -44,6 +43,7 @@ When not specified, ELLIPSIS defaults to ‘...’."
     s))
 
 (defun helm-nngmail-format-message (message)
+  "Generate the display sumary for a MESSAGE."
   (let ((text (format "[%-20s] %-55s\n  %-78s"
 		      (trunc 20 (or (cdr (assq 'name message))
 				    (cdr (assq 'email message))))
@@ -54,11 +54,16 @@ When not specified, ELLIPSIS defaults to ‘...’."
     text))
 
 (defun helm-source-nngmail-get-candidates (account group messages)
+  "Generate the actual list of candidates from ACCOUNT, GROUP, MESSAGES."
   (mapcar (lambda (message)
 	    (cons (helm-nngmail-format-message message) message))
 	  messages))
   
 (defun helm-source-nngmail-build (&optional group)
+  "Create a helm source of all unread messages in all accounts/servers.
+
+If optional GROUP parameter is given, then create a source with
+all messages from that group."
   (let ((data (mapcar (lambda (srv)
 			      (nngmail-get-messages (car srv) (or group "UNREAD")))
 		      (nngmail-get-accounts))))
@@ -79,14 +84,26 @@ When not specified, ELLIPSIS defaults to ‘...’."
     ))
 
 (defun helm-nngmail-candidate-server (candidate)
+  "Genrate the full server name for a CANDIDATE."
   (format "nngmail:%s" (cdr (assq 'server candidate))))
 
 (defun helm-nngmail-candidate-group (candidate)
+  "Genrate the full group name for a CANDIDATE."
   (gnus-group-full-name (cdr (assq 'group candidate))
 			(helm-nngmail-candidate-server candidate)))
 
 
-(defun helm-nngmail-action-read (candidate)
+(defun helm-nngmail-action-read (candidates)
+  "Handle read actions for helm buffers.
+
+The user just selected one (or more) candidate articles/messages
+to read.  This function uses the `nnir` interface to create an
+ephemeral group that holds only the articles the user is
+interested in.
+
+Read the list of selected/marked candidates from
+`helm-marked-candidates` and ignore CANDIDATES."
+  (setq candidates (helm-marked-candidates))
   (let ((articles (mapcar (lambda (candidate)
 			    (let ((server
 				   (helm-nngmail-candidate-server candidate))
@@ -94,19 +111,22 @@ When not specified, ELLIPSIS defaults to ‘...’."
 				   (helm-nngmail-candidate-group candidate))
 				  (id (cdr (assq 'id candidate))))
 			      (list group id)))
-			  (helm-marked-candidates)))
-	  ;; Pick first server and group of selected candidates because (I
-	  ;; think) we need to pass something to nnir-run-query although
-	  ;; the nngmail back end doesn't care.
-	(srv (helm-nngmail-candidate-server (elt (helm-marked-candidates) 0)))
-	(grp (helm-nngmail-candidate-group (elt (helm-marked-candidates) 0))))	
+			  candidates))
+	  ;; Pick first server and group of selected candidates because
+	  ;; (I think) we need to pass something to nnir-run-query
+	  ;; although the nngmail back end (nnir-run-gmail) will ignore
+	  ;; the server/group lists.
+	(srv (helm-nngmail-candidate-server (elt candidates 0)))
+	(grp (helm-nngmail-candidate-group (elt candidates 0))))
       (gnus-group-make-nnir-group
        nil
        `((nnir-query-spec . ((query . nil) (articles . ,articles)))
-	 (nnir-group-spec . ((,srv (,grp))))))))
+	 (nnir-group-spec . ((,srv (,grp)))))))
   )
+  
 
 (defun helm-nngmail-action-mark-read (candidate)
+"Handle mark as read actions for helm buffers."
   (message (format "mark read nngmail+%s:%s %d"
 		   (cdr (assq 'server candidate))
 		   (cdr (assq 'group candidate))
@@ -114,6 +134,7 @@ When not specified, ELLIPSIS defaults to ‘...’."
   )
 
 (defun helm-nngmail-action-expire (candidate)
+"Handle expire actions for helm buffers."
   (message (format "expire nngmail+%s:%s %d"
 		   (cdr (assq 'server candidate))
 		   (cdr (assq 'group candidate))
@@ -122,9 +143,9 @@ When not specified, ELLIPSIS defaults to ‘...’."
 
 (defvar helm-nngmail-actions
   '(("Read" . (lambda (candidate)
-		(helm-nngmail-action-read candidate)))
-    ("Mark read" . (lambda (candidate)
-		     (helm-nngmail-action-mark-read candidate)))
+		(helm-nngmail-action-read candidates)))
+    ("Mark as read" . (lambda (candidate)
+			(helm-nngmail-action-mark-read candidate)))
     ("Delete" . (lambda (candidate)
 		  (helm-nngmail-action-expire candidate)))))
 

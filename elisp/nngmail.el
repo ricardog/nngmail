@@ -746,6 +746,18 @@ appear in INBOX."
   nil)
  
 (defun nnir-run-gmail (query srv &optional groups)
+  "Implements the back end for nnir search.
+
+In the common case we are passed a query via to search for
+articles/messages via Gmail.  The local nnsync server will query
+Gmail and return a list, where each element is a two-element list
+conssting of [id, group].  SRV is the name of the server (acount
+or nickname) and GROUPS specifies which groups to search.
+
+This function also acts as the back end for the helm read action.
+In this case the QUERY alist includes an anetry (articles) with a
+list of tuples (group id).  The group should be a full group
+name."
   (let ((qstring (cdr (assq 'query query)))
 	(articles (cdr (assq 'articles query)))
 	(server (cadr (gnus-server-to-method srv)))
