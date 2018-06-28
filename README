@@ -58,6 +58,13 @@ in how it handles multiple email addresses and names.  This can cause
 the From field to appear a bit funny at times.  For example, if a
 company changes how the send notifications.
 
+### Emacs & OS Support
+
+I use this code on Ubuntu (16.04 LTS) and OSX (10.12) on both Emacs 25.3
+and 26.1.  I have never tried running it on Windows (and probably won't
+since I don't use it regularly).  Patches for older/newer versions of
+Emacs are welcome.
+
 ### Security
 
 **The serves responds to un-authenticated http requests and makes no
@@ -239,6 +246,12 @@ local sqlite database.  And it acts as a proxy for the Gmail API.  That
 is, the nngmail lisp code never talks to the Gmail API directly.  It
 runs a background thread per account to regularly synchronize changes
 made elsewhere to the account.
+
+Searching (via nnir in Gnus) allows passing arbitrary Gmail search
+strings.  The query is further limited by the group (or label) that nnir
+is trying to search (see the documentation for nnir for more details).
+Because the query is passed as-is to Gmail, you can use the usual Gmail
+search tricks.
 
 For now the synchronization exports Gmail-specific labels, like
 *CATEGORY_PERSONAL`.  But it mangles the name in an attempt to make them
