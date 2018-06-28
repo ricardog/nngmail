@@ -4,9 +4,9 @@
 
 **nngmail** is a **Gnus** back end for reading email using the **Gmail**
 REST API. If you read email with Gnus and use a Gmail-hosted account,
-you can use **nngmail** instead of **nnimap**.  **nngmail** does act as
-a transport agent.  Sending and replying to email will continue to use
-whatever method you have setup in Emacs previously.
+you can use **nngmail** instead of **nnimap**.  **nngmail** does not act
+as a transport agent.  Sending and replying to email will continue to
+use whatever method you have setup in Emacs previously.
 
 nngmail does not access the Gmail servers directly.  Instead it relies
 on a local server that stores message metadata and caches some messages
@@ -41,10 +41,10 @@ and develop a test suite before adding more features.  Plus setup is a
 bit involved at the moment (you need to be comfortable with *shell*,
 *python*, and *Emacs*).
 
-This software will **not** delete your mail no matter how hungry it is.
-By default the system will request read-only access to your Gmail
-account.  The Gmail API service will thus deny requests to modify or
-delete messages.
+This software will **not** eat your mail no matter how hungry it is.  By
+default the system requests read-only access to your Gmail account.  The
+Gmail API service will thus deny requests to modify or delete messages
+(and if it does not there is something rather wrong).
 
 There is experimental^2 support for updating and deleting messages in
 the *destructive* branch.  Use with caution, it may well eat your email.
@@ -56,14 +56,14 @@ The server stores the name and email of everyone you correspond with (so
 you could use it as a local address book).  But it is rather simplistic
 in how it handles multiple email addresses and names.  This can cause
 the From field to appear a bit funny at times.  For example, if a
-company changes how the send notifications.
+company changes how they send email notifications (i have seen this with
+old LinkedIn messages).
 
 ### Emacs & OS Support
 
-I use this code on Ubuntu (16.04 LTS) and OSX (10.12) on both Emacs 25.3
-and 26.1.  I have never tried running it on Windows (and probably won't
-since I don't use it regularly).  Patches for older/newer versions of
-Emacs are welcome.
+I use this code on Ubuntu (16.04 LTS) and OSX (10.12) on Emacs 25.3 and
+26.1.  I have never tried running it on Windows (and probably won't).
+Patches for older/newer versions of Emacs are welcome.
 
 ### Security
 
@@ -99,15 +99,15 @@ I tried **offlineimap** and **notmuch** but neither seemed to be what I
 was looking for.  I don't want to keep an entire copy of all my Gmail
 accounts on my laptop (someday soon this won't be a problem but right
 now it would require a significant fraction of the available storage).
-Plus I find search works best in Gmail because since it searches through
+Plus I find search works best in Gmail because it searches through
 attachments as well.
 
 Which brings up the topic of why Gmail since we should be wary of
 providing Google too much of our personal and private information.  This
 is absolutely true.  However, when I looked at all the email I received,
-a significant portion of it originated from, or was delivered to Gmail
-anyway.  That is, even if I move my account elsewhere Google will still
-have my information.
+a significant portion of it either originated from or was delivered to
+Gmail anyway.  That is, even if I move my account elsewhere Google will
+still have my information.
 
 When I do move elsewhere, I think the system should be easy to extend to
 other mail service providers.
@@ -116,7 +116,7 @@ other mail service providers.
 
 1. Clone this repo
 
-2. Enable Gmail API access for your account.
+2. Enable Gmail API access for your account (this may be a bit out of date).
 
     2.1 Visit the [Google Developer Console]
 		(https://console.developers.google.com/).  From there, you need
@@ -139,7 +139,7 @@ other mail service providers.
 3. Setup the local server
 
 	3.1 Create a new virtual environment (virtualenv).  I recommend *pyenv*
-		to set this up, but virtualenv works well too.
+		to set this up, but *virtualenv* works well too.
 	
 	3.2 Install nngmail by running
 
@@ -149,7 +149,9 @@ other mail service providers.
 	3.3 If everything was installed correctly you should be able to run
 
 		FLASK_ENV=development FLASK_APP=src/nngmail:app flask routes
-	
+
+	    And see a list of routes for the proxy server.
+
 4. Import your mail.
 
 	4.1 Create the database with
@@ -202,14 +204,14 @@ other mail service providers.
 			 (nngmail-server-port 5000)
 			 )
 
-	The virtual server name ('personal', 'work' in the example above)
-	and the email address must match what you used in the command to
-	import the account.
+	The virtual server name (**personal**, **work** in the example
+	above) and the email address must match what you used in the
+	command to import the account.
 	
 	Don't forget to eval the assignment to
-    `gnus-secondary-select-methods`.
+	`gnus-secondary-select-methods`.
 
-6. Subscribe to new "groups" in Gnus.  The local server turns each Gmail
+6. Subscribe to new *groups* in Gnus.  The local server turns each Gmail
    label into a newsgroup you can read with Gnus (similar to how the
    IMAP interface works).  If you open *server mode* (with `^` in the
    group buffer) you should see one server per nickname (or account).
@@ -243,9 +245,9 @@ row in the table stores the Gmail ID required to talk to the Gmail API.
 
 The local server provides a very simple interface for accessing the
 local sqlite database.  And it acts as a proxy for the Gmail API.  That
-is, the nngmail lisp code never talks to the Gmail API directly.  It
-runs a background thread per account to regularly synchronize changes
-made elsewhere to the account.
+is, the nngmail lisp code never talks to the Gmail API directly.  The
+proxy server runs a background thread per account to periodically poll
+for changes.
 
 Searching (via nnir in Gnus) allows passing arbitrary Gmail search
 strings.  The query is further limited by the group (or label) that nnir
@@ -254,7 +256,7 @@ Because the query is passed as-is to Gmail, you can use the usual Gmail
 search tricks.
 
 For now the synchronization exports Gmail-specific labels, like
-*CATEGORY_PERSONAL`.  But it mangles the name in an attempt to make them
+*CATEGORY_PERSONAL*.  But it mangles the name in an attempt to make them
 more readable.  Here is the mapping of category names:
 
 | Category          | New label      |
@@ -269,9 +271,9 @@ more readable.  Here is the mapping of category names:
 ## Performance
 
 I haven't done performance testing, but subjectively there is a world of
-difference between using nnimap and nngmail due to the local cache.  On
-my i7-5600U-based laptop (8G of DRAM) I can comfortably read folders
-with 5000 emails (Gnus will show the Summary buffer almost
+difference between using **nnimap** and **nngmail** due to the local
+cache.  On my i7-5600U-based laptop (8G of DRAM) I can comfortably read
+folders with 5000 emails (Gnus will show the Summary buffer almost
 instantaneously).
 	
 Selecting "articles" (in Gnus parlance) which are in the local cache
@@ -279,13 +281,13 @@ should be almost instantaneous.  Selecting articles not in the cache
 will synchronously request the message from Gmail using the REST API.
 
 I believe Gnus has support for locally caching articles and such.  But I
-have never been able to make it work seamlessly.  Plus sqlite is a much
-better way to store and index the data.
+have never been able to make it work.  Plus sqlite is a much better way
+to store and index the data.
 
 ## Destructive mode
 
 To enable destructive, a.k.a. read-write mode, edit the
-`data/config.yaml` file to add the modify scope. The scopes section
+`data/config.yaml` file to add the **modify** scope.  The scopes section
 should look like this
 
     scopes:
@@ -294,12 +296,12 @@ should look like this
 
 Note that the refresh token used to authenticate you remembers the
 original scopes not the currently requested scopes.  If you initially
-logged into Gmail using tread-only mode, you will need to delete the
+logged into Gmail using read-only mode, you will need to delete the
 credentials file (`data/<account-email>-creds.json`) and re-authorize the
 application to access your account.  Please note the same applies when
 going in the opposite direction.  If you want to try out *destructive
-mode* and you add `modify` scope in `config.yaml`, please remember to
-delete `-creds.json` and re-authenticate.
+mode* and you add **modify** scope in `config.yaml`, please remember to
+delete `data/<account-email>-creds.json` and re-authenticate.
 
 If you enable *destructive* mode Gnus marks get propagated to the server
 for posterity.
