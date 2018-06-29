@@ -1,7 +1,3 @@
-import click
-from itertools import groupby
-from operator import itemgetter
-
 from flask import abort, jsonify, make_response, render_template, request
 from flask.views import MethodView
 
@@ -9,7 +5,7 @@ from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
-                                                             
+
 class LabelAPI(MethodView):
     def get(self, account_id, label_id):
         if not label_id:
@@ -26,16 +22,11 @@ class LabelAPI(MethodView):
             return jsonify({'labels': query.all()})
         else:
             ## Return single
-            label = Label.query.get(label_id)
-            if not label:
-                return make_response(jsonify({'error': 'Label not found'}),
-                                     404)
+            label = Label.query.get_or_404(label_id)
             return jsonify(label)
 
     def delete(self, account_id, label_id):
-        label = Label.query.get(label_id)
-        if not label:
-            return make_response(jsonify({'error': 'Label not found'}), 404)
+        label = Label.query.get_or_404(label_id)
         db.session().delete(label)
         db.session().commit()
         return jsonify({'result': True})
@@ -69,6 +60,8 @@ api_bp.add_url_rule('/labels/<int:label_id>',
                     defaults={'account_id': None},
                     view_func=label_view,
                     methods=['GET', 'DELETE'])
+api_bp.add_url_rule('/labels/<int:label_id>', view_func=label_view,
+                    methods=['DELETE'])
 
 @api_bp.route(acct_nick_base + '/labels/')
 def account_labels(nickname):
