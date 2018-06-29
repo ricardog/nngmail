@@ -28,9 +28,11 @@ class AccountAPI(MethodView):
                                  400)
         if ('email' not in request.json or
             not isinstance(request.json['email'], str)):
-            return make_response(jsonify({'error': 'Bad account  email'}), 400)
+            return make_response(jsonify({'error': 'Bad account email'}), 400)
         account = Account(email=request.json['email'],
-                          nickname=request.json['nickname'])
+                          nickname=request.json['nickname'],
+                          writable=request.json.get('writable', False),
+                          can_send=request.json.get('can-send', False))
         db.session().add(account)
         db.session().commit()
         return jsonify(account)
@@ -65,8 +67,6 @@ class AccountAPI(MethodView):
 ## Account resource
 account_view = AccountAPI.as_view('account')
 api_bp.add_url_rule('/accounts/', defaults={'account_id': None},
-                    view_func=account_view, methods=['GET',])
-api_bp.add_url_rule('/accounts/', view_func=account_view,
-                    methods=['POST',])
+                    view_func=account_view, methods=['GET', 'POST'])
 api_bp.add_url_rule('/accounts/<int:account_id>', view_func=account_view,
                     methods=['GET', 'PUT', 'DELETE'])
