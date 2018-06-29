@@ -1,12 +1,5 @@
-#!/usr/bin/env python
 
-"""
-Shows basic usage of the Gmail API.
-
-Lists the user's Gmail labels.
-"""
 from __future__ import print_function
-import click
 from collections import deque
 import os
 import queue
@@ -15,9 +8,6 @@ import sys
 import threading
 from urllib.error import URLError
 import urllib.parse as urlparse
-from urllib.request import urlopen
-
-import pdb
 
 from apiclient.discovery import build
 from apiclient import errors
@@ -27,6 +17,7 @@ from oauth2client import file, client, tools
 from options import Options
 
 class Gmail:
+    """Object for accessing gmail via http API."""
     options = Options(email=None,
                       scopes=['https://www.googleapis.com/auth/gmail.readonly'],
                       client_secret_file='client-secret.json',
@@ -51,6 +42,23 @@ class Gmail:
 
     @staticmethod
     def batch_executor(creds, cmds):
+        """Execute a batc command and check for errors.
+
+Batch Gmail commands require a callback.  Thus function wraps the call
+plus callback into a single synchronous function.  Rather than relying
+on callbacks, use threads for parallelism.
+
+    :param cmds list: A list (or other iterable) with a collections of
+        commands.  Each command consists of a tuple (google_id,
+        command), where command is added to the batch() Gmail client
+        api.
+
+    :return: A list of response objects.  Each entry of the list
+        corresponds to a callback value.
+
+    :raises: Exceptions on error.
+
+        """
         def handler(rid, resp, ex, responses):
             "Callback invoked by Google API to handled message data."
             def ex_is_error(ex, code):
@@ -91,6 +99,27 @@ class Gmail:
 
     @staticmethod
     def worker(my_idx, inq, outq):
+        """Enry point for new executor threads.
+
+Downloading (or importing) metadata is limited by the round-trip time to
+Gmail if we only use one thread.  This wrapper function makes it
+possible to start multiple threads (currently limited to two because
+that is how many concurrent requests from the same user Gmail alows) to
+reduce the import time.
+
+Commands come in via a thread-safe queue (inq) and response data is
+written to another thread-safe queue (outq).  This function does not
+interpret the data in either queue.  It merly acts as a dumb pipeline
+between the two endpoints.
+
+   :param inq queue.Queue: Inress queue.  Commands received on this
+        queue are set to a batch_executor.
+
+   :param outq queue.Queue: Egress queue.  Data returned by the batch
+        executor is written to the queue for consumption by the
+        initiator.
+
+        """
         print("worker %d starting" % my_idx)
         while True:
             cmd = inq.get()
@@ -107,7 +136,7 @@ class Gmail:
                 inq.task_done()
 
     def __init__(self, **kwargs):
-        "Object for accessing gmail via http API."
+        """Initialize a new object using the options passed in."""
         self.opts = self.options.push(kwargs)
         data_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
                                                  '../data'))
@@ -136,18 +165,22 @@ class Gmail:
 
     @property
     def poll_interval(self):
+        """How often to poll for new messages / updates."""
         return self.opts.poll_interval
 
     @property
     def scopes(self):
+        """Scopes used for authorization."""
         return [scope.rsplit('/', 1)[1] for scope in self.opts.scopes]
 
     @property
     def writable(self):
+        """Whether the account was authorized as read-only or not."""
         return 'gmail.modify' in self.scopes
 
     @property
     def can_send(self):
+        """Whether the scopes list includes the ability to send mail."""
         return ('gmail.compose' in self.scopes or
                 'gmail.send' in self.scopes)
     
@@ -166,6 +199,7 @@ class Gmail:
         return creds
 
     def reachable(self):
+        """Whether the Gmail endpoint is reachable."""
         service = build('gmail', 'v1', http=Http())
         url = urlparse.urlparse(service._baseUrl)
         host = url.hostname
@@ -227,6 +261,7 @@ class Gmail:
 
     @authorized
     def get_history_since(self, start=0):
+        """Get a list of changes since the given start point (a history id)."""
         hist = self.service.users().history()
         try:
             results = hist.list(userId='me', startHistoryId=start).execute()
@@ -271,6 +306,7 @@ class Gmail:
 
     @authorized
     def get_message(self, id, format='minimal'):
+        """Get the message in the given format."""
         try:
             return self.service.users().messages().get(userId='me',
                                                        id=id,
@@ -285,6 +321,7 @@ class Gmail:
 
     @authorized
     def get_thread(self, id, format='metadata'):
+        """Get information abot a thread."""
         try:
             return self.service.users().threads().get(userId='me',
                                                       id=id,
@@ -368,18 +405,33 @@ class Gmail:
 
     @authorized
     def update_message(self, id, labels):
+        """Update a message at the remote endpoint."""
         return(501, 'Not implemented')
 
     @authorized
     def update_messages(self, ids, add_labels, rm_labels):
+        """Update acollection of messages at the remote endpoint."""
         return (501, 'Not implemented')
 
     @authorized
     def delete_message(self, id):
+        """Delete a message at the remote endpoint."""
         return (501, 'Not implemented')
 
     @authorized
     def search(self, query, labels=[]):
+        """Search for messages matching query string.
+
+Query string (query) is further limited to messages with matching labels
+(if any).
+
+    :param query str: A query string in Gmail format.
+
+    :param labels list: A list of label names to further limit the
+        search.  Only match messages with one or more of the labels in
+        the list.
+
+        """
         qstring = query + ' ' + self.opts.query
         if labels:
             query += ' (' + ' OR '.join(['label:' + l for l in labels]) + ')'

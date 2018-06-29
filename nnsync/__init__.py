@@ -1,15 +1,16 @@
 
 import base64
-import click
 from copy import deepcopy
+import pdb
 import queue
 import threading
+
+import click
 from tqdm import tqdm
 
 from . import local
 from . import remote
 
-import pdb
 
 class _tqdm(tqdm):
     """Dummy version of tqdm that does not print."""
@@ -24,6 +25,12 @@ class _tqdm(tqdm):
         return
 
 class NnSync():
+    """A synchronization object for keeping a local copy of message metadata in a local storage.
+
+This object represents only one Gmail account.  When synchronizng
+multiple accounts, need to create one object per account.
+
+    """
     def __init__(self, email, nickname, opts):
         self.email = email
         self.nickname = nickname
@@ -44,13 +51,26 @@ class NnSync():
 
     @classmethod
     def from_account(cls, account, config):
+        """Create a synchronization object from an Account object.
+
+This is useful for creating a sync object from the Flask controllers."""
         return cls(account.email, account.nickname, config)
 
     def sync_labels(self):
+        """Synchronize Gmail labels with database."""
         for label in self.gmail.get_labels():
             self.sql3.new_label(name=label['name'], gid=label['id'])
 
     def read(self, ids):
+        """Read messages from the database.
+
+If the message body is not available, fetch it from Gmail and store it
+in the database.  The messages to read are specified in ids.  Note that
+this function does not return the message data.  Rather the data is
+store in the database from where it can be accessed via the usual
+mechanisms.
+
+        """
         if not ids:
             return
         if '__getitem__' not in dir(ids):
@@ -71,6 +91,23 @@ class NnSync():
         bar.close()
 
     def create_or_update(self, gids, create=True, sync_labels=False):
+        """Create or update messages in local storage.
+
+This function provides a wrapper to iterate through a series of messages
+to either create them or update them in local storage.  Splits the list
+of Google ID's to operate on, and retrieve the message metadata in
+batches.  Do one database commit per batch for efficiency.
+
+In this context create or update refers to message metadata only.
+Fetching the message itself is done via a different API.
+
+If sync_labels is True, then sync labels before proceeding--usually a
+good idea since we create / update messages in batches and label
+synchronization is fast.
+
+Messages are identified by google ID's
+
+        """
         history_id = self.sql3.get_history_id()
         if not gids:
             return history_id
@@ -92,13 +129,34 @@ class NnSync():
         return history_id
 
     def create(self, gids, sync_labels=False):
+        """Wrapper for creating messages.
+
+Because we use a composite primary key (id, account_id) for the message
+table, we first create a placeholder for each message.  This quick and
+is done as a transaction so we only need to read the current id once at
+the start.  Once the placeholder was created process each message.
+
+        """
         self.sql3.placeholder(gids)
         return self.create_or_update(gids, True, sync_labels)
 
     def update(self, gids, sync_labels=False):
+        """Wrapper for updating message metadata.
+
+This is needed when the user interrupts a synchronization operation and
+then restarts it in a different process.
+
+        """
         return self.create_or_update(gids, False, sync_labels)
 
     def update_labels(self, updated):
+        """Update message labels.
+
+Messages metadat never changes and doesn't need to be updated.  But
+labels do change.
+
+        """
+
         # updated is a hash of the form
         # {'163e42f92b6526f8': ['IMPORTANT', 'STARRED', 'CATEGORY_UPDATES',
         #                       'INBOX']}
@@ -107,24 +165,39 @@ class NnSync():
         self.sql3.update(msgs)
 
     def delete(self, gids):
+        """Delete a message from local storage."""
         self.sql3.delete(gids)
 
     def remote_batch_update(self, ids, add_labels, rm_labels):
+        """Update a set of message in Gmail.
+
+Only label updates are possible.
+
+        """
         if not self.gmail.writable:
             return None
         return self.gmail.update_messages(ids, add_labels, rm_labels)
 
     def remote_update(self, id, labels):
+        """Update a single message at the remote server."""
         if not self.gmail.writable:
             return None
         return self.gmail.update_message(id, labels)
 
     def remote_delete(self, id):
+        """Delete a message at the remote."""
         if not self.gmail.writable:
             return None
         return self.gmail.delete_message(id)
 
     def get_history(self):
+        """Request a of changes for the account since we last synchronized.
+
+This is a faster way to synchronize that doing a full pull of the
+account and is valid so long as we sycnhronize regularly (Gmail docs say
+the history list should be valid for about a week).
+
+        """
         history = []
         no_history = False
         history_id = self.sql3.get_history_id()
@@ -146,6 +219,13 @@ class NnSync():
         return history
 
     def merge_history(self, history):
+        """Merge items in the history list.
+
+For example, if a label is added and then removed to a message, we can
+skip both the operations.  Operations on any deleted messages are also
+skipped.
+
+        """
         deleted = {}
         added = {}
         updated = {}
@@ -176,6 +256,13 @@ class NnSync():
         return(int(history[-1]['id']), deleted, added, updated)
 
     def pull(self):
+        """Do an incremental update of the account.
+
+If Gmail cannot provide us with a lis of changes, either because we have
+never synchronized this account or because we haven't synchronized it
+recently, do a full update.
+
+        """
         if not self.gmail.reachable():
             return
 
@@ -209,6 +296,12 @@ class NnSync():
         self.read(added.keys())
 
     def full_pull(self):
+        """Do a full update on the account.
+
+If a message (based on the Google ID) is already present in the local
+database, then only update the labels.
+
+        """
         history_id = 0
         local_gids = set(self.sql3.all_ids())
         created = []
@@ -240,10 +333,27 @@ class NnSync():
         self.sql3.set_history_id(history_id)
 
     def init_cache(self):
+        """Fetch cacheable messages."""
         ids = self.sql3.find_cacheable()
         self.read(ids)
 
     def sync(self):
+        """Create a background thread to poll for changes.
+
+This function creates a thread that does two things:
+
+    - Listen for commands on a queue
+    - Periodically polls for changes in the account
+
+The command queue is meant to provide a backfround job processing
+mehcnaism for the front-end server.  It could, for example, be asked to
+prefetch all messages in a thread when accessing any of the messages in
+the thread.
+
+The poll timeout is implemented as timeout on the (clocking) dequeue of
+commands.
+
+        """
         def __sync(email, nickname, opts, ingress, egress):
             me = NnSync(email, nickname, opts)
             click.echo("%s: start sync" % me.nickname)
@@ -290,7 +400,9 @@ class NnSync():
         return (thread, ingress, egress)
 
     def search(self, query, labels=[]):
+        """Interface for passing a search string to the Gmail back end."""
         return self.gmail.search(query, labels)
 
     def expire_cache(self):
+        """Function to periodically (once a day) expire cached messages."""
         self.sql3.expire_cache()
