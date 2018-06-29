@@ -1,8 +1,9 @@
-from flask import jsonify, request
-from flask.views import MethodView
 import urllib
 
-from nngmail import db, get_sync
+from flask import jsonify, request
+from flask.views import MethodView
+
+from nngmail import get_sync
 from nngmail.api import api_bp
 from nngmail.models import Account, label_association, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
@@ -14,7 +15,7 @@ class QueryAPI(MethodView):
         label_names = urllib.parse.unquote(label_arg).split(',')
         labels = sum(Label.query.with_entities(Label.gid).\
                      filter(Label.name.in_(label_names)).all(), ())
-        query = request.args.get('q', '')
+        query = request.args.get('q', None)
         base = Message.query.filter_by(account_id=account_id).\
             join(label_association).join(Label).\
             with_entities(Message.id, Label.name).\
@@ -22,13 +23,15 @@ class QueryAPI(MethodView):
         if labels:
             base = base.filter(Label.name.in_(labels))
 
-        if query == '':
-            result = base.all()
-        else:
+        if query:
             gmail = get_sync(Account.query.get(account_id))
             gids = gmail.search(query, labels)
             # Convert Google ID's to message ID's.
             result = base.filter(Message.google_id.in_(gids)).all()
+        else:
+            ## If the client doesn't pass a query string, search the
+            ## local database for messages matching the criteria.
+            result = base.all()
         return jsonify({'result': result})
 
 ## Query resource
