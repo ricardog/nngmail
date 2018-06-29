@@ -7,6 +7,7 @@ from nngmail.models import Account
 from nnsync import NnSync
 
 def load_config():
+    """Load the nnsync config file."""
     config_file = os.path.normpath(os.path.join(app.root_path, '..',
                                                 'data', 'config.yaml'))
     try:
@@ -17,6 +18,12 @@ def load_config():
 
 @app.before_first_request
 def background():
+    """Create a background thread per account.
+
+The thread is responsible for peridoic polling for new mssages and for
+evicting cached messages that have expired.
+
+    """
     config = load_config()
     for account in Account.query.all():
         if account.nickname not in zync:
@@ -25,6 +32,7 @@ def background():
     #atexit.register(kill_zync)
 
 def kill_zync():
+    """Stop and wait for all background (polling) threads."""
     print('atexit handler called')
     for nickname in zync:
         thread, egress, ingress = zync[nickname]
