@@ -1,8 +1,9 @@
+import urllib
+
 import click
 from flask import abort, jsonify, make_response, render_template, request
 from flask.views import MethodView
 from sqlalchemy.orm import undefer
-import urllib
 
 from nngmail import db, get_sync, zync
 from nngmail.api import api_bp
@@ -25,7 +26,8 @@ class MessageAPI(MethodView):
             ## Return list
             filters = {}
             if 'label' in request.args:
-                query = Message.by_label(account_id, request.args['label']).distinct()
+                query = Message.by_label(account_id,
+                                         request.args['label']).distinct()
             else:
                 query = Message.query.filter_by(account_id=account_id)
             if 'q' in request.args:
@@ -121,7 +123,10 @@ class MessageAPI(MethodView):
         if not message:
             return make_response(jsonify({'error': 'Message not found'}), 404)
         sync = get_sync(Account.query.get(account_id))
-        sync.remote_delete(message.google_id)
+        resp = sync.remote_delete(message.google_id)
+        if resp:
+            click.echo('remote update failed')
+            abort(resp[0], resp[1]),
         db.session().delete(message)
         db.session().commit()
         return jsonify({'result': True})
@@ -143,15 +148,13 @@ def messages(nickname):
 @api_bp.route(acct_nick_base + '/messages/<int:message_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, message_id):
-    account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(account.id, Message.query.get_or_404((message_id,
-                                                              account.id)).id)
+    message = Message.query.get_or_404((message_id, account.id))
+    return message_view(message.account_id, message.id)
 
 @api_bp.route(acct_nick_base + '/messages/<string:message_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_message_id(nickname, message_id):
     mid = urllib.parse.unquote(message_id)
-    account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(account.id,
-                        Message.query.filter_by(account_id=account.id).\
-                        filter_by(message_id=mid).first_or_404().id)
+    message = Message.query.filter_by(account_id=account.id).\
+        filter_by(message_id=mid).first_or_404()
+    return message_view(messge.account_id, message.id)
