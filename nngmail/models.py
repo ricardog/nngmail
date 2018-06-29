@@ -56,10 +56,13 @@ class UniqueMixin(object):
                )
 
 class Serializeable(object):
-    def serialize(self, include=[], omit=[]):
+    include = []
+    omit = []
+
+    def serialize(self):
         return {c: getattr(self, c) for c in
-                filter(lambda c: not include or c in include,
-                       filter(lambda c: c not in omit,
+                filter(lambda c: not self.include or c in self.include,
+                       filter(lambda c: c not in self.omit,
                               inspect(self).attrs.keys()))}
 
 class TimestampMixin(object):
@@ -85,6 +88,8 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     writable = db.Column(db.Boolean, default = False)
     can_send = db.Column(db.Boolean, default = False)
 
+    omit = ('messages', 'threads', 'labels', 'keys')
+    
     @db.validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
@@ -104,10 +109,6 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     def __repr__(self):
         return '%2d: %s <%s>' % (self.id, self.nickname, self.email)
 
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('messages', 'threads',
-                                                   'labels', 'keys'))
-
 class Contact(UniqueMixin, db.Model, Serializeable):
     db.UniqueConstraint('name', 'email', name='unique_1')
     id = db.Column(db.Integer, primary_key=True)
@@ -121,7 +122,9 @@ class Contact(UniqueMixin, db.Model, Serializeable):
     received = association_proxy('_received', 'message')
     cced = association_proxy('_cced', 'message')
     bcced = association_proxy('_bcced', 'message')
-    
+
+    omit = ('sent', '_received', '_cced', '_bcced')
+
     @db.validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
@@ -139,10 +142,6 @@ class Contact(UniqueMixin, db.Model, Serializeable):
     
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
-
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('sent', '_received',
-                                                   '_cced', '_bcced'))
 
 class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
@@ -200,6 +199,8 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
                                lazy='dynamic', passive_deletes=True,
                                back_populates='labels')
 
+    omit = ('account', 'messages')
+
     @classmethod
     def unique_hash(cls, account, gid, name=None):
         return gid
@@ -210,9 +211,6 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
 
     def __repr__(self):
         return '%s' % self.name
-
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('account', 'messages'))
 
     @staticmethod
     def info(account_id):
@@ -244,6 +242,8 @@ class Thread(UniqueMixin, Serializeable, db.Model):
     sizes = association_proxy('messages', 'size')
     labels = association_proxy('messages', 'labels')
 
+    omit = ('account', 'messages')
+
     @classmethod
     def unique_hash(cls, account, thread_id):
         return hash((account, thread_id))
@@ -254,9 +254,6 @@ class Thread(UniqueMixin, Serializeable, db.Model):
 
     def __repr__(self):
         return '%d: %s' % (self.id, self.thread_id)
-
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('account', 'messages'))
 
 class Message(TimestampMixin, Serializeable, db.Model):
     db.UniqueConstraint('account_id', 'google_id', name='gid_1')
@@ -302,6 +299,8 @@ class Message(TimestampMixin, Serializeable, db.Model):
     bccs = association_proxy('bcc', 'contact',
                              creator=lambda c: BccAddressee(contact=c))
 
+    omit = ('_raw', 'raw', 'account', 'thread', 'addressees')
+
     @property
     def __raw(self):
         if self._raw is None:
@@ -317,12 +316,6 @@ class Message(TimestampMixin, Serializeable, db.Model):
         self._raw = zlib.compress(raw)
 
     raw = db.synonym("_raw", descriptor=__raw)
-
-    def serialize(self):
-        return Serializeable.serialize(self, omit=('_raw', 'raw',
-                                                          'account',
-                                                          'thread',
-                                                          'addressees'))
 
     @staticmethod
     def find_labels(session, account, gid):
