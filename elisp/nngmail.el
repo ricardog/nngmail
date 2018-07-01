@@ -71,18 +71,18 @@
 (nnoo-declare nngmail)
 (gnus-declare-backend "nngmail" 'mail 'address 'server-marks)
 
-(defvoo nngmail-host "localhost"
+(defvoo nngmail-address "localhost"
   "The address of the gmail proxy / sync server (nnsync).")
 
-(defvoo nngmail-user nil
+(defvoo nngmail-email nil
   "Username to use for authentication to the IMAP server.")
 
-(defvoo nngmail-port 5000
+(defvoo nngmail-server-port 5000
   "The port the gmail proxy listens on.")
 
-(defvoo nngmail-base-url
-    (format "http://%s:%d/api/v1.0" nngmail-host nngmail-port)
-  "The base URL for talking to the nngmail server.")
+(defun nngmail-base-url ()
+  "The base URL for talking to the nngmail server."
+  (format "http://%s:%d/api/v1.0" nngmail-address nngmail-server-port))
 
 (defvoo nngmail-split-methods nil
   "How mail is split.
@@ -242,10 +242,10 @@ FiXME: Use discovery to get te URL for parameters so we don't
 have to hard-code URL rules."
   (let ((base-url (cond
 		   ((stringp account-id)
-		    (format "%s/accounts/%s" nngmail-base-url account-id))
+		    (format "%s/accounts/%s" (nngmail-base-url) account-id))
 		   (account-id
-		    (format "%s/accounts/%d" nngmail-base-url account-id))
-		   (t nngmail-base-url)))
+		    (format "%s/accounts/%d" (nngmail-base-url) account-id))
+		   (t (nngmail-base-url))))
 	(res-name (symbol-name resource))
 	(url-args (args-to-url-args args)))
     (cond
@@ -388,29 +388,34 @@ reference."
 ;;;
 ;;; Required functions in gnus back end API
 ;;;
-(deffoo nngmail-open-server (server &rest definitions)
+(deffoo nngmail-open-server (server &optional definitions)
   "Verify the nngmail server syncs the account SERVER.
 
 FIXME: Understand what gets passed in DEFINITIONS and use the data."
   (message (format "in nngmail-open-server for %s" server))
+  (nnoo-change-server 'nngmail server definitions)
   (let ((servers (nngmail-get-accounts)))
-    (when (not (assoc server servers))
-      (nnheader-report
-       'nngmail (format "You are not syncing %s" server)))
-    (push (cons server (cdr (assoc server servers))) nngmail-servers))
-  (progn
-    (and
-     definitions
-     (assoc-string "email" definitions)
-     (let ((email-def (assoc-string "email" definitions))
-	   (email-ser (nngmail-get-account-email server)))
-       (unless
-	   (string-equal email-ser email-def)
-	 (error (format "Email address mismatch %s != %s"
-			email-ser email-def)))))
-    (message (format "nngmail: opened server '%s'" server))
-    (nngmail-touch-server server)))
-
+    (if (assoc server servers)
+	(progn
+	  (push (cons server (cdr (assoc server servers))) nngmail-servers)
+	  (and
+	   definitions
+	   (assoc-string "nngmail-email" definitions)
+	   (let ((email-def (cadr (assoc-string "nngmail-email" definitions)))
+		 (email-ser (nngmail-get-account-email server)))
+	     (unless
+		 (string-equal email-ser email-def)
+	       (error (format "Email address mismatch %s != %s"
+			      email-ser email-def)))))
+	  (message (format "nngmail: opened server '%s'" server))
+	  (nngmail-touch-server server))
+      (progn
+	(nnheader-report
+	 'nngmail (format "You are not syncing %s" server))
+	(nnoo-close-server 'nngmail server)
+	nil)
+      )))
+  
 (deffoo nngmail-close-server (server)
   "Close connection to server.  Removes the server from the
 accounts alist."
@@ -422,6 +427,7 @@ accounts alist."
 	   (nngmail-get-account-id server))
        (setq nngmail-last-account-id nil
 	     nngmail-last-account nil))
+  (nnoo-close-server 'nngmail server)
   t)
 
 (deffoo nngmail-request-close ()
@@ -1043,6 +1049,6 @@ The return list is used to construct the completion list of
 		     servers)))
 	   'string<))
     ))
-     
+
 (provide 'nngmail)
 ;;; nngmail.el ends here
