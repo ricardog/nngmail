@@ -1,6 +1,6 @@
 ;;; package --- A Gmail REST API back end for Gnus
 
-;; Copyright (C) 2018  Itineris, Inc.
+;; Copyright © 2018 Itineris, Inc.
 
 ;; Author: Ricardo E. Gonzalez  <ricardog@itinerisinc.com>
 ;; URL: https://bitbucket.org/ricardog00/nngmail/nngmail.git
