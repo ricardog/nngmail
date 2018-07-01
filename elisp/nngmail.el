@@ -169,6 +169,10 @@ This list has all the accounts the server we connect to synchs.")
   "Get ID of GROUP for account NICKNAME."
   (nngmail-get-group-x nickname group 'id))
 
+(defun nngmail-get-group-url (nickname group)
+  "Get messages URL of GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'messages_url))
+
 (defun nngmail-get-group-min (nickname group)
   "Get min article number in GROUP for account NICKNAME."
   (nngmail-get-group-x nickname group 'min))
@@ -235,6 +239,15 @@ change the JSON parser to return an alist and be done."
 	       (snippet . ,snippet)
 	       (labels . ,labels)))))
 
+(defun args-to-url-args (args)
+  "Map an alist of arguments to a string of URL arguments."
+  (mapconcat (function (lambda (value)
+			 (format "%s=%s" (car value)
+				 (if (stringp (cdr value))
+				     (url-hexify-string (cdr value))
+				   (cdr value)))))
+	     args "&"))
+
 (defun nngmail-url-for (resource &optional account-id id args)
   "Generate a URL for a RESOURCE.
 Optional ACCOUNT-ID and resource ID are used to construct the URL
@@ -250,13 +263,7 @@ have to hard-code URL rules."
 		    (format "%s/accounts/%d" nngmail-base-url account-id))
 		   (t nngmail-base-url)))
 	(res-name (symbol-name resource))
-	(url-args
-	 (mapconcat (function (lambda (value)
-				(format "%s=%s" (car value)
-					(if (stringp (cdr value))
-					    (url-hexify-string (cdr value))
-					  (cdr value)))))
-			     args "&")))
+	(url-args (args-to-url-args args)))
     (cond
      ((stringp id)
       (format "%s/%ss/%s?%s" base-url res-name id url-args))
@@ -644,10 +651,11 @@ to grovel over the response."
 		    fetch-old
 		    (length articles)))
 	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
-	 (url (nngmail-url-for 'message account nil
-			       `((format . "nov")
-				 (id . ,ids)
-				 (label . ,group))))
+	 (url (format "%s?%s"
+		      (nngmail-get-group-url account group)
+		      (args-to-url-args `((format . "nov")
+					  (id . ,ids)
+					  (label . ,group)))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
       (erase-buffer)
