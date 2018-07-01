@@ -59,11 +59,28 @@ class Serializeable(object):
     include = []
     omit = []
 
+    links = {}
+
     def serialize(self):
-        return {c: getattr(self, c) for c in
+        obj = {c: getattr(self, c) for c in
                 filter(lambda c: not self.include or c in self.include,
                        filter(lambda c: c not in self.omit,
                               inspect(self).attrs.keys()))}
+        if self.links:
+            for key, args in  self.links.items():
+                if isinstance(args[2], dict):
+                    mapped = dict([(k, getattr(self, v)
+                                    if v in dir(self) else v)
+                                   for k,v in args[2].items()])
+                else:
+                    mapped = v[2]
+                obj.update({key: args[0](args[1], **mapped)})
+        return obj
+
+    @classmethod
+    def inject(cls, links, omit=[]):
+        cls.links = links
+        #self.omit.extend(omit)
 
 class TimestampMixin(object):
     created = db.Column(
