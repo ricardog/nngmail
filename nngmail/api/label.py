@@ -7,7 +7,7 @@ from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
 
 class LabelAPI(MethodView):
-    Label.inject({'messages_url': [url_for, '.label_messages',
+    Label.inject({'messages_url': [url_for, '.label_named_messages',
                                    {'nickname': 'nickname',
                                     'label': 'name',
                                     '_external': True}]})
@@ -77,13 +77,23 @@ def label_by_name(nickname, label):
     return lookup_by_name(nickname, label, label_view)
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/messages/')
-def label_messages(nickname, label):
-    limit = request.args.get('limit', 200)
-    account = Account.query.filter_by(nickname=nickname).first_or_404()
-    messages = Label.query.filter(Label.account_id==account.id).\
-        filter(Label.name==label).first_or_404().\
-        messages.order_by(Message.id.desc()).\
-        limit(limit).all()
+def label_named_messages(nickname, label):
+    obj = Label.query.filter(Account.nickname == nickname).\
+        filter_by(name=label).first_or_404()
+    return label_messages(obj.id)
+
+@api_bp.route('/labels/<int:label_id>/messages/')
+def label_messages(label_id):
+    query = Label.query.get_or_404(label_id).\
+        messages.order_by(Message.id.desc())
+    if 'id' in request.args:
+        ids = get_ids(request.args['id'])
+        query = query.filter(Message.id.in_(ids))
+    else:
+        ## Must appear after the over_by clause
+        query = query.limit(request.args.get('limit', 200))
+    messages = query.all()
+
     fmt = request.args.get('format', 'json')
     if fmt.lower() == 'nov':
         return render_template('nov.txt', messages=messages)
