@@ -1,4 +1,4 @@
-from flask import abort, jsonify, make_response, render_template, request
+from flask import abort, jsonify, render_template, request, url_for
 from flask.views import MethodView
 
 from nngmail import db
@@ -7,6 +7,11 @@ from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
 
 class LabelAPI(MethodView):
+    Label.inject({'messages_url': [url_for, '.label_messages',
+                                   {'nickname': 'nickname',
+                                    'label': 'name',
+                                    '_external': True}]})
+
     def get(self, account_id, label_id):
         if not label_id:
             ## Return list

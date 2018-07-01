@@ -215,8 +215,9 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     messages = db.relationship('Message', secondary=label_association,
                                lazy='dynamic', passive_deletes=True,
                                back_populates='labels')
+    nickname = association_proxy('account', 'nickname')
 
-    omit = ('account', 'messages')
+    omit = ('account', 'messages', 'nickname')
 
     @classmethod
     def unique_hash(cls, account, gid, name=None):
