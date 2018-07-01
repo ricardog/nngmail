@@ -80,8 +80,13 @@ def label_by_name(nickname, label):
 def label_messages(nickname, label):
     limit = request.args.get('limit', 200)
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    query = Label.query.filter(Label.account_id==account.id).\
-            filter(Label.name==label).first_or_404().\
-            messages.order_by(Message.id.desc()).\
-            limit(limit).all()
-    return jsonify({'messages': query})
+    messages = Label.query.filter(Label.account_id==account.id).\
+        filter(Label.name==label).first_or_404().\
+        messages.order_by(Message.id.desc()).\
+        limit(limit).all()
+    fmt = request.args.get('format', 'json')
+    if fmt.lower() == 'nov':
+        return render_template('nov.txt', messages=messages)
+    if fmt.lower() == 'header':
+        return render_template('header.txt', messages=messages)
+    return jsonify({'messages': messages})
