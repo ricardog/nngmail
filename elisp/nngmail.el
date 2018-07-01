@@ -123,7 +123,7 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-account-x (nickname what)
   "Get parameter WHAT for account NICKNAME."
-  (cdr (assq what (nngmail-get-account nickname))))
+  (plist-get (nngmail-get-account nickname) what))
 
 (defun nngmail-get-account-id (nickname)
   "Get ID of account NICKNAME."
@@ -153,13 +153,18 @@ This list has all the accounts the server we connect to synchs.")
   "Get last group we switch to for account NICKNAME."
   (nngmail-get-account-x nickname 'group))
 
+(defun nngmail-set-account-x (nickname what value)
+  "Set property WHAT for account NICKNAME to VALUE."
+  (let ((acct-params (assoc nickname nngmail-servers)))
+    (setcdr acct-params (plist-put (cdr acct-params) what value))))
+
 (defun nngmail-set-account-groups (nickname groups)
   "Set GROUPS hash table for account NICKNAME."
-  (setcdr (assoc 'groups (assoc nickname nngmail-servers)) groups))
+  (nngmail-set-account-x nickname 'groups groups))
 
 (defun nngmail-set-account-group (nickname group)
   "Switch to GROUP in account NICKNAME."
-  (setcdr (assoc 'group (assoc nickname nngmail-servers)) group))
+  (nngmail-set-account-x nickname 'group group))
 
 (defun nngmail-get-group-x (nickname group what)
   "Get parameter WHAT from GROUP for account NICKNAME."
@@ -188,27 +193,6 @@ This list has all the accounts the server we connect to synchs.")
 (defun nngmail-get-error-string (response)
   "Get the error string of a JSON RESPONSE from the proxy."
   (plist-get response 'error))
-  
-(defun nngmail-get-account-params (elem)
-  "Get account parameters from plist ELEM.
-The JSON parser returns a plist.  This function extracts the
-account parameters we want to keep around and stores them in an
-alist.  It's all a bit bogus at the moment and I should perhas
-change the JSON parser to return an alist and be done."
-  (let ((nickname (plist-get elem 'nickname))
-	(email (plist-get elem 'email))
-	(id (plist-get elem 'id))
-	(writable (plist-get elem 'writable))
-	(can-send (plist-get elem 'can_send))
-	(groups (ht)))
-    (cons nickname `((id       . ,id)
-		     (email    . ,email)
-		     (groups   . ,groups)
-		     (writable . ,writable)
-		     (can-send . ,can-send)
-		     (message)
-		     (group)
-		     ))))
 
 (defun nngmail-get-message-params (elem)
   "Get message parameters from plist ELEM.
@@ -356,7 +340,7 @@ for fast access."
 	 servers)
     (seq-map
      (lambda (elem)
-       (push (nngmail-get-account-params elem) servers))
+       (push (cons (plist-get elem 'nickname) elem) servers))
      accounts)
     servers))
 
