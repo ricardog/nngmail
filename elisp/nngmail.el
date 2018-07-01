@@ -163,7 +163,7 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-group-x (nickname group what)
   "Get parameter WHAT from GROUP for account NICKNAME."
-  (cdr (assq what (ht-get (nngmail-get-groups nickname) group))))
+  (plist-get (ht-get (nngmail-get-groups nickname) group) what))
 
 (defun nngmail-get-group-id (nickname group)
   "Get ID of GROUP for account NICKNAME."
@@ -205,25 +205,6 @@ change the JSON parser to return an alist and be done."
 		     (message)
 		     (group)
 		     ))))
-
-(defun nngmail-get-group-params (elem)
-  "Get group parameters from plist ELEM.
-The JSON parser returns a plist.  This function extracts the
-group parameters we want to keep around and stores them in an
-alist.  It's all a bit bogus at the moment and I should perhas
-change the JSON parser to return an alist and be done."
-  (let ((id (plist-get elem 'id))
-	(name (plist-get elem 'name))
-	(google_id (plist-get elem 'gid))
-	(min (plist-get elem 'min))
-	(max (plist-get elem 'max))
-	(count (plist-get elem 'count))
-	)
-    (cons name `((id . ,id)
-		 (google_id . ,google_id)
-		 (min . ,min)
-		 (max . ,max)
-		 (count . ,count)))))
 
 (defun nngmail-get-message-params (elem)
   "Get message parameters from plist ELEM.
@@ -390,7 +371,7 @@ all groups.  Gnus-related functions store the hash table in
 	 (tmp ()))
     (seq-map
      (lambda (elem)
-       (push (nngmail-get-group-params elem) tmp))
+       (push (cons (plist-get elem 'name) elem) tmp))
      data)
     (ht-from-alist tmp)
     ))
@@ -619,8 +600,8 @@ creation, then list all groups as read-only."
 	  (maphash (lambda (key value)
 		     (insert (format "%S %d %d %s\n"
 				     key
-				     (cdr (assq 'max value))
-				     (cdr (assq 'min value))
+				     (plist-get value 'max)
+				     (plist-get value 'min)
 				     (if (nngmail-get-account-writable account)
 					 "y"
 				       "n")

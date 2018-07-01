@@ -4,7 +4,7 @@ from flask.views import MethodView
 from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.api.utils import acct_base, acct_nick_base
+from nngmail.api.utils import acct_base, acct_nick_base, get_ids
 
 class LabelAPI(MethodView):
     Label.inject({'messages_url': [url_for, '.label_named_messages',
@@ -18,9 +18,14 @@ class LabelAPI(MethodView):
             fmt = request.args.get('format', 'json')
             if fmt == 'info':
                 data = Label.info(account_id).all()
-                info = tuple((dict(zip(['id', 'name', 'gid', 'min',
-                                        'max', 'count'], e)))
+                info = tuple((dict(zip(['id', 'name', 'gid',
+                                        'min', 'max', 'count'], e)))
                              for e in data)
+                for obj in info:
+                    obj.update({'messages_url':
+                                url_for('.label_messages',
+                                        label_id=obj['id'],
+                                        _external=True)})
                 return jsonify({'labels': info})
             query = Label.query.filter_by(account_id=account_id).\
                         order_by(Label.id.desc())
