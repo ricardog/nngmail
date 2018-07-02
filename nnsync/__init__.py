@@ -154,7 +154,7 @@ then restarts it in a different process.
     def update_labels(self, updated):
         """Update message labels.
 
-Messages metadat never changes and doesn't need to be updated.  But
+Messages metadata never changes and doesn't need to be updated.  But
 labels do change.
 
         """
@@ -348,7 +348,7 @@ This function creates a thread that does two things:
     - Periodically polls for changes in the account
 
 The command queue is meant to provide a backfround job processing
-mehcnaism for the front-end server.  It could, for example, be asked to
+mechanism for the front-end server.  It could, for example, be asked to
 prefetch all messages in a thread when accessing any of the messages in
 the thread.
 
