@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import email
 import re
 
-from options import Options
+from options import Options, OptionsClass
 
 from sqlalchemy.orm import load_only
 from sqlalchemy.sql import and_, or_, not_
@@ -18,7 +18,7 @@ import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 
-class Sqlite3():
+class Sqlite3(OptionsClass):
     """Class for storing message metadata in a local sqlite3 database.
 
 The create functions assume the data is in Gmail format, i.e. the format
@@ -63,12 +63,12 @@ Gmail REST API client provides message data.
                 else:
                     items.append((new_key, v))
             return dict(items)
-        self.opts = self.options.push(flatten(kwargs))
-        self.opts.set(account=Account.as_unique(db.session(),
-                                                email=self.opts.email,
-                                                nickname=self.opts.nickname,
-                                                writable=self.opts.writable,
-                                                can_send=False))
+        self.options = self.options.push(flatten(kwargs))
+        self.set(account=Account.as_unique(db.session(),
+                                           email=self.options.email,
+                                           nickname=self.options.nickname,
+                                           writable=self.options.writable,
+                                           can_send=False))
         self.label_map = {}
         self.label_imap = {}
 
@@ -87,7 +87,7 @@ This is done to avoid querying the Labels table all the time.
     @property
     def account(self):
         """The account we are associated with."""
-        return self.opts.account
+        return self.options.account
 
     def get_label(self, name):
         """Get a label object (from database) base on name."""
@@ -273,12 +273,12 @@ When undefer is True, read the raw message body (if available).
 
     def find_cacheable(self):
         """Return a list of cacheable message id's."""
-        if self.opts.cache_timeout == 0:
+        if self.options.cache_timeout == 0:
             return ()
-        if self.opts.cache_timeout < 0:
+        if self.options.cache_timeout < 0:
             td = datetime.fromtimestamp(0)
         else:
-            td = datetime.now() - timedelta(days=self.opts.cache_timeout)
+            td = datetime.now() - timedelta(days=self.options.cache_timeout)
         query = Message.query.with_entities(Message.id).\
                 filter(or_(Message.date > td,
                            Message.updated > td)).\
