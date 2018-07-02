@@ -25,7 +25,7 @@ The create functions assume the data is in Gmail format, i.e. the format
 Gmail REST API client provides message data.
 
     """
-    options = Options(email=None, nickname=None, db_url=None, account=None,
+    options = Options(email=None, nickname=None, account=None,
                       cache_timeout=60, cache_max_size=0,
                       writable=False, can_send=False)
 
