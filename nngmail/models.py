@@ -330,6 +330,10 @@ class Message(TimestampMixin, Serializeable, db.Model):
 
     @__raw.setter
     def __raw(self, raw):
+        if raw is None:
+            del self.raw2
+            self._raw = None
+            return
         self.raw2 = raw
         self._raw = zlib.compress(raw)
 
