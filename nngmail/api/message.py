@@ -47,6 +47,8 @@ class MessageAPI(MethodView):
                     click.echo('fetching message %d' % message.id)
                     get_sync(message.account).read(message.id)
                     message = Message.query.get((message_id, account_id))
+                if message.raw is None:
+                    return make_response('\n\nMessage unavailable.\n\n')
                 return make_response(message.raw)
             return jsonify(message)
 

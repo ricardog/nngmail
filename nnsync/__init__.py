@@ -80,15 +80,17 @@ mechanisms.
         assert len(msgs) == len(ids)
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
-        bar = self.bar(leave=True, total=len(needed), desc="caching messages")
-        for batch in self.gmail.get_messages(needed, format='raw'):
-            for msg in batch:
-                blob = base64.b64decode(msg['raw'], altchars='-_')
-                id_map[msg['id']].raw = blob
-                bar.update(1)
-        # Store raw message data fetch during read
-        self.sql3.commit()
-        bar.close()
+        if self.gmail.reachable():
+            bar = self.bar(leave=True, total=len(needed),
+                           desc="caching messages")
+            for batch in self.gmail.get_messages(needed, format='raw'):
+                for msg in batch:
+                    blob = base64.b64decode(msg['raw'], altchars='-_')
+                    id_map[msg['id']].raw = blob
+                    bar.update(1)
+            # Store raw message data fetch during read
+            self.sql3.commit()
+            bar.close()
 
     def create_or_update(self, gids, create=True, sync_labels=False):
         """Create or update messages in local storage.

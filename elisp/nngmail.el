@@ -485,21 +485,6 @@ FIXME: Remove re-try mechanism (no longer used)."
       (kill-buffer buffer))
     rbuffer))
 
-(defun nngmail-fetch-article (url)
-  "Request and article body from the server using URL.
-
-Check the response and retry if necessary--which happens when the
-article needs to be fetched from gmail."
-  (let ((retries 2)
-	buffer)
-    (while (and (not buffer) (> retries 0))
-      (setq buffer (nngmail-handle-article-request-response
-		    (url-retrieve-synchronously url t)))
-      (setq retries (- retries 1))
-      (when (not buffer)
-	(sleep-for 0 400)))
-    buffer))
-
 (defun nngmail-message-id-to-id (message-id account)
   "Fetch the ID (article number) for message with MESSAGE-ID in ACCOUNT..
 
@@ -533,7 +518,7 @@ normal data buffer. "
 			 (nngmail-message-id-to-id article server)
 		       article))
 	 (url (nngmail-url-for 'message server article '((format . "raw"))))
-	 (buffer (nngmail-fetch-article url)))
+	 (buffer (url-retrieve-synchronously url t)))
     (if buffer
       (with-current-buffer dest-buffer
 	(erase-buffer)
