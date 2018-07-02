@@ -5,7 +5,6 @@ import pytest
 
 from nngmail import app, db
 
-
 @pytest.fixture
 def client():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
@@ -25,4 +24,4 @@ def test_empty_db(client):
     """Start with a blank database."""
 
     rv = client.get('/')
-    assert b'Hello World!\n\n' == rv.data
+    assert b'nngmail proxy server is running\n' == rv.data
