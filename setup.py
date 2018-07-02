@@ -14,7 +14,8 @@ setup(
         'pytest',
         'pyyaml',
         'sqlalchemy',
-        'tqdm'
+        'tqdm',
+        'vcrpy'
     ],
     entry_points='''
         [console_scripts]
