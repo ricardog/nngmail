@@ -113,7 +113,8 @@ Translate Gmail category labels to something that is easier to read.
         label = Label.as_unique(session, name=name, gid=gid,
                                 account=self.account)
         session.commit()
-        self.label_map[name] = label
+        self.label_map[label.gid] = label
+        self.label_imap[label.id] = label.gid
 
     def placeholder(self, gids):
         """Create placeholder rows for new messages.
@@ -187,7 +188,7 @@ is called once per batch received from Gmail.
             adds = {}
             for hdr in ('To', 'CC', 'BCC'):
                 adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
-            labels = [self.get_label(lid) for lid in msg.get('labelIds', [])]
+            labels = [self.get_label(lgid) for lgid in msg.get('labelIds', [])]
             thread = Thread.as_unique(session, thread_id=msg['threadId'],
                                       account=self.account)
             if 'internalDate' in msg:
