@@ -287,13 +287,13 @@ When undefer is True, read the raw message body (if available).
 
     def expire_cache(self):
         """Remove message body for messages that have expired."""
-        td = datetime.now() - timedelta(days=self.opts.cache_timeout)
+        cacheable = self.find_cacheable()
         query = Message.query.\
                 filter(Message._raw.isnot(None)).\
-                filter(Message.date < td).filter(Message.updated < td).\
+                filter(~Message.id.in_(cacheable)).\
                 filter(Message.account == self.account)
         for message in query.all():
-            self.raw = None
+            message.raw = None
         db.session.commit()
 
     def delete(self, gids):
