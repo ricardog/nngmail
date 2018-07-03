@@ -382,7 +382,8 @@ case an API function is called without an explicit server."
 Switching is implemented by remembering the group name for future
 reference."
   (message (format "in nngmail-change-groups for %s %s" server group))
-  (and (ht-get (nngmail-get-account-groups server) group)
+  (and (nngmail-get-account-groups server)
+       (ht-get (nngmail-get-account-groups server) group)
        (nngmail-set-account-group server group)))
 
 ;;;
