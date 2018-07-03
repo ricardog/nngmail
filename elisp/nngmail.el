@@ -1003,9 +1003,7 @@ be a full group name."
 
 This returns an alist for each message.  Unlike the
 Gnus-equivalent which return NOV data in a buffer.  The data is used to construct the list of candidates for te `helm-nngmail' source."
-  (let ((url (concat
-	      (substring (nngmail-url-for 'label server group) 0 -1)
-	      (format "/messages/"))))
+  (let ((url (nngmail-get-group-url server group)))
     (cons server
 	  (mapcar (lambda (result)
 		    (let ((msg (cdr (nngmail-get-message-params result))))
