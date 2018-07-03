@@ -1,16 +1,30 @@
 
 import base64
 from copy import deepcopy
+import logging
 import pdb
 import queue
 import threading
 
 import click
+from flask.logging import default_handler
+import httplib2
 from tqdm import tqdm
 
 from . import local
 from . import remote
 
+class RequestFormatter(logging.Formatter):
+    pass
+
+formatter = logging.Formatter(
+    '[%(asctime)s] %(levelname)s nnsync: %(message)s'
+)
+default_handler.setFormatter(formatter)
+
+logger = logging.getLogger('nnsync')
+logger.setLevel(logging.INFO)
+logger.addHandler(default_handler)
 
 class _tqdm(tqdm):
     """Dummy version of tqdm that does not print."""
@@ -275,12 +289,12 @@ recently, do a full update.
         else:
             history = self.get_history()
         if history is None:
-            click.echo('No history available; attempting full pull')
+            logger.info('No history available; attempting full pull')
             self.full_pull()
             return
 
         if len(history) == 0:
-            click.echo('no new changes')
+            logger.info('no new changes')
             return
 
         hid, deleted, added, updated = self.merge_history(history)
@@ -294,7 +308,7 @@ recently, do a full update.
         bar.update(len(updated.keys()))
         bar.close()
         self.sql3.set_history_id(hid)
-        click.echo('new historyId: %d' % hid)
+        logger.info('new historyId: %d' % hid)
         self.read(added.keys())
 
     def full_pull(self):
@@ -324,14 +338,14 @@ database, then only update the labels.
         updated = sorted(updated, key=lambda a: int(a, 16))
         if (updated and created and
             int(created[0], 16) < int(updated[-1], 16)):
-            click.echo("WARN: creating id's out of order! (%s %s)" %
+            logger.warn("creating id's out of order! (%s %s)" %
                        (created[0], updated[-1]))
         hid1 = self.create(created)
         hid2 = self.update(updated)
         self.delete(local_gids)
 
         history_id = max(hid1, hid2, history_id)
-        click.echo('new historyId: %d' % history_id)
+        logger.info('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
 
     def init_cache(self):
@@ -358,7 +372,7 @@ commands.
         """
         def __sync(email, nickname, opts, ingress, egress):
             me = NnSync(email, nickname, opts)
-            click.echo("%s: start sync" % me.nickname)
+            logger.info("%s: start sync" % me.nickname)
             while True:
                 try:
                     data = ingress.get(block=True,
@@ -368,28 +382,30 @@ commands.
                         break
                     # Process cmd
                     cmd, args = data
-                    click.echo("%s: received cmd %s" % (me.nickname, cmd))
+                    logger.info("%s: received cmd %s" % (me.nickname, cmd))
                     if cmd == 'read':
                         me.read(args)
                     else:
-                        click.echo('%s: unknown command %s' %
-                                   me.nickname, cmd)
+                        logger.error('%s: unknown command %s' %
+                                     (me.nickname, cmd))
                     ingress.task_done()
                     egress.put(cmd)
                 except queue.Empty:
                     ## we were just woken up.  Do nothing here, go pull
                     ## from gmail.
                     pass
-                click.echo('%s: pull' % me.nickname)
+                logger.info('%s: pull' % me.nickname)
                 try:
                     me.pull()
-                except ConnectionResetError:
+                except (ConnectionResetError,
+                        httplib2.ServerNotFoundError,
+                        TimeoutError):
                     ## Likely the connection died while talking to
                     ## or trying to establish a connection with the
                     ## server.  Go back to sleep and hope we have
                     ## better luck next time.
                     pass
-            click.echo("%s: stop sync" % me.nickname)
+            logger.info("%s: stop sync" % me.nickname)
 
         ingress = queue.Queue()
         egress = queue.Queue()
