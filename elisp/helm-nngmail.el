@@ -65,7 +65,10 @@ When not specified, ELLIPSIS defaults to ‘...’."
 
 (defun helm-nngmail-format-message (message)
   "Generate the display sumary for a MESSAGE."
-  (let ((text (format "[%-20s] %-55s\n  %-78s"
+  (let ((text (format (concat
+		       (propertize "[%-20s] " 'face 'message-header-name)
+		       (propertize "%-55s\n" 'face 'message-subject-face)
+		       (propertize "  %-78s" 'face 'italic))
 		      (trunc 20 (or (cdr (assq 'name message))
 				    (cdr (assq 'email message))))
 		      (trunc 55 (cdr (assq 'subject message)))
