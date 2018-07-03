@@ -630,8 +630,7 @@ to grovel over the response."
 	 (url (format "%s?%s"
 		      (nngmail-get-group-url account group)
 		      (args-to-url-args `((format . "nov")
-					  (id . ,ids)
-					  (label . ,group)))))
+					  (id . ,ids)))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
       (erase-buffer)
