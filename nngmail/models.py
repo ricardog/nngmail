@@ -29,7 +29,7 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
                 session.add(obj)
         cache[key] = obj
         return obj
-    
+
 class AddresseeEnum(enum.Enum):
     to = 1
     cc = 2
@@ -106,7 +106,7 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     can_send = db.Column(db.Boolean, default = False)
 
     omit = ('messages', 'threads', 'labels', 'keys')
-    
+
     @db.validates('email')
     def validates_email(self, key, email):
         if '@' not in email:
@@ -156,7 +156,7 @@ class Contact(UniqueMixin, db.Model, Serializeable):
     @classmethod
     def unique_filter(cls, query, email, name=None):
         return query.filter(Contact.email == email)
-    
+
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
 
@@ -290,12 +290,6 @@ class Message(TimestampMixin, Serializeable, db.Model):
     snippet = db.Column(db.String(200))
     size = db.Column(db.Integer, default=0)
     _raw = db.deferred(db.Column(db.BLOB))
-
-    ## Message flags
-    flagged = db.Column(db.Boolean, default=False)
-    answered = db.Column(db.Boolean, default=False)
-    dormant = db.Column(db.Boolean, default=False)
-    deleted = db.Column(db.Boolean, default=False)
 
     account = db.relationship('Account',
                               backref=backref('messages',
