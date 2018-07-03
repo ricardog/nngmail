@@ -124,7 +124,7 @@ interested in.
 
 Read the list of selected/marked candidates from
 `helm-marked-candidates` and ignore CANDIDATES."
-  (setq candidates (helm-marked-candidates))
+  (setq candidates (helm-marked-candidates :all-sources t))
   (let ((articles (mapcar (lambda (candidate)
 			    (let ((server
 				   (helm-nngmail-candidate-server candidate))
@@ -164,7 +164,7 @@ Read the list of selected/marked candidates from
 
 (defvar helm-nngmail-actions
   '(("Read" . (lambda (candidate)
-		(helm-nngmail-action-read candidates)))
+		(helm-nngmail-action-read candidate)))
     ("Mark as read" . (lambda (candidate)
 			(helm-nngmail-action-mark-read candidate)))
     ("Delete" . (lambda (candidate)
