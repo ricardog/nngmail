@@ -1,0 +1,644 @@
+[
+  {
+    "model": "nngmail.model.Account",
+    "records": [
+      {
+        "can_send": false,
+        "email": "ricardog@itinerisinc.com",
+        "id": 1,
+        "nickname": "itineris",
+        "writable": false
+      }
+    ]
+  },
+  {
+    "model": "nngmail.models.Contact",
+    "records": [
+      {
+        "email": "user.8@itinerisinc.com",
+        "id": 8,
+        "name": "User Eight"
+      },
+      {
+        "email": "user.9@itinerisinc.com",
+        "id": 9,
+        "name": "user Nine"
+      },
+      {
+        "email": "user.10@itinerisinc.com",
+        "id": 10,
+        "name": "User Ten"
+      },
+      {
+        "email": "accounts-noreply@google.com",
+        "id": 6,
+        "name": ""
+      },
+      {
+        "email": "support@personforce.com",
+        "id": 5,
+        "name": "Personforce"
+      },
+      {
+        "email": "user.4@itinerisinc.com",
+        "id": 4,
+        "name": "User Four"
+      },
+      {
+        "email": "noreply@checkout.google.com",
+        "id": 7,
+        "name": "Google Checkout"
+      },
+      {
+        "email": "user.2@itinerisinc.com",
+        "id": 2,
+        "name": "user Two"
+      },
+      {
+        "email": "mail-noreply@google.com",
+        "id": 1,
+        "name": "Gmail Team"
+      },
+      {
+        "email": "user.3@itinerisinc.com",
+        "id": 3,
+        "name": "User Three"
+      }
+    ]
+  },
+  {
+    "model": "nngmail.models.Label",
+    "records": [
+      {
+        "account_id": 1,
+        "gid": "CATEGORY_PERSONAL",
+        "id": 1,
+        "name": "Inbox:Personal"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_7",
+        "id": 2,
+        "name": "Sent Messages"
+      },
+      {
+        "account_id": 1,
+        "gid": "CATEGORY_SOCIAL",
+        "id": 3,
+        "name": "Inbox:Social"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_1",
+        "id": 4,
+        "name": "[Gmail]Sent Mail"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_5",
+        "id": 5,
+        "name": "Notes"
+      },
+      {
+        "account_id": 1,
+        "gid": "CATEGORY_FORUMS",
+        "id": 6,
+        "name": "Inbox:Forums"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_4",
+        "id": 7,
+        "name": "Misc"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_6",
+        "id": 8,
+        "name": "Priority"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_2",
+        "id": 9,
+        "name": "Apple Mail To Do"
+      },
+      {
+        "account_id": 1,
+        "gid": "IMPORTANT",
+        "id": 10,
+        "name": "IMPORTANT"
+      },
+      {
+        "account_id": 1,
+        "gid": "Label_3",
+        "id": 11,
+        "name": "Follow up"
+      },
+      {
+        "account_id": 1,
+        "gid": "CATEGORY_UPDATES",
+        "id": 12,
+        "name": "Inbox:Updates"
+      },
+      {
+        "account_id": 1,
+        "gid": "CHAT",
+        "id": 13,
+        "name": "CHAT"
+      },
+      {
+        "account_id": 1,
+        "gid": "SENT",
+        "id": 14,
+        "name": "SENT"
+      },
+      {
+        "account_id": 1,
+        "gid": "INBOX",
+        "id": 15,
+        "name": "INBOX"
+      },
+      {
+        "account_id": 1,
+        "gid": "TRASH",
+        "id": 16,
+        "name": "TRASH"
+      },
+      {
+        "account_id": 1,
+        "gid": "CATEGORY_PROMOTIONS",
+        "id": 17,
+        "name": "Inbox:Promotions"
+      },
+      {
+        "account_id": 1,
+        "gid": "DRAFT",
+        "id": 18,
+        "name": "DRAFT"
+      },
+      {
+        "account_id": 1,
+        "gid": "SPAM",
+        "id": 19,
+        "name": "SPAM"
+      },
+      {
+        "account_id": 1,
+        "gid": "STARRED",
+        "id": 20,
+        "name": "STARRED"
+      },
+      {
+        "account_id": 1,
+        "gid": "UNREAD",
+        "id": 21,
+        "name": "UNREAD"
+      }
+    ]
+  },
+  {
+    "model": "nngmail.models.Message",
+    "records": [
+      {
+        "account_id": 1,
+        "date": "Tue, 29 Sep 2009 22:01:11 GMT",
+        "from_id": 1,
+        "google_id": "124079b56ebb04ba",
+        "id": 1,
+        "message_id": "<cdcb4b090909291401p35012ea2x@mail.gmail.com>",
+        "references": "",
+        "size": 4497,
+        "snippet": "Gmail is built on the idea that email can be intuitive, efficient, and useful. And maybe even fun.",
+        "subject": "Get started with Gmail",
+        "thread_id": 1
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 29 Sep 2009 22:01:11 GMT",
+        "from_id": 1,
+        "google_id": "124079b58932e67a",
+        "id": 2,
+        "message_id": "<cdcb4b090909291401h7e2a9e3fk@mail.gmail.com>",
+        "references": "",
+        "size": 1382,
+        "snippet": "The days of needing your computer to get to your inbox are long gone. Use Gmail on your mobile phone",
+        "subject": "Access Gmail on your mobile phone",
+        "thread_id": 2
+      },
+      {
+        "account_id": 1,
+        "date": "Fri, 02 Oct 2009 23:42:07 GMT",
+        "from_id": 3,
+        "google_id": "124176af0bfb5565",
+        "id": 3,
+        "message_id": "<19142.33215.721896.533520@silvercloud.local>",
+        "references": "",
+        "size": 3213,
+        "snippet": "1. Users might care what day of the week it is when visiting a location (opening hours). Want a way",
+        "subject": "random notes",
+        "thread_id": 3
+      },
+      {
+        "account_id": 1,
+        "date": "Sun, 04 Oct 2009 01:58:27 GMT",
+        "from_id": 2,
+        "google_id": "1241d0e3048f5ce2",
+        "id": 4,
+        "message_id": "<1B1DD622-AA8F-4918-B69C-CBC9D0737450@itinerisinc.com>",
+        "references": "",
+        "size": 732,
+        "snippet": "send from mail.app sing itineris account.",
+        "subject": "test",
+        "thread_id": 4
+      },
+      {
+        "account_id": 1,
+        "date": "Fri, 09 Oct 2009 23:23:25 GMT",
+        "from_id": 5,
+        "google_id": "1243b6dc4e89939b",
+        "id": 5,
+        "message_id": "<200910092223.n99MNP12013440@ip-72-167-52-165.ip.secureserver.net>",
+        "references": "",
+        "size": 3547,
+        "snippet": "Dear Ricardo Gonzalez, Congratulations on joining The BASES Job Board.You can manage your job",
+        "subject": "Job Board Account",
+        "thread_id": 5
+      },
+      {
+        "account_id": 1,
+        "date": "Fri, 09 Oct 2009 23:36:26 GMT",
+        "from_id": 6,
+        "google_id": "1243b72267b97cfb",
+        "id": 6,
+        "message_id": "<f0fca10f74bd5ab6.accounts@google.com>",
+        "references": "",
+        "size": 4891,
+        "snippet": "Welcome to Google Accounts. To activate your account and verify your email address, please click the",
+        "subject": "Google Email Verification",
+        "thread_id": 6
+      },
+      {
+        "account_id": 1,
+        "date": "Fri, 09 Oct 2009 23:37:21 GMT",
+        "from_id": 7,
+        "google_id": "1243b72fcf65ffb3",
+        "id": 7,
+        "message_id": "<1255127841735.a107d8ae-5138-490c-a3fb-9a68e468411c@checkout.google.com>",
+        "references": "",
+        "size": 10047,
+        "snippet": "Hello Ricardo Gonzalez, Thanks for buying from Personforce, Inc. using Google Checkout! Personforce,",
+        "subject": "Order receipt from Personforce, Inc. ($1.00)",
+        "thread_id": 7
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 20 Oct 2009 21:50:45 GMT",
+        "from_id": 8,
+        "google_id": "12473b759bef320f",
+        "id": 8,
+        "message_id": "<000e0cd734642506d70476640434@google.com>",
+        "references": "",
+        "size": 1913,
+        "snippet": "I&#39;ve shared a document with you: Website Sketches https://docs.google.com/a/itinerisinc.com/",
+        "subject": "Website Sketches",
+        "thread_id": 8
+      },
+      {
+        "account_id": 1,
+        "date": "Sat, 24 Oct 2009 06:39:48 GMT",
+        "from_id": 7,
+        "google_id": "124850ec9c21b8e0",
+        "id": 9,
+        "message_id": "<1256362787601.6f3938a2-75f5-4a7c-9975-947af2db5e68@checkout.google.com>",
+        "references": "",
+        "size": 7137,
+        "snippet": "Dear Ricardo Gonzalez, Thanks for your recent purchase from Personforce, Inc.. We&#39;d really",
+        "subject": "Rate your shopping experience with Personforce, Inc. using Google Checkout",
+        "thread_id": 9
+      },
+      {
+        "account_id": 1,
+        "date": "Mon, 26 Oct 2009 03:17:37 GMT",
+        "from_id": 9,
+        "google_id": "1248ed954ca2070f",
+        "id": 10,
+        "message_id": "<SNT122-W3268DB855B479CC6D1445DB9BA0@phx.gbl>",
+        "references": "<00504502f52b5b86cc04769ea5c5@google.com>",
+        "size": 4572,
+        "snippet": "Thank you! I am all set with this and will start using the Itineris email tomorrow. By the way,",
+        "subject": "RE: Welcome to Itineris, Inc",
+        "thread_id": 10
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 13:11:18 GMT",
+        "from_id": 10,
+        "google_id": "124961f3abd278c6",
+        "id": 11,
+        "message_id": "<0016364ee47aefd0b90476ea6935@google.com>",
+        "references": "",
+        "size": 2168,
+        "snippet": "I&#39;ve shared a document with you: Copy of Website Sketches https://docs.google.com/a/itinerisinc.",
+        "subject": "first draft of ui content for your review",
+        "thread_id": 11
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 13:21:47 GMT",
+        "from_id": 10,
+        "google_id": "1249628d48f90939",
+        "id": 12,
+        "message_id": "<30334fd40910270621o213c92daw626514df8e9f55f7@mail.gmail.com>",
+        "references": "",
+        "size": 3349,
+        "snippet": "Hi Ricardo, I added some UI feedback via Google Docs, you should have received a notice. I would like",
+        "subject": "ui content, landing page",
+        "thread_id": 12
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 16:26:36 GMT",
+        "from_id": 2,
+        "google_id": "12496d2036a0af21",
+        "id": 13,
+        "message_id": "<cdcb4b090910270926o538d360evadc541dba07cbe93@mail.gmail.com>",
+        "references": "<30334fd40910270621o213c92daw626514df8e9f55f7@mail.gmail.com>",
+        "size": 4037,
+        "snippet": "Hi Rosemary, Thanks for the feedback. I think it would be more effective to have a phone conversation",
+        "subject": "Re: ui content, landing page",
+        "thread_id": 12
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 18:36:46 GMT",
+        "from_id": 10,
+        "google_id": "1249749395985854",
+        "id": 14,
+        "message_id": "<30334fd40910271136t261c6a56p9e55ddf94976d33e@mail.gmail.com>",
+        "references": "<30334fd40910270621o213c92daw626514df8e9f55f7@mail.gmail.com>\t <cdcb4b090910270926o538d360evadc541dba07cbe93@mail.gmail.com>",
+        "size": 5799,
+        "snippet": "A phone meeting would be great. Are you available at 1:30 today? On Tue, Oct 27, 2009 at 9:26 AM,",
+        "subject": "Re: ui content, landing page",
+        "thread_id": 12
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 18:49:21 GMT",
+        "from_id": 2,
+        "google_id": "1249754f94a6053e",
+        "id": 15,
+        "message_id": "<261654992-1256669374-cardhu_decombobulator_blackberry.rim.net-2023534024-@bda626.bisx.prod.on.blackberry>",
+        "references": "<30334fd40910270621o213c92daw626514df8e9f55f7@mail.gmail.com> <cdcb4b090910270926o538d360evadc541dba07cbe93@mail.gmail.com><30334fd40910271136t261c6a56p9e55ddf94976d33e@mail.gmail.com>",
+        "size": 7641,
+        "snippet": "Yes, 1:30 works for me. I&#39;ll give you a call. R From: Rosemary Alva &lt;rosemary@itinerisinc.com",
+        "subject": "Re: ui content, landing page",
+        "thread_id": 12
+      },
+      {
+        "account_id": 1,
+        "date": "Tue, 27 Oct 2009 22:59:45 GMT",
+        "from_id": 2,
+        "google_id": "124983a19bd083d1",
+        "id": 16,
+        "message_id": "<19175.31585.86167.370933@silvercloud.local>",
+        "references": "",
+        "size": 1525,
+        "snippet": "Rosemary, Meet Yagmur, who is working on the graphic design, layout, and helping me with coding the",
+        "subject": "entroduction",
+        "thread_id": 13
+      },
+      {
+        "account_id": 1,
+        "date": "Thu, 29 Oct 2009 13:11:58 GMT",
+        "from_id": 10,
+        "google_id": "124a06c9394c2a1f",
+        "id": 17,
+        "message_id": "<30334fd40910290611w5f316220sb555009952838d5a@mail.gmail.com>",
+        "references": "",
+        "size": 4385,
+        "snippet": "Hi Ricardo, Did you attend the Campostela talk at Stanford on Tuesday? Rafael took Rafael and",
+        "subject": "pilgrimage",
+        "thread_id": 14
+      },
+      {
+        "account_id": 1,
+        "date": "Thu, 29 Oct 2009 14:30:48 GMT",
+        "from_id": 10,
+        "google_id": "124a0b4bc81a83e3",
+        "id": 18,
+        "message_id": "<00504502d567edb4a4047713c1ca@google.com>",
+        "references": "",
+        "size": 1905,
+        "snippet": "I&#39;ve shared a document with you: Copy of Website Sketches https://docs.google.com/a/itinerisinc.",
+        "subject": "Copy of Website Sketches",
+        "thread_id": 15
+      },
+      {
+        "account_id": 1,
+        "date": "Thu, 29 Oct 2009 14:31:44 GMT",
+        "from_id": 10,
+        "google_id": "124a0b59649bec49",
+        "id": 19,
+        "message_id": "<000e0cd23ba04a63cb047713c544@google.com>",
+        "references": "",
+        "size": 1900,
+        "snippet": "I&#39;ve shared a document with you: home page idea.pdf https://docs.google.com/a/itinerisinc.com/",
+        "subject": "home page idea.pdf",
+        "thread_id": 16
+      },
+      {
+        "account_id": 1,
+        "date": "Thu, 29 Oct 2009 14:32:34 GMT",
+        "from_id": 10,
+        "google_id": "124a0b65920b71f5",
+        "id": 20,
+        "message_id": "<30334fd40910290732y5b8ca7dcya046b9e56f247f44@mail.gmail.com>",
+        "references": "",
+        "size": 3701,
+        "snippet": "R &amp; Y: I have updated some content feedback based on a review with Ricardo. In particular, see",
+        "subject": "content and ideas",
+        "thread_id": 17
+      }
+    ]
+  },
+  {
+    "model": "nngmail.models.Thread",
+    "records": [
+      {
+        "account_id": 1,
+        "id": 3,
+        "thread_id": "124176af0bfb5565"
+      },
+      {
+        "account_id": 1,
+        "id": 11,
+        "thread_id": "124961f3abd278c6"
+      },
+      {
+        "account_id": 1,
+        "id": 14,
+        "thread_id": "124a06c9394c2a1f"
+      },
+      {
+        "account_id": 1,
+        "id": 9,
+        "thread_id": "124850ec9c21b8e0"
+      },
+      {
+        "account_id": 1,
+        "id": 17,
+        "thread_id": "124a0b65920b71f5"
+      },
+      {
+        "account_id": 1,
+        "id": 12,
+        "thread_id": "1249628d48f90939"
+      },
+      {
+        "account_id": 1,
+        "id": 13,
+        "thread_id": "124983a19bd083d1"
+      },
+      {
+        "account_id": 1,
+        "id": 4,
+        "thread_id": "1241d0e3048f5ce2"
+      },
+      {
+        "account_id": 1,
+        "id": 2,
+        "thread_id": "124079b58932e67a"
+      },
+      {
+        "account_id": 1,
+        "id": 5,
+        "thread_id": "1243b6dc4e89939b"
+      },
+      {
+        "account_id": 1,
+        "id": 15,
+        "thread_id": "124a0b4bc81a83e3"
+      },
+      {
+        "account_id": 1,
+        "id": 16,
+        "thread_id": "124a0b59649bec49"
+      },
+      {
+        "account_id": 1,
+        "id": 7,
+        "thread_id": "1243b72fcf65ffb3"
+      },
+      {
+        "account_id": 1,
+        "id": 10,
+        "thread_id": "1248ed954ca2070f"
+      },
+      {
+        "account_id": 1,
+        "id": 6,
+        "thread_id": "1243b72267b97cfb"
+      },
+      {
+        "account_id": 1,
+        "id": 8,
+        "thread_id": "12473b759bef320f"
+      },
+      {
+        "account_id": 1,
+        "id": 1,
+        "thread_id": "124079b56ebb04ba"
+      }
+    ]
+  },
+  {
+    "model": "nngmail.models.Addressee",
+    "records": [
+      {
+	"contact_id": 1,
+	"message_id": 6,
+	"type_": 2
+      },
+      {
+	"contact_id": 5,
+	"message_id": 10,
+	"type_": 1
+      },
+      {
+	"contact_id": 4,
+	"message_id": 4,
+	"type_": 1
+      },
+      {
+	"contact_id": 2,
+	"message_id": 7,
+	"type_": 1
+      },
+      {
+	"contact_id": 10,
+	"message_id": 5,
+	"type_": 1
+      },
+      {
+	"contact_id": 8,
+	"message_id": 1,
+	"type_": 1
+      },
+      {
+	"contact_id": 3,
+	"message_id": 8,
+	"type_": 1
+      },
+      {
+	"contact_id": 1,
+	"message_id": 5,
+	"type_": 2
+      },
+      {
+	"contact_id": 4,
+	"message_id": 9,
+	"type_": 1
+      },
+      {
+	"contact_id": 8,
+	"message_id": 2,
+	"type_": 1
+      },
+      {
+	"contact_id": 10,
+	"message_id": 6,
+	"type_": 1
+      },
+      {
+	"contact_id": 9,
+	"message_id": 3,
+	"type_": 1
+      }
+    ]
+  },
+  { "table": "label_association",
+    "records": [
+      {"label_id": 15, "message_gid": "124079b58932e67a"},
+      {"label_id": 15, "message_gid": "124176af0bfb5565"},
+      {"label_id": 14, "message_gid": "1241d0e3048f5ce2"},
+      {"label_id": 2, "message_gid": "1241d0e3048f5ce2"},
+      {"label_id": 15, "message_gid": "1243b6dc4e89939b"},
+      {"label_id": 15, "message_gid": "1243b72267b97cfb"},
+      {"label_id": 15, "message_gid": "1243b72fcf65ffb3"},
+      {"label_id": 15, "message_gid": "12473b759bef320f"},
+      {"label_id": 15, "message_gid": "124850ec9c21b8e0"},
+      {"label_id": 15, "message_gid": "1248ed954ca2070f"},
+      {"label_id": 15, "message_gid": "124961f3abd278c6"},
+      {"label_id": 15, "message_gid": "1249628d48f90939"},
+      {"label_id": 14, "message_gid": "12496d2036a0af21"},
+      {"label_id": 15, "message_gid": "1249749395985854"},
+      {"label_id": 14, "message_gid": "1249754f94a6053e"},
+      {"label_id": 14, "message_gid": "124983a19bd083d1"},
+      {"label_id": 15, "message_gid": "124a06c9394c2a1f"},
+      {"label_id": 15, "message_gid": "124a0b4bc81a83e3"},
+      {"label_id": 15, "message_gid": "124a0b59649bec49"},
+      {"label_id": 15, "message_gid": "124a0b65920b71f5"}
+    ]
+  }
+]
