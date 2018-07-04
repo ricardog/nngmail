@@ -66,6 +66,9 @@ point (messages received after the timestamp are nuseen).
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/flags')
 def flags_by_name(nickname, label):
-    account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return flags(Label.query.filter(Label.account == account).\
+    return flags(Label.query.filter(Account.nickname == nickname).\
                  filter_by(name=label).first_or_404().id)
+
+@api_bp.route('/labels/<int:label_id>/flags')
+def flags_by_id(label_id):
+    return flags(label_id)

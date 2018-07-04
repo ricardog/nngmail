@@ -178,6 +178,10 @@ This list has all the accounts the server we connect to synchs.")
   "Get messages URL of GROUP for account NICKNAME."
   (nngmail-get-group-x nickname group 'messages_url))
 
+(defun nngmail-get-group-flags-url (nickname group)
+  "Get messages URL of GROUP for account NICKNAME."
+  (nngmail-get-group-x nickname group 'flags_url))
+
 (defun nngmail-get-group-min (nickname group)
   "Get min article number in GROUP for account NICKNAME."
   (nngmail-get-group-x nickname group 'min))
@@ -743,9 +747,9 @@ but I may implement support for other marks in the future."
 			(format "?timestamp_low=%d&timestamp_high=%d"
 				(elt timestamp 1) (elt timestamp 0)))
 		    "?"))
-	 (url (concat
-	       (substring (nngmail-url-for 'label account group) 0 -1)
-	       (format "/flags%s" args)))
+	 (url (format "%s%s"
+		      (nngmail-get-group-flags-url account group)
+		      args))
 	 (flags (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
     (gnus-info-set-read info (vector-to-list (plist-get flags 'read)))

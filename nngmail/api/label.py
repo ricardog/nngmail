@@ -25,7 +25,11 @@ class LabelAPI(MethodView):
                     obj.update({'messages_url':
                                 url_for('.label_messages',
                                         label_id=obj['id'],
-                                        _external=True)})
+                                        _external=True),
+                                'flags_url': url_for('.flags_by_id',
+                                                     label_id=obj['id'],
+                                                     _external=True)
+                    })
                 return jsonify({'labels': info})
             query = Label.query.filter_by(account_id=account_id).\
                         order_by(Label.id.desc())
