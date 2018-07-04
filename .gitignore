@@ -1,4 +1,5 @@
 .python-version
+attic/
 __pycache__/
 .pytest_cache/
 client-secret.json
