@@ -116,6 +116,13 @@ Stolen from nnimap."
 What I call an account in the server is what gnus calls a server.
 This list has all the accounts the server we connect to synchs.")
 
+(defun nngmail-account-id-to-nickname (id)
+  "Retrieve the nickname of account ID."
+  (let (rmap)
+    (dolist (srv nngmail-servers)
+      (push (cons (plist-get (cdr srv) 'id)  (car srv)) rmap))
+    (alist-get id rmap)))
+
 ;; These functions should get turned into a macro
 (defun nngmail-get-account (nickname)
   "Get info alist for account NICKNAME."
@@ -252,6 +259,8 @@ parameters to send to the server.
 
 FiXME: Use discovery to get te URL for parameters so we don't
 have to hard-code URL rules."
+  (when (integerp account-id)
+    (setq account-id (nngmail-account-id-to-nickname account-id)))
   (let ((base-url (or (and (stringp account-id)
 			   (nngmail-get-account-base-url account-id))
 		       (nngmail-base-url)))
