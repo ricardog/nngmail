@@ -27,17 +27,17 @@
 
 ;;; To use this back end you must first set up the synchronizing proxy
 ;;; (see the README for details).  Once that is setup and running, all
-;;; something like the following to your `gnus-secondary-methods'
+;;; something like the following to your `gnus-secondary-select-methods'
 
 ;;;		(nngmail "personal"
 ;;;			 (nngmail-email "personal@example.com")
 ;;;			 (nngmail-address "localhost")
-;;;			 (nngmail-server-port 5000)
+;;;			 (nngmail-server-port 5544)
 ;;;			 )
 ;;;		(nngmail "work"
 ;;;			 (nngmail-email "work@example.com")
 ;;;			 (nngmail-address "localhost")
-;;;			 (nngmail-server-port 5000)
+;;;			 (nngmail-server-port 5544)
 ;;;			 )
 
 ;;; The next time you run Gnus it should be able to open the "servers"
@@ -77,7 +77,7 @@
 (defvoo nngmail-email nil
   "Username to use for authentication to the IMAP server.")
 
-(defvoo nngmail-server-port 5000
+(defvoo nngmail-server-port 5544
   "The port the gmail proxy listens on.")
 
 (defun nngmail-base-url ()
