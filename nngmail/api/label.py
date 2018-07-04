@@ -7,10 +7,6 @@ from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base, get_ids
 
 class LabelAPI(MethodView):
-    Label.inject({'messages_url': [url_for, '.label_named_messages',
-                                   {'nickname': 'nickname',
-                                    'label': 'name',
-                                    '_external': True}]})
 
     def get(self, account_id, label_id):
         if not label_id:
