@@ -1,0 +1,19 @@
+verbose: yes
+log:
+  enable: no
+  filename: sql.log
+  level: DEBUG
+local:
+  cache:
+    timeout: 3
+    max_size: 5M
+gmail:
+  num_workers: 1
+  poll_interval: 20
+  client_secrets: ../data/client-secret.json
+  batch_size: 10
+  min_batch_size: 2
+  max_batch_size: 20
+  scopes:
+    - https://www.googleapis.com/auth/gmail.readonly
+    - https://www.googleapis.com/auth/gmail.modify
