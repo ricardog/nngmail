@@ -125,6 +125,10 @@ This list has all the accounts the server we connect to synchs.")
   "Get parameter WHAT for account NICKNAME."
   (plist-get (nngmail-get-account nickname) what))
 
+(defun nngmail-get-account-base-url (nickname)
+  "Get ID of account NICKNAME."
+  (nngmail-get-account-x nickname 'base-url))
+
 (defun nngmail-get-account-id (nickname)
   "Get ID of account NICKNAME."
   (nngmail-get-account-x nickname 'id))
@@ -157,6 +161,10 @@ This list has all the accounts the server we connect to synchs.")
   "Set property WHAT for account NICKNAME to VALUE."
   (let ((acct-params (assoc nickname nngmail-servers)))
     (setcdr acct-params (plist-put (cdr acct-params) what value))))
+
+(defun nngmail-set-account-base-url (nickname url)
+  "Set URL parameter for account NICKNAME."
+  (nngmail-set-account-x nickname 'base-url url) )
 
 (defun nngmail-set-account-groups (nickname groups)
   "Set GROUPS hash table for account NICKNAME."
@@ -244,21 +252,25 @@ parameters to send to the server.
 
 FiXME: Use discovery to get te URL for parameters so we don't
 have to hard-code URL rules."
-  (let ((base-url (cond
-		   ((stringp account-id)
-		    (format "%s/accounts/%s" (nngmail-base-url) account-id))
-		   (account-id
-		    (format "%s/accounts/%d" (nngmail-base-url) account-id))
-		   (t (nngmail-base-url))))
+  (let ((base-url (or (and (stringp account-id)
+			   (nngmail-get-account-base-url account-id))
+		       (nngmail-base-url)))
+	(path (cond
+	       ((stringp account-id)
+		(format "/accounts/%s" account-id))
+	       (account-id
+		(format "/accounts/%d" account-id))
+	       (t
+		"")))
 	(res-name (symbol-name resource))
 	(url-args (args-to-url-args args)))
     (cond
      ((stringp id)
-      (format "%s/%ss/%s?%s" base-url res-name id url-args))
+      (format "%s%s/%ss/%s?%s" base-url path res-name id url-args))
      (id
-      (format "%s/%ss/%d?%s" base-url res-name id url-args))
+      (format "%s%s/%ss/%d?%s" base-url path res-name id url-args))
      (t
-      (format "%s/%ss/?%s" base-url res-name url-args)))))
+      (format "%s%s/%ss/?%s" base-url path res-name url-args)))))
 
 (defun nngmail-handle-response ()
   "Handle the response from a `url-retrieve-synchronously' call.
@@ -413,6 +425,7 @@ FIXME: Understand what gets passed in DEFINITIONS and use the data."
 	       (error (format "Email address mismatch %s != %s"
 			      email-ser email-def)))))
 	  (message (format "nngmail: opened server '%s'" server))
+	  (nngmail-set-account-base-url server (nngmail-base-url))
 	  (nngmail-touch-server server))
       (progn
 	(nnheader-report
