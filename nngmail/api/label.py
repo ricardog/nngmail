@@ -1,5 +1,6 @@
 from flask import abort, jsonify, render_template, request, url_for
 from flask.views import MethodView
+from sqlalchemy import exc
 
 from nngmail import db
 from nngmail.api import api_bp
@@ -22,7 +23,7 @@ class LabelAPI(MethodView):
                                 url_for('.label_messages',
                                         label_id=obj['id'],
                                         _external=True),
-                                'flags_url': url_for('.flags_by_id',
+                                'flags_url': url_for('.flags',
                                                      label_id=obj['id'],
                                                      _external=True)
                     })
@@ -37,8 +38,13 @@ class LabelAPI(MethodView):
 
     def delete(self, account_id, label_id):
         label = Label.query.get_or_404(label_id)
-        db.session().delete(label)
-        db.session().commit()
+        if not label.account.writable:
+            abort(403, 'Account is not writable')
+        try:
+            db.session().delete(label)
+            db.session().commit()
+        except exc.SQLAlchemyError as ex:
+            abort(500, ex)
         return jsonify({'result': True})
 
 def lookup_by_name(account, label, view_func):
@@ -70,8 +76,6 @@ api_bp.add_url_rule('/labels/<int:label_id>',
                     defaults={'account_id': None},
                     view_func=label_view,
                     methods=['GET', 'DELETE'])
-api_bp.add_url_rule('/labels/<int:label_id>', view_func=label_view,
-                    methods=['DELETE'])
 
 @api_bp.route(acct_nick_base + '/labels/')
 def account_labels(nickname):
