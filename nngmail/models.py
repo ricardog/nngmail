@@ -164,10 +164,13 @@ class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
     message_id = db.Column(db.Integer, db.ForeignKey('message.id'))
+    account_id = db.Column(db.Integer, db.ForeignKey('message.account_id'))
     type_ = db.Column('type_', db.Enum(AddresseeEnum))
 
     contact = db.relationship('Contact')
-    message = db.relationship('Message', backref='addressees')
+    message = db.relationship('Message', backref='addressees',
+                              primaryjoin="and_(Message.id==Addressee.message_id, "
+                              "Message.account_id=='Addressee.account_id')")
 
     name = association_proxy('contact', 'name')
     email = association_proxy('contact', 'email')
@@ -297,9 +300,15 @@ class Message(TimestampMixin, Serializeable, db.Model):
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
-    to_ = db.relationship('ToAddressee', cascade='all,delete')
-    cc = db.relationship('CcAddressee', cascade='all,delete')
-    bcc = db.relationship('BccAddressee', cascade='all,delete')
+    to_ = db.relationship('ToAddressee', cascade='all,delete',
+                          primaryjoin="and_(Message.id==Addressee.message_id, "
+                          "Message.account_id=='Addressee.account_id')")
+    cc = db.relationship('CcAddressee', cascade='all,delete',
+                         primaryjoin="and_(Message.id==Addressee.message_id, "
+                         "Message.account_id=='Addressee.account_id')")
+    bcc = db.relationship('BccAddressee', cascade='all,delete',
+                          primaryjoin="and_(Message.id==Addressee.message_id, "
+                          "Message.account_id=='Addressee.account_id')")
     labels = db.relationship('Label', secondary=label_association,
                              passive_deletes=True,
                              back_populates='messages')
