@@ -7,6 +7,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'Click',
+        'python-dateutil',
         'flask',
         'flask-sqlalchemy',
         'google-api-python-client',
