@@ -1,12 +1,19 @@
 [
   {
-    "model": "nngmail.model.Account",
+    "model": "nngmail.models.Account",
     "records": [
       {
         "can_send": false,
         "email": "ricardog@itinerisinc.com",
         "id": 1,
         "nickname": "itineris",
+        "writable": true
+      },
+      {
+        "can_send": false,
+        "email": "ricardog@example.com",
+        "id": 2,
+        "nickname": "example",
         "writable": false
       }
     ]
@@ -194,6 +201,12 @@
         "gid": "UNREAD",
         "id": 21,
         "name": "UNREAD"
+      },
+      {
+        "account_id": 2,
+        "gid": "INBOX",
+        "id": 22,
+        "name": "INBOX"
       }
     ]
   },
@@ -459,6 +472,19 @@
         "snippet": "R &amp; Y: I have updated some content feedback based on a review with Ricardo. In particular, see",
         "subject": "content and ideas",
         "thread_id": 17
+      },
+      {
+        "account_id": 2,
+        "date": "Thu, 29 Oct 2009 14:32:34 GMT",
+        "from_id": 10,
+        "google_id": "124a0b65920b71f6",
+        "id": 1,
+        "message_id": "<40334fd40910290732y5b8ca7dcya046b9e56f247f44@mail.gmail.com>",
+        "references": "",
+        "size": 3701,
+        "snippet": "R &amp; Y: I have updated some content feedback based on a review with Ricardo. In particular, see",
+        "subject": "content and ideas",
+        "thread_id": 18
       }
     ]
   },
@@ -549,6 +575,11 @@
         "account_id": 1,
         "id": 1,
         "thread_id": "124079b56ebb04ba"
+      },
+      {
+        "account_id": 2,
+        "id": 18,
+        "thread_id": "124079b56ebb04ba"
       }
     ]
   },
@@ -558,61 +589,73 @@
       {
 	"contact_id": 1,
 	"message_id": 6,
+	"account_id": 1,
 	"type_": 2
       },
       {
 	"contact_id": 5,
 	"message_id": 10,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 4,
 	"message_id": 4,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 2,
 	"message_id": 7,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 10,
 	"message_id": 5,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 8,
 	"message_id": 1,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 3,
 	"message_id": 8,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 1,
 	"message_id": 5,
+	"account_id": 1,
 	"type_": 2
       },
       {
 	"contact_id": 4,
 	"message_id": 9,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 8,
 	"message_id": 2,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 10,
 	"message_id": 6,
+	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 9,
 	"message_id": 3,
+	"account_id": 1,
 	"type_": 1
       }
     ]
