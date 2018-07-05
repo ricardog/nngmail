@@ -64,27 +64,32 @@ def init_db_command():
 @click.argument('email', type=click.STRING)
 @click.argument('nickname', type=click.STRING)
 @click.option('--init-cache', is_flag=True, default=False)
-def import_email(email, nickname, init_cache):
+@click.option('--quiet', '-q', is_flag=True, default=False)
+def import_email(email, nickname, init_cache, quiet):
     """Add a new account to the database and import all the message metadata. 
 
     email - email address to add
     nickname - nickname for the account
     """
     
-    gmail = NnSync(email, nickname, load_config())
+    gmail = NnSync(email, nickname, load_config(not quiet))
     gmail.pull()    
     if init_cache:
         print('fetching cacheable messages')
         gmail.init_cache()
 
-def load_config():
+def load_config(verbose=False):
     config_file = os.path.normpath(os.path.join(app.root_path, '..',
                                                 'data', 'config.yaml'))
     try:
-        return yaml.load(open(config_file, mode='rb'))
+        config = yaml.load(open(config_file, mode='rb'))
     except IOError:
         print('Error: reading config file (%s)' % config_file)
         return {}
+    if verbose:
+        config['verbose'] = verbose
+    return config
+
 sync_config = load_config()
 
 app.cli.add_command(init_db_command)
