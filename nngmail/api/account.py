@@ -1,5 +1,6 @@
-from flask import jsonify, make_response, request
+from flask import abort, jsonify, make_response, request
 from flask.views import MethodView
+from sqlalchemy import exc
 
 from nngmail import db
 from nngmail.api import api_bp
@@ -33,16 +34,25 @@ class AccountAPI(MethodView):
                           nickname=request.json['nickname'],
                           writable=request.json.get('writable', False),
                           can_send=request.json.get('can-send', False))
-        db.session().add(account)
-        db.session().commit()
+        try:
+            db.session().add(account)
+            db.session().commit()
+        except exc.IntegrityError as ex:
+            return make_response(jsonify({'error': 'Acount already exists'}),
+                                 409)
+        except exc.SQLAlchemyError as ex:
+            abort(500, ex)
         return jsonify(account)
         
     def delete(self, account_id):
         account = Account.query.get(account_id)
         if not account:
             return make_response(jsonify({'error': 'Account not found'}), 404)
-        db.session().delete(account)
-        db.session().commit()
+        try:
+            db.session().delete(account)
+            db.session().commit()
+        except exc.SQLAlchemyError as ex:
+            abort(500, ex)
         return jsonify({'result': True})
 
     def put(self, account_id):
@@ -61,12 +71,18 @@ class AccountAPI(MethodView):
                                           'Bad account nickname (%s)' % nickname}),
                                  400)
         account.nickname = request.json['nickname']
-        db.session().commit()
+        try:
+            db.session().commit()
+        except exc.IntegrityError as ex:
+            return make_response(jsonify({'error': 'update error'}), 409)
+        except exc.SQLAlchemyError as ex:
+            abort(500, ex)
         return jsonify(account)
 
 ## Account resource
 account_view = AccountAPI.as_view('account')
 api_bp.add_url_rule('/accounts/', defaults={'account_id': None},
-                    view_func=account_view, methods=['GET', 'POST'])
+                    view_func=account_view, methods=['GET'])
+api_bp.add_url_rule('/accounts/', view_func=account_view, methods=['POST'])
 api_bp.add_url_rule('/accounts/<int:account_id>', view_func=account_view,
                     methods=['GET', 'PUT', 'DELETE'])
