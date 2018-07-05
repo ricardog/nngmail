@@ -58,10 +58,13 @@ class MessageAPI(MethodView):
                 message.labels.append(label)
             for label in removed:
                 if label not in message.labels:
-                    return None
+                    return message.id
                 message.labels.remove(label)
             return message
 
+        account = Account.query.get_or_404(account_id)
+        if not account.writable:
+            abort(403, 'Account is not writable')
         if not request.json:
             return make_response(jsonify({'error':
                                           'No data for message update'}),
@@ -94,33 +97,54 @@ class MessageAPI(MethodView):
             abort(resp[0], resp[1]),
         session = db.session()
         resp = [process_message(m, added, removed) for m in messages]
-        session.commit()
-        failures = filter(lambda r: r == None, resp)
+        try:
+            session.commit()
+        except exc.IntegrityError as ex:
+            return make_response(jsonify({'error': 'update error'}), 409)
+        except exc.SQLAlchemyError as ex:
+            abort(500, ex)
+        failures = tuple(filter(lambda r: isinstance(r, int), resp))
         return jsonify({'failures': failures})
 
     def delete(self, account_id, message_id):
-        click.echo('delete message %d in account %d' % (message_id, account_id))
-        message = Message.query.get((message_id, account_id))
-        if not message:
-            return make_response(jsonify({'error': 'Message not found'}), 404)
+        if account_id and not message_id:
+            if 'id' not in request.json:
+                abort(404)
+            ids = get_ids(request.json['id'])
+        else:
+            ids = [message_id]
+
+        messages = Message.query.join(Account).\
+            filter(Account.id == account_id).\
+            filter(Message.id.in_(ids)).all()
+            
+        if len(messages) != len(ids):
+            return make_response(jsonify({'error': 'Message not found'}),
+                                 404)
+        if not messages[0].account.writable:
+                abort(403, 'Account is not writable')
         sync = get_sync(Account.query.get(account_id))
-        resp = sync.remote_delete(message.google_id)
-        if resp:
-            click.echo('remote update failed')
-            abort(resp[0], resp[1]),
-        db.session().delete(message)
-        db.session().commit()
+        for msg in messages:
+            resp = sync.remote_delete(msg.google_id)
+            if resp:
+                click.echo('remote update failed')
+                abort(resp[0], resp[1]),
+            db.session().delete(msg)
+        try:
+            db.session().commit()
+        except exc.SQLAlchemyError as ex:
+                abort(500, ex)
         return jsonify({'result': True})
 
 ## Message resource
 message_view = MessageAPI.as_view('message')
-api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-                    view_func=message_view, methods=['GET', 'PUT'])
-api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
-                    view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
+#api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
+#                    view_func=message_view, methods=['GET', 'PUT'])
+#api_bp.add_url_rule(acct_base + '/messages/<int:message_id>',
+#                    view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
 
 @api_bp.route(acct_nick_base + '/messages/',
-              methods=['GET', 'PUT'])
+              methods=['GET', 'PUT', 'DELETE'])
 def messages(nickname):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
     return message_view(account.id, None)
@@ -128,8 +152,10 @@ def messages(nickname):
 @api_bp.route(acct_nick_base + '/messages/<int:message_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, message_id):
-    message = Message.query.filter(Account.nickname == nickname).\
-        filter_by(id=message_id).first_or_404()
+    message = Message.query.join(Account).\
+        filter(Account.nickname == nickname).\
+        filter(Message.id == message_id).\
+        first_or_404()
     return message_view(message.account_id, message.id)
 
 @api_bp.route(acct_nick_base + '/messages/<string:message_id>',
