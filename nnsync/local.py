@@ -91,7 +91,7 @@ This is done to avoid querying the Labels table all the time.
         return self.options.account
 
     def get_label(self, name):
-        """Get a label object (from database) base on name."""
+        """Get named label object from database."""
         if name not in self.label_map:
             self.__build_label_map()
         return self.label_map[name]
