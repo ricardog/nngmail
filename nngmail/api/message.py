@@ -41,7 +41,6 @@ class MessageAPI(MethodView):
                     first_or_404()
                 # FIXME: use stream_with_context?
                 if message.raw is None:
-                    click.echo('fetching message %d' % message.id)
                     get_sync(message.account).read(message.id)
                     message = Message.query.get(message.id)
                 if message.raw is None:

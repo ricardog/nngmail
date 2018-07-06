@@ -95,6 +95,7 @@ mechanisms.
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
         if self.gmail.reachable():
+            logger.info('%s: reading %d messages' % (self.nickname, len(needed)))
             bar = self.bar(leave=True, total=len(needed),
                            desc="caching messages")
             for batch in self.gmail.get_messages(needed, format='raw'):
