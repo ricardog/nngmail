@@ -3,6 +3,7 @@ from itertools import groupby
 from operator import itemgetter
 
 from flask import jsonify, request
+from sqlalchemy.sql import and_
 
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
@@ -38,10 +39,12 @@ point (messages received after the timestamp are nuseen).
                    with_entities(Message.article_id).\
                    order_by(Message.article_id.asc()).\
                    all(), ()))
-    unread = set(sum(Label.query.filter_by(name='UNREAD').\
-                     filter_by(account=label.account).first().\
-                     messages.with_entities(Message.article_id).\
-                     order_by(Message.article_id.asc()).all(), ()))
+    unread = set(sum(Message.query.filter_by(account_id=label.account_id).\
+                     filter(and_(Message.labels.any(Label.name == 'UNREAD'),
+                                 Message.labels.any(Label.id == label_id))).\
+                     with_entities(Message.article_id).\
+                     order_by(Message.id.asc()).\
+                     all(), ()))
     if not mids:
         unexist = ()
         read = ()
@@ -62,7 +65,8 @@ point (messages received after the timestamp are nuseen).
                          filter(Message.date > timestamp).\
                          order_by(Message.article_id.asc()).all(), ()))
         flags.update({'unseen': find_ranges(unseen)})
-
+    else:
+        flags.update({'unseen': find_ranges(unread)})
     return jsonify(flags)
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/flags/')
