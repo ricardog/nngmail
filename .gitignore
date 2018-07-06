@@ -5,6 +5,7 @@ __pycache__/
 client-secret.json
 credentials.json
 *.sqlite3
+*.sqlite3-journal
 *.egg-info
 *.pyc
 *-creds.json
