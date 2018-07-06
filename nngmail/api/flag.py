@@ -3,7 +3,7 @@ from itertools import groupby
 from operator import itemgetter
 
 from flask import jsonify, request
-from sqlalchemy.sql import and_
+from sqlalchemy import func
 
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
@@ -35,35 +35,28 @@ point (messages received after the timestamp are nuseen).
 
     """
     label = Label.query.get_or_404(label_id)
-    mids = set(sum(label.messages.\
-                   with_entities(Message.article_id).\
-                   order_by(Message.article_id.asc()).\
-                   all(), ()))
-    unread = set(sum(Message.query.filter_by(account_id=label.account_id).\
-                     filter(and_(Message.labels.any(Label.name == 'UNREAD'),
-                                 Message.labels.any(Label.id == label_id))).\
+    min_aid, max_aid = label.messages.\
+        with_entities(func.min(Message.article_id),
+                      func.max(Message.article_id)).one()
+    unread = set(sum(Label.query.filter_by(name='UNREAD').\
+                     filter_by(account=label.account).one().messages.\
+                     filter(Message.labels.any(Label.id == label.id)).\
                      with_entities(Message.article_id).\
                      order_by(Message.id.asc()).\
                      all(), ()))
-    if not mids:
-        unexist = ()
-        read = ()
-    else:
-        all_mids = set(range(min(mids), max(mids) + 1))
-        unexist = all_mids - mids
-        read = all_mids - unread
-    flags = {'unexist': find_ranges(unexist),
-             'read': find_ranges(read)}
+    all_mids = set(range(min_aid, max_aid + 1))
+    read = all_mids - unread
+    flags = {'read': find_ranges(read)}
 
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
-        unseen = set(sum(Label.query.get_or_404(label_id).messages.\
+        unseen = set(sum(label.messages.\
                          with_entities(Message.article_id).\
                          filter(Message.date > timestamp).\
-                         order_by(Message.article_id.asc()).all(), ()))
+                         order_by(Message.id.asc()).all(), ()))
         flags.update({'unseen': find_ranges(unseen)})
     else:
         flags.update({'unseen': find_ranges(unread)})
@@ -71,5 +64,6 @@ point (messages received after the timestamp are nuseen).
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/flags/')
 def flags_by_name(nickname, label):
-    return flags(Label.query.filter(Account.nickname == nickname).\
-                 filter_by(name=label).first_or_404().id)
+    return flags(Label.query.join(Account).\
+                 filter(Account.nickname == nickname).\
+                 filter(Label.name == label).first_or_404().id)
