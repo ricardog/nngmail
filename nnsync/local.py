@@ -137,19 +137,25 @@ composite keys article numbers increase rapidly if you are synchronizing
 more than one account.
 
         """
+        def chunks(l, n):
+            "Yield successive n-sized chunks from l."
+            for i in range(0, len(l), n):
+                yield l[i:i + n]
+        
         if not gids:
             return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
-        with db.engine.begin() as connection:
-            current_id = Message.query.\
-                with_entities(db.func.max(Message.article_id)).\
-                filter_by(account_id=self.account.id).first()[0] or 0
-            aids = range(current_id + 1, current_id + 1 + len(gids))
-            values = [{'article_id': aid, 'google_id': gid,
-                       'account_id': self.account.id, 'message_id': ''}
-                      for aid, gid in zip(aids, gids)]
-            connection.execute(Message.__table__.insert().values(values))
+        for chunk in chunks(gids, 10000):
+            with db.engine.begin() as connection:
+                current_id = Message.query.\
+                    with_entities(db.func.max(Message.article_id)).\
+                    filter_by(account_id=self.account.id).first()[0] or 0
+                aids = range(current_id + 1, current_id + 1 + len(chunk))
+                values = [{'article_id': aid, 'google_id': gid,
+                           'account_id': self.account.id, 'message_id': ''}
+                          for aid, gid in zip(aids, chunk)]
+                connection.execute(Message.__table__.insert().values(values))
 
     def create(self, msgs):
         """Create a new message in the database.
