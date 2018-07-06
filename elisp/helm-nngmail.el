@@ -133,7 +133,7 @@ Read the list of selected/marked candidates from
 				   (helm-nngmail-candidate-server candidate))
 				  (group
 				   (helm-nngmail-candidate-group candidate))
-				  (id (cdr (assq 'id candidate))))
+				  (id (cdr (assq 'article-id candidate))))
 			      (cons group id)))
 			  candidates))
 	  ;; Pick first server and group of selected candidates because
