@@ -262,7 +262,7 @@ def test_messages_put(client):
 def  test_message_update(client):
     """Test update of a single message."""
     rv = client.put('/api/v1.0/accounts/itineris/messages/200')
-    assert rv.status_code == 404
+    assert rv.status_code == 400
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/1',
                     json={'bogus': True})
