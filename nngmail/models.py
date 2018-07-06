@@ -200,8 +200,8 @@ class BccAddressee(Addressee):
 label_association = db.Table('label_association',
     db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
               nullable=False),
-    db.Column('message_gid', db.String(20),
-              db.ForeignKey('message.id'), index=True, nullable=False)
+    db.Column('message_id', db.Integer, db.ForeignKey('message.id'),
+              index=True, nullable=False)
 )
 
 class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
