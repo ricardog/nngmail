@@ -86,13 +86,13 @@ def test_update(client, sync):
     sync.sql3.placeholder(gids)
     sync.update(gids)
     assert Message.query.count() == 10
-    assert Message.query.get((7, 1)).label_names == ['INBOX']
+    assert Message.query.get(7).label_names == ['INBOX']
 
 @my_vcr.use_cassette()
 def test_read(client, sync):
     ids = range(1, 2)
     sync.read(ids)
-    msg = Message.query.get((1, 1))
+    msg = Message.query.get(1)
     assert msg.raw is not None
 
 def test_update_labels(client, sync):
@@ -133,11 +133,11 @@ def test_expire_cache(client, sync):
     with sync.sql3.settings(cache_timeout=0):
         sync.read((1, ))
         sync.expire_cache()
-        msg = Message.query.get((1, 1))
+        msg = Message.query.get(1)
         assert msg.raw is None
     with sync.sql3.settings(cache_timeout=-1):
         sync.read((1, ))
         sync.expire_cache()
-        msg = Message.query.get((1, 1))
+        msg = Message.query.get(1)
         assert msg.raw is not None
 

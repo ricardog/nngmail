@@ -5,7 +5,7 @@ from sqlalchemy import exc
 from nngmail import db
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
-from nngmail.api.utils import acct_base, acct_nick_base, get_ids
+from nngmail.api.utils import acct_base, acct_nick_base, get_article_ids
 
 class LabelAPI(MethodView):
 
@@ -95,9 +95,9 @@ def label_named_messages(nickname, label):
 def label_messages(label_id):
     query = Label.query.get_or_404(label_id).\
         messages.order_by(Message.id.desc())
-    if 'id' in request.args:
-        ids = get_ids(request.args['id'])
-        query = query.filter(Message.id.in_(ids))
+    if 'article-id' in request.args:
+        ids = get_article_ids(request.args['article-id'])
+        query = query.filter(Message.article_id.in_(ids))
     else:
         ## Must appear after the over_by clause
         query = query.limit(request.args.get('limit', 200))

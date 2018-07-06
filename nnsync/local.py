@@ -9,6 +9,7 @@ from options import Options, OptionsClass
 
 from sqlalchemy.orm import load_only
 from sqlalchemy.sql import and_, or_, not_
+from sqlalchemy import exc
 
 from nngmail import db
 from nngmail.models import Account, KeyValue, Contact
@@ -142,12 +143,12 @@ more than one account.
             gids = (gids, )
         with db.engine.begin() as connection:
             current_id = Message.query.\
-                with_entities(db.func.max(Message.id)).\
+                with_entities(db.func.max(Message.article_id)).\
                 filter_by(account_id=self.account.id).first()[0] or 0
-            ids = range(current_id + 1, current_id + 1 + len(gids))
-            values = [{'id': id, 'google_id': gid,
+            aids = range(current_id + 1, current_id + 1 + len(gids))
+            values = [{'article_id': aid, 'google_id': gid,
                        'account_id': self.account.id, 'message_id': ''}
-                      for id, gid in zip(ids, gids)]
+                      for aid, gid in zip(aids, gids)]
             connection.execute(Message.__table__.insert().values(values))
 
     def create(self, msgs):
@@ -166,8 +167,7 @@ is called once per batch received from Gmail.
         session = db.session()
         keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
                    'Message-ID', 'Message-Id', 'References']
-        objs = Message.query.\
-            filter(Message.google_id.in_([msg['id'] for msg in msgs])).all()
+        objs = self.find_by_gid([msg['id'] for msg in msgs])
         assert len(objs) == len(msgs)
         for obj, msg in zip(sorted(objs, key=lambda o: o.google_id),
                             sorted(msgs, key=lambda m: m['id'])):
@@ -211,8 +211,11 @@ is called once per batch received from Gmail.
             obj.ccs = adds['CC']
             obj.bccs = adds['BCC']
             obj.updated = None
-        session.commit()
-
+        try:
+            session.commit()
+        except exc.SQLAlchemyError as ex:
+            pdb.set_trace()
+            pass
     def update(self, msgs):
         """Update a message in teh database.
 
@@ -228,8 +231,7 @@ This function is rather ineffcient.
             msgs = (msgs, )
         session = db.session()
         objs = self.find_by_gid([m['id'] for m in msgs])
-        if len(objs) != len(msgs):
-            pdb.set_trace()
+        assert len(objs) == len(msgs)
         for obj, msg in zip(objs, msgs):
             if 'labelIds' in msg:
                 obj.labels = [self.get_label(lgid) for lgid in msg['labelIds']]

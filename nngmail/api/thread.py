@@ -34,17 +34,30 @@ class ThreadAPI(MethodView):
         return jsonify({'result': True})
 
 thread_view = ThreadAPI.as_view('thread')
-api_bp.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
-                    view_func=thread_view, methods=['GET',])
-api_bp.add_url_rule('/threads/<int:thread_id>',
-                    defaults={'account_id': None},
-                    view_func=thread_view, methods=['GET'])
-api_bp.add_url_rule('/threads/<int:thread_id>', view_func=thread_view,
-                    methods=['DELETE'])
+#api_bp.add_url_rule(acct_base + '/threads/', defaults={'thread_id': None},
+#                    view_func=thread_view, methods=['GET',])
+#api_bp.add_url_rule('/threads/<int:thread_id>',
+#                    defaults={'account_id': None},
+#                    view_func=thread_view, methods=['GET'])
+#api_bp.add_url_rule('/threads/<int:thread_id>', view_func=thread_view,
+#                    methods=['DELETE'])
+
+@api_bp.route(acct_nick_base + '/threads/', defaults={'thread_id': None},
+              methods=['GET'])
+def threads(nickname, thread_id):
+    account = Account.query.filter(nickname == nickname).first_or_404()
+    return thread_view(account.id, None)
 
 @api_bp.route(acct_nick_base + '/threads/<string:thread_id>',
               methods=['GET', 'DELETE'])
-def thread_by_name(nickname, thread_id):
+def thread_by_tid(nickname, thread_id):
     thread = Thread.query.filter(Account.nickname == nickname).\
-        filter_by(thread_id=thread_id).first_or_404()
+        filter(Thread.thread_id == thread_id).first_or_404()
+    return thread_view(None, thread.id)
+
+@api_bp.route(acct_nick_base + '/threads/<int:thread_id>',
+              methods=['GET', 'DELETE'])
+def thread_by_id(nickname, thread_id):
+    thread = Thread.query.filter(Account.nickname == nickname).\
+        filter(Thread.id == thread_id).first_or_404()
     return thread_view(None, thread.id)

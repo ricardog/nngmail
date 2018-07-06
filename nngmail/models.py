@@ -162,15 +162,14 @@ class Contact(UniqueMixin, db.Model, Serializeable):
 
 class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
-    contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
-    message_id = db.Column(db.Integer, db.ForeignKey('message.id'))
-    account_id = db.Column(db.Integer, db.ForeignKey('message.account_id'))
+    contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'),
+                           nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'),
+                           nullable=False)
     type_ = db.Column('type_', db.Enum(AddresseeEnum))
 
     contact = db.relationship('Contact')
-    message = db.relationship('Message', backref='addressees',
-                              primaryjoin="and_(Message.id==Addressee.message_id, "
-                              "Message.account_id=='Addressee.account_id')")
+    message = db.relationship('Message', backref='addressees')
 
     name = association_proxy('contact', 'name')
     email = association_proxy('contact', 'email')
@@ -202,7 +201,7 @@ label_association = db.Table('label_association',
     db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
               nullable=False),
     db.Column('message_gid', db.String(20),
-              db.ForeignKey('message.google_id'), index=True, nullable=False)
+              db.ForeignKey('message.id'), index=True, nullable=False)
 )
 
 class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
@@ -237,12 +236,12 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     def info(account_id):
         query = Message.query.filter_by(account_id=account_id)
         query = query.join(label_association).join(Label)
-        query = query.with_entities(label_association.c.label_id,
+        query = query.with_entities(Label.id,
                                     Label.name,
                                     Label.gid,
-                                    db.func.min(Message.id).label('min_id'),
-                                    db.func.max(Message.id).label('max_id'),
-                                    db.func.count(Message.id).label('count'))
+                                    db.func.min(Message.article_id).label('min_id'),
+                                    db.func.max(Message.article_id).label('max_id'),
+                                    db.func.count(Message.article_id).label('count'))
         query = query.group_by(label_association.c.label_id)
         return query
 
@@ -278,12 +277,13 @@ class Thread(UniqueMixin, Serializeable, db.Model):
 
 class Message(TimestampMixin, Serializeable, db.Model):
     db.UniqueConstraint('account_id', 'google_id', name='gid_1')
-    db.UniqueConstraint('account_id', 'id', name='gid_1')
+    db.UniqueConstraint('account_id', 'article_id', name='aid_1')
 
-    id = db.Column(db.Integer, primary_key=True, unique=False, nullable=False)
+    id = db.Column(db.Integer, primary_key=True, unique=True, nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
-                           index=True, nullable=False, primary_key=True)
-    google_id = db.Column(db.String(20), index=True, unique=True)
+                           index=True, nullable=False)
+    article_id = db.Column(db.Integer)
+    google_id = db.Column(db.String(20), index=True)
     message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
     from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
@@ -300,15 +300,9 @@ class Message(TimestampMixin, Serializeable, db.Model):
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
-    to_ = db.relationship('ToAddressee', cascade='all,delete',
-                          primaryjoin="and_(Message.id==Addressee.message_id, "
-                          "Message.account_id=='Addressee.account_id')")
-    cc = db.relationship('CcAddressee', cascade='all,delete',
-                         primaryjoin="and_(Message.id==Addressee.message_id, "
-                         "Message.account_id=='Addressee.account_id')")
-    bcc = db.relationship('BccAddressee', cascade='all,delete',
-                          primaryjoin="and_(Message.id==Addressee.message_id, "
-                          "Message.account_id=='Addressee.account_id')")
+    to_ = db.relationship('ToAddressee', cascade='all,delete')
+    cc = db.relationship('CcAddressee', cascade='all,delete')
+    bcc = db.relationship('BccAddressee', cascade='all,delete')
     labels = db.relationship('Label', secondary=label_association,
                              passive_deletes=True,
                              back_populates='messages')

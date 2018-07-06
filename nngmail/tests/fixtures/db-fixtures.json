@@ -215,6 +215,7 @@
     "records": [
       {
         "account_id": 1,
+	"article_id": 1,
         "date": "Tue, 29 Sep 2009 22:01:11 GMT",
         "from_id": 1,
         "google_id": "124079b56ebb04ba",
@@ -228,6 +229,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 2,
         "date": "Tue, 29 Sep 2009 22:01:11 GMT",
         "from_id": 1,
         "google_id": "124079b58932e67a",
@@ -241,6 +243,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 3,
         "date": "Fri, 02 Oct 2009 23:42:07 GMT",
         "from_id": 3,
         "google_id": "124176af0bfb5565",
@@ -254,6 +257,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 4,
         "date": "Sun, 04 Oct 2009 01:58:27 GMT",
         "from_id": 2,
         "google_id": "1241d0e3048f5ce2",
@@ -267,6 +271,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 5,
         "date": "Fri, 09 Oct 2009 23:23:25 GMT",
         "from_id": 5,
         "google_id": "1243b6dc4e89939b",
@@ -280,6 +285,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 6,
         "date": "Fri, 09 Oct 2009 23:36:26 GMT",
         "from_id": 6,
         "google_id": "1243b72267b97cfb",
@@ -293,6 +299,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 7,
         "date": "Fri, 09 Oct 2009 23:37:21 GMT",
         "from_id": 7,
         "google_id": "1243b72fcf65ffb3",
@@ -306,6 +313,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 8,
         "date": "Tue, 20 Oct 2009 21:50:45 GMT",
         "from_id": 8,
         "google_id": "12473b759bef320f",
@@ -319,6 +327,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 9,
         "date": "Sat, 24 Oct 2009 06:39:48 GMT",
         "from_id": 7,
         "google_id": "124850ec9c21b8e0",
@@ -332,6 +341,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 10,
         "date": "Mon, 26 Oct 2009 03:17:37 GMT",
         "from_id": 9,
         "google_id": "1248ed954ca2070f",
@@ -345,6 +355,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 11,
         "date": "Tue, 27 Oct 2009 13:11:18 GMT",
         "from_id": 10,
         "google_id": "124961f3abd278c6",
@@ -358,6 +369,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 12,
         "date": "Tue, 27 Oct 2009 13:21:47 GMT",
         "from_id": 10,
         "google_id": "1249628d48f90939",
@@ -371,6 +383,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 13,
         "date": "Tue, 27 Oct 2009 16:26:36 GMT",
         "from_id": 2,
         "google_id": "12496d2036a0af21",
@@ -384,6 +397,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 14,
         "date": "Tue, 27 Oct 2009 18:36:46 GMT",
         "from_id": 10,
         "google_id": "1249749395985854",
@@ -397,6 +411,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 15,
         "date": "Tue, 27 Oct 2009 18:49:21 GMT",
         "from_id": 2,
         "google_id": "1249754f94a6053e",
@@ -410,6 +425,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 16,
         "date": "Tue, 27 Oct 2009 22:59:45 GMT",
         "from_id": 2,
         "google_id": "124983a19bd083d1",
@@ -423,6 +439,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 17,
         "date": "Thu, 29 Oct 2009 13:11:58 GMT",
         "from_id": 10,
         "google_id": "124a06c9394c2a1f",
@@ -436,6 +453,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 18,
         "date": "Thu, 29 Oct 2009 14:30:48 GMT",
         "from_id": 10,
         "google_id": "124a0b4bc81a83e3",
@@ -449,6 +467,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 19,
         "date": "Thu, 29 Oct 2009 14:31:44 GMT",
         "from_id": 10,
         "google_id": "124a0b59649bec49",
@@ -462,6 +481,7 @@
       },
       {
         "account_id": 1,
+	"article_id": 20,
         "date": "Thu, 29 Oct 2009 14:32:34 GMT",
         "from_id": 10,
         "google_id": "124a0b65920b71f5",
@@ -475,10 +495,11 @@
       },
       {
         "account_id": 2,
+	"article_id": 1,
         "date": "Thu, 29 Oct 2009 14:32:34 GMT",
         "from_id": 10,
-        "google_id": "124a0b65920b71f6",
-        "id": 1,
+        "google_id": "124a0b65920b71f5",
+        "id": 21,
         "message_id": "<40334fd40910290732y5b8ca7dcya046b9e56f247f44@mail.gmail.com>",
         "references": "",
         "size": 3701,
@@ -589,73 +610,61 @@
       {
 	"contact_id": 1,
 	"message_id": 6,
-	"account_id": 1,
 	"type_": 2
       },
       {
 	"contact_id": 5,
 	"message_id": 10,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 4,
 	"message_id": 4,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 2,
 	"message_id": 7,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 10,
 	"message_id": 5,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 8,
 	"message_id": 1,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 3,
 	"message_id": 8,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 1,
 	"message_id": 5,
-	"account_id": 1,
 	"type_": 2
       },
       {
 	"contact_id": 4,
 	"message_id": 9,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 8,
 	"message_id": 2,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 10,
 	"message_id": 6,
-	"account_id": 1,
 	"type_": 1
       },
       {
 	"contact_id": 9,
 	"message_id": 3,
-	"account_id": 1,
 	"type_": 1
       }
     ]

@@ -35,12 +35,13 @@ point (messages received after the timestamp are nuseen).
     """
     label = Label.query.get_or_404(label_id)
     mids = set(sum(label.messages.\
-                   with_entities(Message.id).order_by(Message.id.asc()).\
+                   with_entities(Message.article_id).\
+                   order_by(Message.article_id.asc()).\
                    all(), ()))
     unread = set(sum(Label.query.filter_by(name='UNREAD').\
                      filter_by(account=label.account).first().\
-                     messages.with_entities(Message.id).\
-                     order_by(Message.id.asc()).all(), ()))
+                     messages.with_entities(Message.article_id).\
+                     order_by(Message.article_id.asc()).all(), ()))
     if not mids:
         unexist = ()
         read = ()
@@ -57,9 +58,9 @@ point (messages received after the timestamp are nuseen).
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
         unseen = set(sum(Label.query.get_or_404(label_id).messages.\
-                         with_entities(Message.id).\
+                         with_entities(Message.article_id).\
                          filter(Message.date > timestamp).\
-                         order_by(Message.id.asc()).all(), ()))
+                         order_by(Message.article_id.asc()).all(), ()))
         flags.update({'unseen': find_ranges(unseen)})
 
     return jsonify(flags)

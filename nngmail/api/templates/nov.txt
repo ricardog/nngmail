@@ -1,3 +1,3 @@
 {%- for msg in messages[::-1] -%}
-{{msg.id}} {{msg.subject.rstrip()}}	{{msg.sender}}	{{msg.date}}	{{msg.message_id}}	{{msg.references}}	{{msg.size}}	{{0}}	xref	
+{{msg.article_id}} {{msg.subject.rstrip()}}	{{msg.sender}}	{{msg.date}}	{{msg.message_id}}	{{msg.references}}	{{msg.size}}	{{0}}	xref	
 {% endfor %}

@@ -1,5 +1,5 @@
 {%- for msg in messages[::-1] -%}
-221 {{msg.id}} Article retrieved.
+221 {{msg.article_id}} Article retrieved.
 From: {{msg.sender}}
 Subject: {{msg.subject}}
 Date: {{msg.date}}

@@ -1,3 +1,4 @@
+import pdb
 
 def test_nop(client):
     """Do nothing test."""
@@ -223,31 +224,31 @@ def test_messages_put(client):
     assert rv.status_code == 404
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/',
-                    json={'id': '1,3,5,7:9',
+                    json={'article-id': '1,3,5,7:9',
                           'add_labels': ['IMPORTANT']})
     assert rv.status_code == 200
     assert rv.get_json()['failures'] == []
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/',
-                    json={'id': '1,3,5,7:9',
+                    json={'article-id': '1,3,5,7:9',
                           'rm_labels': ['IMPORTANT']})
     assert rv.status_code == 200
     assert rv.get_json()['failures'] == []
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/',
-                    json={'id': '1,3,5,7:9',
+                    json={'article-id': '1,3,5,7:9',
                           'rm_labels': ['IMPORTANT']})
     assert rv.status_code == 200
     assert rv.get_json()['failures'] == [1, 3, 5, 7, 8, 9]
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/',
-                    json={'id': '1,3,5,7:9',
+                    json={'article-id': '1,3,5,7:9',
                           'add_labels': ['IMPORTANT']})
     assert rv.status_code == 200
     assert rv.get_json()['failures'] == []
 
     rv = client.put('/api/v1.0/accounts/itineris/messages/',
-                    json={'id': '1,3,5,7:9',
+                    json={'article-id': '1,3,5,7:9',
                           'add_labels': ['Priority'],
                           'rm_labels': ['IMPORTANT']})
     assert rv.status_code == 200
@@ -307,6 +308,6 @@ def test_message_delete(client):
     assert rv.get_json()['error'] == 'Account is not writable'
 
     rv = client.delete('/api/v1.0/accounts/itineris/messages/',
-                       json={'id': '1'})
+                       json={'article-id': '1'})
     assert rv.status_code == 200
     

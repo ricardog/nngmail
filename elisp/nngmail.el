@@ -220,6 +220,7 @@ message parameters we want to keep around and stores them in an
 alist.  It's all a bit bogus at the moment and I should perhas
 change the JSON parser to return an alist and be done."
   (let ((id (plist-get elem 'id))
+	(article-id (plist-get elem 'article_id))
 	(google_id (plist-get elem 'google_id))
 	(name (plist-get (plist-get elem 'sender) 'name))
 	(email (plist-get (plist-get elem 'sender) 'email))
@@ -234,6 +235,7 @@ change the JSON parser to return an alist and be done."
 			(plist-get elem 'labels)))
 	)
     (cons id `((id . ,id)
+	       (article-id . ,article-id)
 	       (google_id . ,google_id)
 	       (from . ,from)
 	       (name . ,name)
@@ -521,7 +523,7 @@ ID.
 
 This function is used when fetching referring articles."
   (let* ((message (nngmail-fetch-resource 'message account message-id)))
-    (plist-get message 'id)))
+    (plist-get message 'article-id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for ARTICLE body.
@@ -656,7 +658,7 @@ to grovel over the response."
 	 (url (format "%s?%s"
 		      (nngmail-get-group-url account group)
 		      (args-to-url-args `((format . "nov")
-					  (id . ,ids)))))
+					  (article-id . ,ids)))))
 	 (buffer (url-retrieve-synchronously url t)))
     (with-current-buffer nntp-server-buffer
       (erase-buffer)
@@ -841,7 +843,7 @@ action."
 	    (setq labels (delete "-UNREAD" labels)))
 	  (when labels
 	    (let* ((articles (nngmail-article-ranges range))
-		   (data `((id . ,articles)
+		   (data `((article-id . ,articles)
 			   (add_labels . ,(if (eq action 'add) labels ()))
 			   (rm_labels . ,(if (eq action 'del) labels ()))))
 		   (entity (json-encode data))

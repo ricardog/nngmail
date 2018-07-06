@@ -8,7 +8,7 @@ def to_range(r):
         return tuple(range(int(r[0]), int(r[1])+1))
     return (int(r[0]), )
 
-def get_ids(arg):
+def get_article_ids(arg):
     """Convert a range string to a sequence of integers.
 
 A range string consists of comman separated ranges.  Each range is
