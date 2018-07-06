@@ -11,8 +11,8 @@ from nngmail.models import Account, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base, get_article_ids
 
 class MessageAPI(MethodView):
-    def get(self, account_id, message_id):
-        if not message_id:
+    def get(self, account_id, article_id):
+        if not article_id:
             ## Return list
             query = Message.query.filter_by(account_id=account_id).\
                 order_by(Message.id.desc())
@@ -32,24 +32,24 @@ class MessageAPI(MethodView):
         else:
             ## Return single
             message = Message.query.\
-                filter(Message.article_id == message_id).\
+                filter(Message.article_id == article_id).\
                 first_or_404()
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'raw':
                 message = Message.query.options(undefer('_raw')).\
-                    filter(Message.article_id == message_id).\
+                    filter(Message.article_id == article_id).\
                     first_or_404()
                 # FIXME: use stream_with_context?
                 if message.raw is None:
                     click.echo('fetching message %d' % message.id)
                     get_sync(message.account).read(message.id)
-                    message = Message.query.get(message_id)
+                    message = Message.query.get(message.id)
                 if message.raw is None:
                     return make_response('\n\nMessage unavailable.\n\n')
                 return make_response(message.raw)
             return jsonify(message)
 
-    def put(self, account_id, message_id):
+    def put(self, account_id, article_id):
         def process_message(message, added, removed):
             for label in added:
                 message.labels.append(label)
@@ -78,15 +78,15 @@ class MessageAPI(MethodView):
 
         sync = get_sync(Account.query.get(account_id))
         query = Message.query.filter_by(account_id=account_id)
-        if account_id and not message_id:
-            if 'id' not in request.json:
+        if account_id and not article_id:
+            if 'article-id' not in request.json:
                 abort(404)
             ids = get_article_ids(request.json['article-id'])
             count = len(ids)
             query = query.filter(Message.article_id.in_(ids))
         else:
             count = 1
-            query = query.filter(Message.article_id == message_id)
+            query = query.filter(Message.article_id == article_id)
         messages = query.all()
         if len(messages) != count:
             return make_response(jsonify({'error': 'Message not found'}),
@@ -110,24 +110,24 @@ class MessageAPI(MethodView):
         failures = tuple(filter(lambda r: isinstance(r, int), resp))
         return jsonify({'failures': failures})
 
-    def delete(self, account_id, message_id):
+    def delete(self, account_id, article_id):
         query = Message.query.join(Account).filter(Account.id == account_id)
-        if account_id and not message_id:
+        if account_id and not article_id:
             if 'article-id' not in request.json:
                 abort(404)
             ids = get_article_ids(request.json['article-id'])
             count = len(ids)
             query = query.filter(Message.article_id.in_(ids))
         else:
-            query = query.filter(Message.article_id == message_id)
+            query = query.filter(Message.article_id == article_id)
             count = 1
         messages = query.all()
 
+        if len(messages) > 0 and not messages[0].account.writable:
+                abort(403, 'Account is not writable')
         if len(messages) != count:
             return make_response(jsonify({'error': 'Message not found'}),
                                  404)
-        if not messages[0].account.writable:
-                abort(403, 'Account is not writable')
         sync = get_sync(Account.query.get(account_id))
         for msg in messages:
             resp = sync.remote_delete(msg.google_id)
@@ -143,10 +143,6 @@ class MessageAPI(MethodView):
 
 ## Message resource
 message_view = MessageAPI.as_view('message')
-#api_bp.add_url_rule(acct_base + '/messages/', defaults={'message_id': None},
-#                    view_func=message_view, methods=['GET', 'PUT'])
-#api_bp.add_url_rule('/messages/<int:message_id>',
-#                    view_func=message_view, methods=['GET', 'PUT', 'DELETE'])
 
 @api_bp.route(acct_nick_base + '/messages/',
               methods=['GET', 'PUT', 'DELETE'])
@@ -157,11 +153,8 @@ def messages(nickname):
 @api_bp.route(acct_nick_base + '/messages/<int:article_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, article_id):
-    message = Message.query.join(Account).\
-        filter(Account.nickname == nickname).\
-        filter(Message.article_id == article_id).\
-        first_or_404()
-    return message_view(message.account_id, message.id)
+    account = Account.query.filter_by(nickname=nickname).first_or_404()
+    return message_view(account.id, article_id)
 
 @api_bp.route(acct_nick_base + '/messages/<string:message_id>',
               methods=['GET'])
@@ -169,4 +162,4 @@ def message_by_message_id(nickname, message_id):
     mid = urllib.parse.unquote(message_id)
     message = Message.query.join(Account).filter(Account.nickname == nickname).\
         filter(Message.message_id == mid).first_or_404()
-    return message_view(message.account_id, message.id)
+    return message_view(message.account_id, message.article_id)
