@@ -1032,12 +1032,14 @@ be a full group name."
 This returns an alist for each message.  Unlike the
 Gnus-equivalent which return NOV data in a buffer.  The data is used to construct the list of candidates for te `helm-nngmail' source."
   (let ((url (nngmail-get-group-url server group)))
-    (cons server
-	  (mapcar (lambda (result)
-		    (let ((msg (cdr (nngmail-get-message-params result))))
-		      (push `(server . ,server) msg)
-		      (push `(group . ,group) msg)))
-		  (plist-get (nngmail-fetch-resource-url url) 'messages)))
+    (if url
+	(cons server
+	      (mapcar (lambda (result)
+			(let ((msg (cdr (nngmail-get-message-params result))))
+			  (push `(server . ,server) msg)
+			  (push `(group . ,group) msg)))
+		      (plist-get (nngmail-fetch-resource-url url) 'messages)))
+      (cons server nil))
     ))
 
 (defun flatten (list)
