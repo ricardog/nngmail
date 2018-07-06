@@ -183,7 +183,7 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-group-x (nickname group what)
   "Get parameter WHAT from GROUP for account NICKNAME."
-  (plist-get (ht-get (nngmail-get-groups nickname) group) what))
+  (plist-get (ht-get (nngmail-get-account-groups nickname) group) what))
 
 (defun nngmail-get-group-id (nickname group)
   "Get ID of GROUP for account NICKNAME."
@@ -916,10 +916,15 @@ backend since new (unread) mail will appear in INBOX."
   (message (format "in nngmail-request-scan %s" group))
   (when group
     (setq group (nngmail-decode-gnus-group group)))
+  (when (not server)
+    (setq server nngmail-last-account))
   (let ((account (or server nngmail-last-account)))
-    (nngmail-set-account-groups account (nngmail-get-groups account))
+    (when (or (not group)
+	      (not (nngmail-get-account-groups server))
+	      (not (ht-get (nngmail-get-account-groups server) group)))
+      (nngmail-set-account-groups account (nngmail-get-groups account)))
     (when info
-      (nnimap-update-info group account info)))
+      (nngmail-update-info group account info)))
   nil)
 
 (deffoo nngmail-request-newsgroups (date &optional server)
