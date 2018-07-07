@@ -40,7 +40,7 @@ Gmail REST API client provides message data.
                 # dl-engr-silicon@stretchinc.com>
                 continue
             try:
-                contact = Contact.as_unique(db.session, email=e, name=n)
+                contact = Contact.as_unique(db.session(), email=e, name=n)
                 if contact.name == '' and n:
                     contact.name = n
                 contacts.append(contact)
@@ -223,7 +223,7 @@ is called once per batch received from Gmail.
             pdb.set_trace()
             pass
     def update(self, msgs):
-        """Update a message in teh database.
+        """Update a message in the database.
 
 Only message labels are allowed to change.  We assume all messages are
 already in the database.
