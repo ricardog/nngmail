@@ -271,14 +271,27 @@ When undefer is True, read the raw message body (if available).
             query = query.undefer('raw')
         return query.all()
 
-    def find_by_gid(self, gids):
-        """Find messages by Google id."""
+    def query_by_gid(self, gids):
+        """Return a query to find messages by Google id."""
         if not gids:
             return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
         return Message.query.filter(and_(Message.google_id.in_(gids),
-                                         Message.account == self.account)).all()
+                                         Message.account == self.account))
+
+    def find_by_gid(self, gids):
+        """Find messages by Google id."""
+        if not gids:
+            return
+        return self.query_by_gid(gids).all()
+
+    def gid_to_id(self, gids):
+        """Find messages by Google id."""
+        if not gids:
+            return
+        return sum(self.query_by_gid(gids).with_entities(Message.id).all(),
+                   ())
 
     def find_cacheable(self):
         """Return a list of cacheable message id's."""
