@@ -295,22 +295,22 @@ recently, do a full update.
             return
 
         if len(history) == 0:
-            logger.info('no new changes')
+            logger.info('%s: no new changes' % self.nickname)
             return
-
         hid, deleted, added, updated = self.merge_history(history)
+
         total = len(deleted) + len(added) + len(updated)
         bar = self.bar(leave=True, total=total, desc='applying changes')
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
-        self.create(tuple(added.keys()))
-        bar.update(len(added))
         self.update_labels(updated)
         bar.update(len(updated.keys()))
+        self.create(tuple(added.keys()))
+        bar.update(len(added))
         bar.close()
         self.sql3.set_history_id(hid)
-        logger.info('new historyId: %d' % hid)
-        self.read(added.keys())
+        logger.info('%s: new historyId: %d' % (self.nickname, hid))
+        self.read(self.sql3.gid_to_id(tuple(added.keys())))
 
     def full_pull(self):
         """Do a full update on the account.
