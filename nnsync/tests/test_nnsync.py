@@ -1,4 +1,5 @@
 
+import datetime
 import os
 import pytest
 import yaml
@@ -94,7 +95,7 @@ def test_read(client, sync):
     sync.read(ids)
     msg = Message.query.get(1)
     assert msg.raw is not None
-
+    
 def test_update_labels(client, sync):
     new_labels = ['IMPORTANT', 'STARRED', 'CATEGORY_UPDATES', 'INBOX']
     gid = '124079b56ebb04ba'
@@ -141,3 +142,35 @@ def test_expire_cache(client, sync):
         msg = Message.query.get(1)
         assert msg.raw is not None
 
+
+@my_vcr.use_cassette()
+def test_incremental_pull1(client, sync):
+    # This is what the history ID was for the account on which I
+    # recorded the tape.  The value must match what the response
+    # contains.
+    sync.sql3.set_history_id(291126)
+    sync.pull()
+    
+@my_vcr.use_cassette()
+def test_incremental_pull2(client, sync):
+    msg = {'from_id': 1,
+           'account_id': 1,
+           'article_id': 1,
+           'google_id': '163e42f92b6526f8',
+           'message_id': '<71262888@mail137-235.dal35.mandrillapp.com>',
+           'thread_id': 1,
+           'from_id': 222,
+           'date': datetime.datetime(2018, 6, 9, 11, 55, 11),
+           'subject': 'This is a test message',
+           'references': '',
+           'snippet': 'This is the body of the message',
+           'size': 6271}
+    sess = db.session()
+    mm = Message(**msg)
+    sess.add(mm)
+    sess.commit()
+    # Move history back a few steps so we get some updates.
+    sync.sql3.set_history_id(290982)
+    sync.pull()
+    print("history is %d" % sync.sql3.get_history_id())
+    assert sync.sql3.get_history_id() == 291126
