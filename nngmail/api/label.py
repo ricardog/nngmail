@@ -91,10 +91,16 @@ def label_named_messages(nickname, label):
         filter_by(name=label).first_or_404()
     return label_messages(obj.id)
 
-@api_bp.route('/labels/<int:label_id>/messages/')
-def label_messages(label_id):
-    query = Label.query.get_or_404(label_id).\
-        messages.order_by(Message.id.desc())
+@api_bp.route('/labels/<int:label_id>/messages/',
+              defaults={'tag': None})
+@api_bp.route('/labels/<int:label_id>/messages/<string:tag>')
+def label_messages(label_id, tag):
+    label = Label.query.get_or_404(label_id)
+    query = label.messages.order_by(Message.id.desc())
+    if tag:
+        label = Label.query.filter_by(name=tag).\
+            filter_by(account_id=label.account_id).first_or_404()
+        query = query.filter(Message.labels.any(Label.id == label.id))
     if 'article-id' in request.args:
         ids = get_article_ids(request.args['article-id'])
         query = query.filter(Message.article_id.in_(ids))
