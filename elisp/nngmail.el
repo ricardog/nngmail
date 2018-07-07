@@ -1031,19 +1031,27 @@ be a full group name."
 ;;;
 ;;; Functions used by helm interface
 ;;;
-(defun nngmail-get-messages (server group)
+(defun nngmail-get-messages (server group unread)
   "Return a list of messages for GROUP in SERVER.
 
-This returns an alist for each message.  Unlike the
-Gnus-equivalent which return NOV data in a buffer.  The data is used to construct the list of candidates for te `helm-nngmail' source."
+This returns an alist for each message, unlike the
+Gnus-equivalent which returns NOV data in a buffer.  The data is
+used to construct the list of candidates for the `helm-nngmail'
+source."
+  (when (not (nngmail-server-opened server))
+    (nngmail-open-server server))
   (let ((url (nngmail-get-group-url server group)))
     (if url
-	(cons server
-	      (mapcar (lambda (result)
-			(let ((msg (cdr (nngmail-get-message-params result))))
-			  (push `(server . ,server) msg)
-			  (push `(group . ,group) msg)))
-		      (plist-get (nngmail-fetch-resource-url url) 'messages)))
+	(progn
+	  (when unread
+	    (setq url (concat url "UNREAD")))
+	  (cons server
+		(mapcar (lambda (result)
+			  (let ((msg (cdr (nngmail-get-message-params result))))
+			    (push `(server . ,server) msg)
+			    (push `(group . ,group) msg)))
+			(plist-get (nngmail-fetch-resource-url url) 'messages)))
+	  )
       (cons server nil))
     ))
 

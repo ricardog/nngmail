@@ -83,13 +83,15 @@ When not specified, ELLIPSIS defaults to ‘...’."
 	    (cons (helm-nngmail-format-message message) message))
 	  messages))
   
-(defun helm-source-nngmail-build (&optional group)
+(defun helm-source-nngmail-build (&optional group unread)
   "Create a helm source of all unread messages in all accounts/servers.
 
 If optional GROUP parameter is given, then create a source with
 all messages from that group."
   (let ((data (mapcar (lambda (srv)
-			      (nngmail-get-messages (car srv) (or group "UNREAD")))
+			(nngmail-get-messages (car srv)
+					      (or group "INBOX")
+					      unread))
 		      (nngmail-get-accounts))))
     (message "fetched accounts")
     (mapcar (lambda (srv)
@@ -188,8 +190,8 @@ default."
 				    (nngmail-get-all-labels)
 				    nil t nil
 				    helm-nngmail-label-history)
-		 "UNREAD")))
-    (helm :sources (helm-source-nngmail-build label)
+		 "INBOX")))
+    (helm :sources (helm-source-nngmail-build label t)
 	  :buffer "*helm-nngmail*"
 	  :prompt "Messages matching: "
 	  :history 'helm-nngmail-history-input
