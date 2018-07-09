@@ -154,7 +154,6 @@ is done as a transaction so we only need to read the current id once at
 the start.  Once the placeholder was created process each message.
 
         """
-        self.sql3.placeholder(gids)
         return self.create_or_update(gids, True, sync_labels)
 
     def update(self, gids, sync_labels=False):
@@ -338,17 +337,15 @@ database, then only update the labels.
             bar.update(len(msgs))
         bar.close()
 
+        ## Created here means they need a placeholder.  Assume any
+        ## messages already in the DB came from a previous (interrupted)
+        ## import.
         created = sorted(created, key=lambda a: int(a, 16))
-        updated = sorted(updated, key=lambda a: int(a, 16))
-        if (updated and created and
-            int(created[0], 16) < int(updated[-1], 16)):
-            logger.warn("creating id's out of order! (%s %s)" %
-                       (created[0], updated[-1]))
-        hid1 = self.create(created)
-        hid2 = self.update(updated)
+        self.sql3.placeholder(created)
+        hid1 = self.create(created + updated)
         self.delete(local_gids)
 
-        history_id = max(hid1, hid2, history_id)
+        history_id = max(hid1, history_id)
         logger.info('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
 
