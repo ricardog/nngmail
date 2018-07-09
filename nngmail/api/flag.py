@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
+import time
 
 from flask import jsonify, request
 from sqlalchemy import func
@@ -34,6 +35,7 @@ unseen requires the client pass us atimestamp to use as the reference
 point (messages received after the timestamp are nuseen).
 
     """
+    stime = time.time()
     label = Label.query.get_or_404(label_id)
     min_aid, max_aid = label.messages.\
         with_entities(func.min(Message.article_id),
@@ -44,23 +46,51 @@ point (messages received after the timestamp are nuseen).
                      with_entities(Message.article_id).\
                      order_by(Message.id.asc()).\
                      all(), ()))
-    all_mids = set(range(min_aid, max_aid + 1))
-    read = all_mids - unread
-    flags = {'read': find_ranges(read)}
+    anums = set(range(1, max_aid + 1))
 
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
+        all_mids = set(sum(label.messages.\
+                           with_entities(Message.article_id).\
+                           filter(Message.date > timestamp).\
+                           order_by(Message.id).\
+                           all(), ()))
         unseen = set(sum(label.messages.\
                          with_entities(Message.article_id).\
                          filter(Message.date > timestamp).\
                          order_by(Message.id.asc()).all(), ()))
-        flags.update({'unseen': find_ranges(unseen)})
+        min_aid = Message.query.\
+            with_entities(Message.article_id).\
+            filter(Message.date <= timestamp).\
+            order_by(Message.id.desc()).limit(1).scalar()
+        anums2 = set(range(min_aid, max_aid + 1))
     else:
-        flags.update({'unseen': find_ranges(unread)})
-    return jsonify(flags)
+        all_mids = set(sum(label.messages.\
+                           with_entities(Message.article_id).\
+                           order_by(Message.id).\
+                           all(), ()))
+        anums2 = anums
+        unseen = unread
+    qtime = time.time()
+    read = anums - unread
+    unexist = anums2 - all_mids
+    
+    rtime = time.time()
+    flags = {'unseen': find_ranges(unseen),
+             'read': find_ranges(read),
+             'unexist': find_ranges(unexist)}
+    ftime = time.time()
+    xx = jsonify(flags)
+    etime = time.time()
+    print('query  time: %7.2f' % (qtime - stime))
+    print('set    time: %7.2f' % (rtime - qtime))
+    print('range  time: %7.2f' % (ftime - rtime))
+    print('serial time: %7.2f' % (etime - ftime))
+    
+    return xx
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/flags/')
 def flags_by_name(nickname, label):

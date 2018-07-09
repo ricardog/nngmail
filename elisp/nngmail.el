@@ -779,11 +779,14 @@ but I may implement support for other marks in the future."
     (gnus-info-set-read info (vector-to-list (plist-get flags 'read)))
     (loop for (k v) on flags by (function cddr)
           do
-	  (progn
-	    (let ((new-list (vector-to-list v)))
-	      (if (assoc k marks)
-		  (setcdr (assoc k marks) new-list)
-		(push (cons k new-list) marks)))))
+	  (let ((new-list (vector-to-list v)))
+	    (when (assoc k marks)
+	      (when timestamp
+		(setq new-list (gnus-range-nconcat
+				(cdr (assoc k marks))
+				new-list)))
+	      (setcdr (assoc k marks) new-list))))
+	    ;(push (cons k new-list) marks)))
     (gnus-info-set-marks info marks t)
     ))
 
