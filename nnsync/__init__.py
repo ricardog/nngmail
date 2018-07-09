@@ -108,7 +108,7 @@ mechanisms.
             bar.close()
 
     def create_or_update(self, gids, create=True, sync_labels=False):
-        """Create or update messages in local storage.
+        """Create or update message metadata in local storage.
 
 This function provides a wrapper to iterate through a series of messages
 to either create them or update them in local storage.  Splits the list
@@ -169,7 +169,7 @@ then restarts it in a different process.
     def update_labels(self, updated):
         """Update message labels.
 
-Messages metadata never changes and doesn't need to be updated.  But
+Message metadata never changes and doesn't need to be updated.  But
 labels do change.
 
         """
@@ -238,8 +238,8 @@ the history list should be valid for about a week).
     def merge_history(self, history):
         """Merge items in the history list.
 
-For example, if a label is added and then removed to a message, we can
-skip both the operations.  Operations on any deleted messages are also
+For example, if a label is added and then removed from a message, we can
+skip both operations.  Operations on any deleted messages are also
 skipped.
 
         """
@@ -303,12 +303,15 @@ recently, do a full update.
         bar = self.bar(leave=True, total=total, desc='applying changes')
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
-        self.update_labels(updated)
-        bar.update(len(updated.keys()))
+
         self.create(tuple(added.keys()))
         bar.update(len(added))
+
+        self.update_labels(updated)
+        bar.update(len(updated.keys()))
+
         bar.close()
-        self.sql3.set_history_id(hid)
+        #self.sql3.set_history_id(hid)
         logger.info('%s: new historyId: %d' % (self.nickname, hid))
         self.read(self.sql3.gid_to_id(tuple(added.keys())))
 
