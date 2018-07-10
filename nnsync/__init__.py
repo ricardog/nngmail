@@ -4,6 +4,7 @@ from copy import deepcopy
 import logging
 import pdb
 import queue
+import socket
 import threading
 
 import click
@@ -303,6 +304,7 @@ recently, do a full update.
         self.delete(tuple(deleted.keys()))
         bar.update(len(deleted))
 
+        self.sql3.placeholder(tuple(added.keys()), skip_ok=True)
         self.create(tuple(added.keys()))
         bar.update(len(added))
 
@@ -312,6 +314,7 @@ recently, do a full update.
         bar.close()
         #self.sql3.set_history_id(hid)
         logger.info('%s: new historyId: %d' % (self.nickname, hid))
+        self.sql3.set_history_id(hid)
         self.read(self.sql3.gid_to_id(tuple(added.keys())))
 
     def full_pull(self):
@@ -401,11 +404,13 @@ commands.
                     me.pull()
                 except (ConnectionResetError,
                         httplib2.ServerNotFoundError,
-                        TimeoutError):
+                        TimeoutError, socket.timeout):
                     ## Likely the connection died while talking to
                     ## or trying to establish a connection with the
                     ## server.  Go back to sleep and hope we have
                     ## better luck next time.
+                    logger.info('%s: connection error: abort pull' %
+                                me.nickname)
                     pass
             logger.info("%s: stop sync" % me.nickname)
 
