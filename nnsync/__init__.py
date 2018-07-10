@@ -341,6 +341,7 @@ database, then only update the labels.
         ## messages already in the DB came from a previous (interrupted)
         ## import.
         created = sorted(created, key=lambda a: int(a, 16))
+        updated = sorted(updated, key=lambda a: int(a, 16))
         self.sql3.placeholder(created)
         hid1 = self.create(created + updated)
         self.delete(local_gids)
