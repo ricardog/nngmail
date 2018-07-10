@@ -292,7 +292,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
     google_id = db.Column(db.String(20), index=True, nullable=False)
     message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
-    from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
+    from_id = db.Column(db.Integer, db.ForeignKey('contact.id'), nullable=False)
     date = db.Column(db.DateTime)
     subject = db.Column(db.String)
     references = db.Column(db.String)

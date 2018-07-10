@@ -23,6 +23,7 @@ zync = dict()
 get_sync = lambda account: NnSync.from_account(account, sync_config)
 
 from nnsync import NnSync
+from nngmail.models import Contact
 from nngmail.api import api_bp
 import nngmail.views
 import nngmail.background
@@ -42,6 +43,8 @@ def permission_denied(error):
 def init_db_command():
     """Clear the existing data and create new tables."""
     db.create_all()
+    Contact.as_unique(db.session, email='noname@example.com', name='No Name')
+    db.session.commit()
     click.echo('Initialized the database.')
 
 @app.cli.command('import')
