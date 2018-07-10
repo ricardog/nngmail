@@ -153,11 +153,12 @@ class Contact(UniqueMixin, db.Model, Serializeable):
 
     @classmethod
     def unique_hash(cls, email, name=None):
-        return name + ' ' + email
+        return email.lower()
 
     @classmethod
     def unique_filter(cls, query, email, name=None):
-        return query.filter(Contact.email == email)
+        return query.filter(db.func.lower(Contact.email) ==
+                            db.func.lower(email))
 
     def __repr__(self):
         return '%s <%s>' % (self.name, self.email)
