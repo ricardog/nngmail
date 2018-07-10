@@ -88,7 +88,8 @@ class TimestampMixin(object):
     updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 class KeyValue(db.Model):
-    db.UniqueConstraint('account_id', 'key', name='key_1')
+    __table_args__ = (db.UniqueConstraint('account_id', 'key',
+                                          name='key_1'), )
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, nullable=False)
     value = db.Column(db.String, nullable=False)
@@ -127,7 +128,8 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         return '%2d: %s <%s>' % (self.id, self.nickname, self.email)
 
 class Contact(UniqueMixin, db.Model, Serializeable):
-    db.UniqueConstraint('name', 'email', name='unique_1')
+    __table_args__ = (db.UniqueConstraint('name', 'email',
+                                          name='unique_1'), )
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     email = db.Column(db.String, index=True)
@@ -205,7 +207,8 @@ label_association = db.Table('label_association',
 )
 
 class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
-    db.UniqueConstraint('account_id', 'gif', name='gid_1')
+    __table_args__ = (db.UniqueConstraint('account_id', 'gid',
+                                          name='gid_1'), )
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
@@ -246,7 +249,8 @@ class Label(UniqueMixin, TimestampMixin, db.Model, Serializeable):
         return query
 
 class Thread(UniqueMixin, Serializeable, db.Model):
-    db.UniqueConstraint('account_id', 'thread_id', name='tid_1')
+    __table_args__ = (db.UniqueConstraint('account_id', 'thread_id',
+                                          name='tid_1'), )
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            nullable=False)
@@ -276,14 +280,16 @@ class Thread(UniqueMixin, Serializeable, db.Model):
         return '%d: %s' % (self.id, self.thread_id)
 
 class Message(TimestampMixin, Serializeable, db.Model):
-    db.UniqueConstraint('account_id', 'google_id', name='gid_1')
-    db.UniqueConstraint('account_id', 'article_id', name='aid_1')
+    __table_args__ = (db.UniqueConstraint('account_id', 'google_id',
+                                         name='gid_1'), 
+                      db.UniqueConstraint('account_id', 'article_id',
+                                          name='aid_1'))
 
     id = db.Column(db.Integer, primary_key=True, unique=True, nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
                            index=True, nullable=False)
-    article_id = db.Column(db.Integer)
-    google_id = db.Column(db.String(20), index=True)
+    article_id = db.Column(db.Integer, nullable=False)
+    google_id = db.Column(db.String(20), index=True, nullable=False)
     message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
     from_id = db.Column(db.Integer, db.ForeignKey('contact.id'))
