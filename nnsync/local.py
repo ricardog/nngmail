@@ -118,7 +118,7 @@ Translate Gmail category labels to something that is easier to read.
         self.label_map[label.gid] = label
         self.label_imap[label.id] = label.gid
 
-    def placeholder(self, gids):
+    def placeholder(self, gids, skip_ok=False):
         """Create placeholder rows for new messages.
 
 Because I use a composite key for the Messages table (id, account_id), I
@@ -148,6 +148,14 @@ more than one account.
         if '__getitem__' not in dir(gids):
             gids = (gids, )
         for chunk in chunks(gids, 10000):
+            if skip_ok:
+                exist = sum(Message.query.\
+                            filter(Message.google_id.in_(chunk)).\
+                            with_entities(Message.google_id).all(), ())
+                chunk = list(set(chunk) - set(exist))
+                if not chunk:
+                    ## Skip this chunk if all messages already exist
+                    continue
             with db.engine.begin() as connection:
                 current_id = Message.query.\
                     with_entities(db.func.max(Message.article_id)).\
@@ -157,8 +165,13 @@ more than one account.
                            'account_id': self.account.id, 'message_id': '',
                            'from_id': 1}
                           for aid, gid in zip(aids, chunk)]
-                connection.execute(Message.__table__.insert().values(values))
-
+                try:
+                    connection.execute(Message.__table__.insert().\
+                                       values(values))
+                except exc.SQLAlchemyError as ex:
+                    pdb.set_trace()
+                    pass
+            
     def process_gmail_message(self, session, mid, msg):
         """Extract message metadata from a Gmail response.
 
@@ -251,6 +264,9 @@ is called once per batch received from Gmail.
             objs = session.query(Message).\
                 filter(and_(Message.google_id.in_(gids),
                             Message.account == self.account)).all()
+            if len(objs) != len(msgs):
+                pdb.set_trace()
+                pass
             assert len(objs) == len(msgs)
 
             for obj, msg in zip(objs, msgs):
