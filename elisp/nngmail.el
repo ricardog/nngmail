@@ -777,6 +777,8 @@ but I may implement support for other marks in the future."
 	 (flags (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
     (gnus-info-set-read info (vector-to-list (plist-get flags 'read)))
+    (when (not (assq 'unexist marks))
+      (push (cons 'unexist nil) marks))
     (loop for (k v) on flags by (function cddr)
           do
 	  (let ((new-list (vector-to-list v)))
