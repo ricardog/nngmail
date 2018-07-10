@@ -14,6 +14,7 @@ from sqlalchemy import exc
 from nngmail import db
 from nngmail.models import Account, KeyValue, Contact
 from nngmail.models import Label, Thread, Message
+from nngmail.models import ToAddressee, CcAddressee, BccAddressee
 
 import pdb
 
@@ -31,7 +32,7 @@ Gmail REST API client provides message data.
                       writable=False, can_send=False)
 
     @staticmethod
-    def __new_contacts(header):
+    def __new_contacts(session, header):
         """Create new Contracts for each address in a header."""
         contacts = []
         for n, e in email.utils.getaddresses([header]):
@@ -40,14 +41,14 @@ Gmail REST API client provides message data.
                 # dl-engr-silicon@stretchinc.com>
                 continue
             try:
-                contact = Contact.as_unique(db.session(), email=e, name=n)
+                contact = Contact.as_unique(session, email=e, name=n)
                 if contact.name == '' and n:
                     contact.name = n
                 contacts.append(contact)
             except AssertionError:
                 # Contact.as_unique raises an exception of the email
                 # field fails validation.  Which happens with improperly
-                # quoted headers like:
+                # quoted headers like (missing quote):
                 # Wayne Heideman" <wayne@stretchinc.com>
                 continue
         return contacts
@@ -153,9 +154,83 @@ more than one account.
                     filter_by(account_id=self.account.id).first()[0] or 0
                 aids = range(current_id + 1, current_id + 1 + len(chunk))
                 values = [{'article_id': aid, 'google_id': gid,
-                           'account_id': self.account.id, 'message_id': ''}
+                           'account_id': self.account.id, 'message_id': '',
+                           'from_id': 1}
                           for aid, gid in zip(aids, chunk)]
                 connection.execute(Message.__table__.insert().values(values))
+
+    def process_gmail_message(self, session, mid, msg):
+        """Extract message metadata from a Gmail response.
+
+This function "parses" the data we get from Gmail for a message, and
+extracts the data we want to store in the DB.
+
+As a side-effect, this function will add to the session a Thread,
+Contacts and Addressees that are required to represent the message
+metadata.  It does not add label information because the
+label_association table does not have a corresponding python class and
+so can't be added to the session.
+
+Returns a hash suitable for bulk update using the session (pass as
+values).
+
+        """
+        ## Look-up the thread (or create it if it does not exist).  The
+        ## Unique mixin takes care of adding the new object to the
+        ## session.
+        thread = Thread.as_unique(session, thread_id=msg['threadId'],
+                                  account=self.account)
+
+        keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
+                   'Message-ID', 'Message-Id', 'References']
+        ## Some messages (drafts?) don't have any headers (nor
+        ## labels).
+        headers = dict((hh['name'], hh['value']) for hh in
+                       filter(lambda h: h['name'] in keepers,
+                              msg['payload'].get('headers', {})))
+
+        ## Create all addressee objects and add them to the session.
+        ## New contacts get added to the session by the Unique mixin.
+        for hdr in ('To', 'CC', 'BCC'):
+            cls = (ToAddressee if hdr == 'To' else
+                   CcAddressee if hdr == 'CC' else BccAddressee)
+            for c in self.__new_contacts(session,
+                                           headers.get(hdr, '')):
+                session.add(cls(message_id = mid,
+                                contact=c))
+
+        ## Create a dict() to hold the message's properties which can be
+        ## passed to SA for bulk update (by the caller).
+        message_id = headers.get('Message-ID',
+                                 headers.get('Message-Id',
+                                             '<%s@x.gmail.com>' % msg['id']))
+        data = {'thread_id': thread.id,
+                'message_id': message_id,
+                'subject': headers.get('Subject',
+                                       headers.get('subject', '')),
+                'references': headers.get('References', ''),
+                'size': msg.get('sizeEstimate', 0),
+                'snippet': msg['snippet'],
+                'updated': datetime.fromtimestamp(0),
+        }
+        if 'internalDate' in msg:
+            data['date'] = datetime.fromtimestamp(int(msg['internalDate']) /
+                                                  1000)
+        else:
+            data['data'] = datetime.now()
+        
+        senders = self.__new_contacts(session,
+                                      headers.get('From',
+                                                  headers.get('from', '')))
+        if senders:
+            data['sender'] = senders[0]
+
+        ## Look-up the label objects--should already be in the DB.
+        data['labels'] = [self.get_label(lgid)
+                          for lgid in msg.get('labelIds', [])]
+
+        return data
+    
 
     def create(self, msgs):
         """Create a new message in the database.
@@ -170,58 +245,25 @@ is called once per batch received from Gmail.
         """
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
+        gids = [m['id'] for m in msgs]
         session = db.session()
-        keepers = ['From', 'from', 'Subject', 'subject', 'To', 'CC', 'BCC',
-                   'Message-ID', 'Message-Id', 'References']
-        objs = self.find_by_gid([msg['id'] for msg in msgs])
-        assert len(objs) == len(msgs)
-        for obj, msg in zip(sorted(objs, key=lambda o: o.google_id),
-                            sorted(msgs, key=lambda m: m['id'])):
-            if 'headers' not in msg['payload']:
-                ## Some message s(drafts?) don't have any headers (nor
-                ## labels).
-                msg['payload']['headers'] = {}
-            headers = dict((hh['name'], hh['value']) for hh in
-                           filter(lambda h: h['name'] in keepers,
-                                  msg['payload']['headers']))
-            default_id = '<%s@mail.gmail.com>' % msg['id']
-            message_id = headers.get('Message-ID',
-                                     headers.get('Message-Id', default_id))
-            senders = self.__new_contacts(headers.get('From',
-                                                      headers.get('from', '')))
-            if not senders:
-                senders.append(None)
-            adds = {}
-            for hdr in ('To', 'CC', 'BCC'):
-                adds[hdr] = self.__new_contacts(headers.get(hdr, ''))
-            labels = [self.get_label(lgid) for lgid in msg.get('labelIds', [])]
-            thread = Thread.as_unique(session, thread_id=msg['threadId'],
-                                      account=self.account)
-            if 'internalDate' in msg:
-                timestamp = datetime.fromtimestamp(int(msg['internalDate']) /
-                                                   1000)
-            else:
-                timestamp = datetime.now()
+        with session.no_autoflush:
+            objs = session.query(Message).\
+                filter(and_(Message.google_id.in_(gids),
+                            Message.account == self.account)).all()
+            assert len(objs) == len(msgs)
 
-            obj.thread = thread
-            obj.message_id = message_id
-            obj.subject = headers.get('Subject',
-                                      headers.get('subject', ''))
-            obj.references = headers.get('References', '')
-            obj.size = msg.get('sizeEstimate', 0)
-            obj.date = timestamp
-            obj.sender = senders[0]
-            obj.snippet = msg['snippet']
-            obj.labels = labels
-            obj.tos = adds['To']
-            obj.ccs = adds['CC']
-            obj.bccs = adds['BCC']
-            obj.updated = None
+            for obj, msg in zip(objs, msgs):
+                values = self.process_gmail_message(session, obj.id, msg)
+                for key, value in values.items():
+                    setattr(obj, key, value)
         try:
             session.commit()
         except exc.SQLAlchemyError as ex:
             pdb.set_trace()
             pass
+
+
     def update(self, msgs):
         """Update a message in the database.
 
