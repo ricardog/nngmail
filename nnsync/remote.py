@@ -86,7 +86,7 @@ on callbacks, use threads for parallelism.
                     raise Gmail.BatchException(ex)
             responses.append(resp)
 
-        http = creds.authorize(Http())
+        http = creds.authorize(Http(timeout=2.0))
         service = build('gmail', 'v1', http=http)
         batch = service.new_batch_http_request()
         responses = []
@@ -200,7 +200,7 @@ between the two endpoints.
 
     def reachable(self):
         """Whether the Gmail endpoint is reachable."""
-        service = build('gmail', 'v1', http=Http())
+        service = build('gmail', 'v1', http=Http(timeout=1.0))
         url = urlparse.urlparse(service._baseUrl)
         host = url.hostname
         port = url.port
@@ -214,7 +214,7 @@ between the two endpoints.
         "Authorize the service to access the user's mailbox."
         if not self.service:
             self.creds = self.get_credentials()
-            http = self.creds.authorize(Http())
+            http = self.creds.authorize(Http(timeout=1.0))
             self.service = build('gmail', 'v1', http=http)
         assert self.service is not None
 
