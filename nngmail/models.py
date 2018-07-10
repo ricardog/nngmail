@@ -337,6 +337,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
         if raw is None:
             del self.raw2
             self._raw = None
+            self.updated = None
             return
         self.raw2 = raw
         self._raw = zlib.compress(raw)
