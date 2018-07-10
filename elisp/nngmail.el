@@ -644,7 +644,7 @@ either a single number, or a pair (low, high) separated by ':'."
 (deffoo nngmail-retrieve-headers (articles &optional group server fetch-old)
   "Retrieve headers for the specified group (label).
 
-The server is kind enough to return NOV format so twe don't need
+The server is kind enough to return NOV format so we don't need
 to grovel over the response."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
