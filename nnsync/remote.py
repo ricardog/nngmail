@@ -80,13 +80,16 @@ on callbacks, use threads for parallelism.
                     print("remote: message id: %s is invalid! "  % rid)
                     return
 
-                elif ex_is_error(ex, 403):
+                elif ex_is_error(ex, 403) or ex_is_error(ex, 429):
+                    import pdb; pdb.set_trace()
                     raise Gmail.UserRateException(ex)
+                elif ex_is_error(ex, 500):
+                    raise Gmail.GenericException(ex)
                 else:
                     raise Gmail.BatchException(ex)
             responses.append(resp)
 
-        http = creds.authorize(Http(timeout=2.0))
+        http = creds.authorize(Http())
         service = build('gmail', 'v1', http=http)
         batch = service.new_batch_http_request()
         responses = []
