@@ -301,6 +301,7 @@ This function is rather ineffcient.
                 obj.labels = [self.get_label(lgid) for lgid in msg['labelIds']]
             else:
                 obj.labels = []
+            obj.updated = datetime.now()
         session.commit()
 
     def commit(self):
