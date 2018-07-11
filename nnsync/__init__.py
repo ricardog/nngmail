@@ -108,16 +108,16 @@ mechanisms.
             self.sql3.commit()
             bar.close()
 
-    def create_or_update(self, gids, create=True, sync_labels=False):
-        """Create or update message metadata in local storage.
+    def create(self, gids, sync_labels=False):
+        """Create message metadata in local storage.
 
 This function provides a wrapper to iterate through a series of messages
-to either create them or update them in local storage.  Splits the list
-of Google ID's to operate on, and retrieve the message metadata in
-batches.  Do one database commit per batch for efficiency.
+to create them in local storage.  It splits the list of Google ID's to
+operate on, and retrieves the message metadata in batches.  It does one
+database commit per batch for efficiency.
 
-In this context create or update refers to message metadata only.
-Fetching the message itself is done via a different API.
+In this context create refers to message metadata only.  Fetching the
+message itself is done via a different API.
 
 If sync_labels is True, then sync labels before proceeding--usually a
 good idea since we create / update messages in batches and label
@@ -134,37 +134,13 @@ Messages are identified by google ID's
         if sync_labels:
             self.sync_labels()
         bar = self.bar(leave=True, total=len(gids), desc='fetching metadata')
-        for batch in self.gmail.get_messages(gids, 'metadata'):
-            msgs = sorted(batch, key=lambda m: int(m['internalDate']))
-            if create:
-                self.sql3.create(msgs)
-            else:
-                self.sql3.update(msgs)
+        for msgs in self.gmail.get_messages(gids, 'metadata'):
+            self.sql3.create(msgs)
             bar.update(len(msgs))
             history_id = max(history_id,
                              max([int(msg['historyId']) for msg in msgs]))
         bar.close()
         return history_id
-
-    def create(self, gids, sync_labels=False):
-        """Wrapper for creating messages.
-
-Because we use a composite primary key (id, account_id) for the message
-table, we first create a placeholder for each message.  This quick and
-is done as a transaction so we only need to read the current id once at
-the start.  Once the placeholder was created process each message.
-
-        """
-        return self.create_or_update(gids, True, sync_labels)
-
-    def update(self, gids, sync_labels=False):
-        """Wrapper for updating message metadata.
-
-This is needed when the user interrupts a synchronization operation and
-then restarts it in a different process.
-
-        """
-        return self.create_or_update(gids, False, sync_labels)
 
     def update_labels(self, updated):
         """Update message labels.
@@ -343,8 +319,6 @@ database, then only update the labels.
         ## Created here means they need a placeholder.  Assume any
         ## messages already in the DB came from a previous (interrupted)
         ## import.
-        created = sorted(created, key=lambda a: int(a, 16))
-        updated = sorted(updated, key=lambda a: int(a, 16))
         self.sql3.placeholder(created)
         hid1 = self.create(created + updated)
         self.delete(local_gids)
