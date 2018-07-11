@@ -147,6 +147,7 @@ more than one account.
             return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
+        gids = sorted(gids, key=lambda gid: int(gid, 16))
         for chunk in chunks(gids, 10000):
             if skip_ok:
                 exist = sum(Message.query.\
@@ -224,7 +225,6 @@ values).
                 'references': headers.get('References', ''),
                 'size': msg.get('sizeEstimate', 0),
                 'snippet': msg['snippet'],
-                'updated': datetime.fromtimestamp(0),
         }
         if 'internalDate' in msg:
             data['date'] = datetime.fromtimestamp(int(msg['internalDate']) /
@@ -258,18 +258,21 @@ is called once per batch received from Gmail.
         """
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
+        msgs = sorted(msgs, key=lambda msg: msg['id'])
         gids = [m['id'] for m in msgs]
         session = db.session()
         with session.no_autoflush:
             objs = session.query(Message).\
                 filter(and_(Message.google_id.in_(gids),
-                            Message.account == self.account)).all()
+                            Message.account == self.account)).\
+                            order_by(Message.google_id.asc()).all()
             if len(objs) != len(msgs):
                 pdb.set_trace()
                 pass
             assert len(objs) == len(msgs)
 
             for obj, msg in zip(objs, msgs):
+                assert obj.google_id == msg['id']
                 values = self.process_gmail_message(session, obj.id, msg)
                 for key, value in values.items():
                     setattr(obj, key, value)
