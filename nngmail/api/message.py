@@ -32,6 +32,7 @@ class MessageAPI(MethodView):
         else:
             ## Return single
             message = Message.query.\
+                filter(Message.account_id == account_id).\
                 filter(Message.article_id == article_id).\
                 first_or_404()
             fmt = request.args.get('format', 'json')
