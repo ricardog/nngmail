@@ -89,7 +89,7 @@ on callbacks, use threads for parallelism.
                     raise Gmail.BatchException(ex)
             responses.append(resp)
 
-        http = creds.authorize(Http())
+        http = creds.authorize(Http(timeout=30))
         service = build('gmail', 'v1', http=http)
         batch = service.new_batch_http_request()
         responses = []
