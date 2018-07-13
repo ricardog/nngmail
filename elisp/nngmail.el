@@ -1045,6 +1045,8 @@ used to construct the list of candidates for the `helm-nngmail'
 source."
   (when (not (nngmail-server-opened server))
     (nngmail-open-server server))
+  (when (not (nngmail-get-account-groups server))
+    (nngmail-set-account-groups server (nngmail-get-groups server)))
   (let ((url (nngmail-get-group-url server group)))
     (if url
 	(progn
