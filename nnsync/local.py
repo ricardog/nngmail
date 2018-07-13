@@ -396,7 +396,8 @@ This happens when the message gets deleted in Gmail.
         session = db.session()
         kv = KeyValue.query.filter_by(key=key).\
             filter_by(account=self.account).first()
-        if kv:
+        if None and kv:
+            ## Store the history of history_id for debugging purposes
             kv.value = value
         else:
             kv = KeyValue(account=self.account, key=key, value=value)
@@ -406,7 +407,8 @@ This happens when the message gets deleted in Gmail.
     def __get_kv(self, key):
         """Retrieve a key, value tuple from the database."""
         kv = KeyValue.query.filter_by(key=key).\
-            filter_by(account=self.account).first()
+            filter_by(account=self.account).order_by(KeyValue.id.desc()).\
+            first()
         if kv:
             return kv.value
         return None

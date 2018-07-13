@@ -97,8 +97,8 @@ class TimestampMixin(object):
     updated = db.Column(db.DateTime)
 
 class KeyValue(db.Model):
-    __table_args__ = (db.UniqueConstraint('account_id', 'key',
-                                          name='key_1'), )
+    #__table_args__ = (db.UniqueConstraint('account_id', 'key',
+    #                                      name='key_1'), )
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, nullable=False)
     value = db.Column(db.String, nullable=False)
