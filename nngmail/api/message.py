@@ -31,15 +31,12 @@ class MessageAPI(MethodView):
             return jsonify({'messages': messages})
         else:
             ## Return single
-            message = Message.query.\
+            query = Message.query.\
                 filter(Message.account_id == account_id).\
-                filter(Message.article_id == article_id).\
-                first_or_404()
+                filter(Message.article_id == article_id)
             fmt = request.args.get('format', 'json')
             if fmt.lower() == 'raw':
-                message = Message.query.options(undefer('_raw')).\
-                    filter(Message.article_id == article_id).\
-                    first_or_404()
+                message = query.options(undefer('_raw')).first_or_404()
                 # FIXME: use stream_with_context?
                 if message.raw is None:
                     get_sync(message.account).read(message.id)
@@ -47,6 +44,7 @@ class MessageAPI(MethodView):
                 if message.raw is None:
                     return make_response('\n\nMessage unavailable.\n\n')
                 return make_response(message.raw)
+            message = query.first_or_404()
             return jsonify(message)
 
     def put(self, account_id, article_id):
