@@ -26,8 +26,8 @@ Each range consists of either a (low, high) tuple, or a single number.
             ranges.append((group[0], group[-1]))
     return sorted(ranges, key=lambda v: v[0] if isinstance(v, tuple) else v)
 
-@api_bp.route('/labels/<int:label_id>/flags/')
-def flags(label_id):
+@api_bp.route('/labels/<int:label_id>/marks/')
+def marks(label_id):
     """Return a list of read, unexit, and unseen messages.
 
 The output of this function is meant for comsumption by Gnus.  Computing
@@ -79,11 +79,11 @@ point (messages received after the timestamp are nuseen).
     unexist = anums2 - all_mids
     
     rtime = time.time()
-    flags = {'unseen': find_ranges(unseen),
+    marks = {'unseen': find_ranges(unseen),
              'read': find_ranges(read),
              'unexist': find_ranges(unexist)}
     ftime = time.time()
-    xx = jsonify(flags)
+    xx = jsonify(marks)
     etime = time.time()
     print('query  time: %7.2f' % (qtime - stime))
     print('set    time: %7.2f' % (rtime - qtime))
@@ -92,8 +92,8 @@ point (messages received after the timestamp are nuseen).
     
     return xx
 
-@api_bp.route(acct_nick_base + '/labels/<string:label>/flags/')
-def flags_by_name(nickname, label):
-    return flags(Label.query.join(Account).\
+@api_bp.route(acct_nick_base + '/labels/<string:label>/marks/')
+def marks_by_name(nickname, label):
+    return marks(Label.query.join(Account).\
                  filter(Account.nickname == nickname).\
                  filter(Label.name == label).first_or_404().id)

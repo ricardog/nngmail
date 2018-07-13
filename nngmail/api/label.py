@@ -23,7 +23,7 @@ class LabelAPI(MethodView):
                                 url_for('.label_messages',
                                         label_id=obj['id'],
                                         _external=True),
-                                'flags_url': url_for('.flags',
+                                'marks_url': url_for('.marks',
                                                      label_id=obj['id'],
                                                      _external=True)
                     })

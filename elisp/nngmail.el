@@ -193,9 +193,9 @@ This list has all the accounts the server we connect to synchs.")
   "Get messages URL of GROUP for account NICKNAME."
   (nngmail-get-group-x nickname group 'messages_url))
 
-(defun nngmail-get-group-flags-url (nickname group)
+(defun nngmail-get-group-marks-url (nickname group)
   "Get messages URL of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'flags_url))
+  (nngmail-get-group-x nickname group 'marks_url))
 
 (defun nngmail-get-group-min (nickname group)
   "Get min article number in GROUP for account NICKNAME."
@@ -772,14 +772,14 @@ but I may implement support for other marks in the future."
 				(elt timestamp 1) (elt timestamp 0)))
 		    "?"))
 	 (url (format "%s%s"
-		      (nngmail-get-group-flags-url account group)
+		      (nngmail-get-group-marks-url account group)
 		      args))
-	 (flags (nngmail-fetch-resource-url url))
+	 (smarks (nngmail-fetch-resource-url url))
 	 (marks (gnus-info-marks info)))
-    (gnus-info-set-read info (vector-to-list (plist-get flags 'read)))
+    (gnus-info-set-read info (vector-to-list (plist-get smarks 'read)))
     (when (not (assq 'unexist marks))
       (push (cons 'unexist nil) marks))
-    (loop for (k v) on flags by (function cddr)
+    (loop for (k v) on smarks by (function cddr)
           do
 	  (let ((new-list (vector-to-list v)))
 	    (when (assoc k marks)
@@ -796,16 +796,16 @@ but I may implement support for other marks in the future."
 						    &optional dont-insert)
   "FIXME: what is this function for?"
   (message (format "in nngmail-request-update-infos for %s" group))
-  ;; Iterate through all groups updating flags in group info.
+  ;; Iterate through all groups updating marks in group info.
   nil)
 
 (defun nngmail-marks-to-labels (marks)
   "Convert Gnus MARKS to labels using `nngmail-mark-alist'."
-  (let (flags flag)
+  (let (labels label)
     (dolist (mark marks)
-      (when (setq flag (cadr (assq mark nngmail-mark-alist)))
-	(push flag flags)))
-    flags))
+      (when (setq label (cadr (assq mark nngmail-mark-alist)))
+	(push label labels)))
+    labels))
 
 (deffoo nngmail-request-set-mark (group actions &optional server)
   "Set/remove/add marks from ACTIONS for GROUP.

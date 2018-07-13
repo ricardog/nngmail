@@ -5,7 +5,7 @@ api_bp = Blueprint('api', __name__, url_prefix='/api/v1.0',
                    template_folder='templates')
 
 import nngmail.api.account
-import nngmail.api.flag
+import nngmail.api.mark
 import nngmail.api.message
 import nngmail.api.label
 import nngmail.api.query
