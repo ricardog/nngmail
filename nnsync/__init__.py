@@ -378,13 +378,14 @@ commands.
                     me.pull()
                 except (ConnectionResetError,
                         httplib2.ServerNotFoundError,
-                        TimeoutError, socket.timeout):
+                        TimeoutError, socket.timeout,
+                        OSError) as ex:
                     ## Likely the connection died while talking to
                     ## or trying to establish a connection with the
                     ## server.  Go back to sleep and hope we have
                     ## better luck next time.
-                    logger.info('%s: connection error: abort pull' %
-                                me.nickname)
+                    logger.info('%s: connection error: abort pull: %s' %
+                                (me.nickname, ex))
                     pass
             logger.info("%s: stop sync" % me.nickname)
 
