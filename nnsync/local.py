@@ -304,7 +304,7 @@ This function is rather ineffcient.
                 obj.labels = [self.get_label(lgid) for lgid in msg['labelIds']]
             else:
                 obj.labels = []
-            obj.updated = datetime.now()
+            obj.modified = datetime.now()
         session.commit()
 
     def commit(self):
@@ -365,7 +365,7 @@ When undefer is True, read the raw message body (if available).
             td = datetime.now() - timedelta(days=self.options.cache_timeout)
         query = Message.query.with_entities(Message.id).\
                 filter(or_(Message.date > td,
-                           Message.updated > td)).\
+                           Message.modified > td)).\
                 filter(Message.account == self.account)
         return sum(query.all(), ())
 

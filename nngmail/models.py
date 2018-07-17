@@ -83,18 +83,8 @@ class Serializeable(object):
         #self.omit.extend(omit)
 
 class TimestampMixin(object):
-    created = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow)
-    ## FIXME: This was originally declared as
-    ##    onupdate=datetime.utcnow
-
-    ## But I could not get SA to skip the update for some changes.  The
-    ## documentation says that if updated is not in the SET being
-    ## changed it will trigger the onupdate callback.  However, SA was
-    ## calling the function even when I set updated explicitly.
-
-    ## So track this manually.
-    updated = db.Column(db.DateTime)
+    created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 class KeyValue(db.Model):
     #__table_args__ = (db.UniqueConstraint('account_id', 'key',
@@ -216,7 +206,7 @@ label_association = db.Table('label_association',
               index=True, nullable=False)
 )
 
-class Label(UniqueMixin, db.Model, Serializeable):
+class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
     __table_args__ = (db.UniqueConstraint('account_id', 'gid',
                                           name='gid_1'), )
     id = db.Column(db.Integer, primary_key=True)
@@ -258,7 +248,7 @@ class Label(UniqueMixin, db.Model, Serializeable):
         query = query.group_by(label_association.c.label_id)
         return query
 
-class Thread(UniqueMixin, Serializeable, db.Model):
+class Thread(UniqueMixin, Serializeable, TimestampMixin, db.Model):
     __table_args__ = (db.UniqueConstraint('account_id', 'thread_id',
                                           name='tid_1'), )
     id = db.Column(db.Integer, primary_key=True)
@@ -309,6 +299,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
     snippet = db.Column(db.String(200))
     size = db.Column(db.Integer, default=0)
     _raw = db.deferred(db.Column(db.BLOB))
+    modified = db.Column(db.DateTime)
 
     account = db.relationship('Account',
                               backref=backref('messages',
@@ -346,7 +337,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
         if raw is None:
             del self.raw2
             self._raw = None
-            self.updated = None
+            self.modified = None
             return
         self.raw2 = raw
         self.update = datetime.now()
