@@ -5,6 +5,7 @@ import time
 
 from flask import jsonify, request
 from sqlalchemy import func
+from sqlalchemy.sql import and_, or_, not_
 
 from nngmail.api import api_bp
 from nngmail.models import Account, Label, Message
@@ -42,27 +43,32 @@ point (messages received after the timestamp are nuseen).
                       func.max(Message.article_id)).one()
     start_aid = min(int(request.args.get('fast', '1')), max_aid)
 
-    unread = sum(Label.query.filter_by(name='UNREAD').\
-                 filter_by(account=label.account).one().messages.\
-                 filter(Message.labels.any(Label.id == label.id)).\
-                 filter(Message.article_id >= start_aid).\
-                 with_entities(Message.article_id).\
-                 order_by(Message.id.desc()).\
-                 all(), ())[::-1]
-    all_mids = sum(label.messages.\
-                   filter(Message.article_id >= start_aid).\
-                   with_entities(Message.article_id).\
-                   order_by(Message.id.desc()).\
-                   all(), ())[::-1]
-    start_article = all_mids[0]
-
-    anums = set(range(start_aid, max_aid + 1))
-
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
+    else:
+        timestamp = datetime.fromtimestamp(0)
+
+    unread = sum(Label.query.filter_by(name='UNREAD').\
+                 filter_by(account=label.account).one().messages.\
+                 filter(Message.labels.any(Label.id == label.id)).\
+                 with_entities(Message.article_id).\
+                 order_by(Message.id.asc()).\
+                 all(), ())
+    all_mids = sum(label.messages.\
+                   filter(or_(Message.article_id >= start_aid,
+                              Message.modified < timestamp)).\
+                   with_entities(Message.article_id).\
+                   order_by(Message.id.asc()).\
+                   all(), ())
+    start_article = all_mids[0]
+
+    anums = set(range(min(start_aid, start_article), max_aid + 1))
+    anums2 = set(range(min_aid, max_aid + 1))
+
+    if timestamp > datetime.fromtimestamp(0):
         unseen = set(sum(label.messages.
                          with_entities(Message.article_id).
                          filter(Message.date > timestamp).
@@ -71,9 +77,9 @@ point (messages received after the timestamp are nuseen).
         unseen = set(unread)
 
     qtime = time.time()
-    read = anums - set(unread)
+    read = anums2 - set(unread)
     unexist = anums - set(all_mids)
-    
+
     rtime = time.time()
     marks = {'start-article': start_article,
              'active': (min_aid, max_aid),
@@ -90,7 +96,7 @@ point (messages received after the timestamp are nuseen).
     print('set    time: %7.2f' % (rtime - qtime))
     print('range  time: %7.2f' % (ftime - rtime))
     print('serial time: %7.2f' % (etime - ftime))
-    
+
     return xx
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/marks/')
