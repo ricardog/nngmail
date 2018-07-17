@@ -54,6 +54,8 @@ point (messages received after the timestamp are nuseen).
     unread = sum(Label.query.filter_by(name='UNREAD').\
                  filter_by(account=label.account).one().messages.\
                  filter(Message.labels.any(Label.id == label.id)).\
+                 filter(or_(Message.article_id >= start_aid,
+                            Message.modified < timestamp)).\
                  with_entities(Message.article_id).\
                  order_by(Message.id.asc()).\
                  all(), ())
@@ -66,7 +68,6 @@ point (messages received after the timestamp are nuseen).
     start_article = all_mids[0]
 
     anums = set(range(min(start_aid, start_article), max_aid + 1))
-    anums2 = set(range(min_aid, max_aid + 1))
 
     if timestamp > datetime.fromtimestamp(0):
         unseen = set(sum(label.messages.
@@ -77,7 +78,7 @@ point (messages received after the timestamp are nuseen).
         unseen = set(unread)
 
     qtime = time.time()
-    read = anums2 - set(unread)
+    read = anums - set(unread)
     unexist = anums - set(all_mids)
 
     rtime = time.time()
@@ -90,14 +91,14 @@ point (messages received after the timestamp are nuseen).
              },
     }
     ftime = time.time()
-    xx = jsonify(marks)
+    serialized = jsonify(marks)
     etime = time.time()
     print('query  time: %7.2f' % (qtime - stime))
     print('set    time: %7.2f' % (rtime - qtime))
     print('range  time: %7.2f' % (ftime - rtime))
     print('serial time: %7.2f' % (etime - ftime))
 
-    return xx
+    return serialized
 
 @api_bp.route(acct_nick_base + '/labels/<string:label>/marks/')
 def marks_by_name(nickname, label):

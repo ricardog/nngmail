@@ -782,10 +782,17 @@ but I may implement support for other marks in the future."
       (gnus-set-active gnus-group active)
       (setq args (append args `((fast . ,(1- start-article))))))
     (let ((smarks (nngmail-fetch-resource-url
-		   (concat base-url "?" (args-to-url-args args)))))
+		   (concat base-url "?" (args-to-url-args args))))
+	  read)
       (setq start-article (plist-get smarks 'start-article))
       (setq active (vector-to-list (plist-get smarks 'active)))
-      (gnus-info-set-read info (vector-to-list (plist-get smarks 'read)))
+      (setq read (vector-to-list (plist-get smarks 'read)))
+      (when (> start-article 1)
+	(setq read (gnus-range-nconcat (gnus-sorted-range-intersection
+					(cons 1 (1- start-article))
+					(gnus-info-read info))
+				       read)))
+      (gnus-info-set-read info read)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
       (loop for (k v) on (plist-get smarks 'marks) by (function cddr)
 	    do
