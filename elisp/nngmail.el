@@ -765,31 +765,42 @@ structure with marks from the server, c.f. Info node `(Gnus)
 Group Info'.  Currently this propagates read and unexist marks,
 but I may implement support for other marks in the future."
   (message (format "in nngmail-request-update-info for %s" group))
-  (let* ((timestamp (gnus-group-timestamp
-		     (format "nngmail+%s:%s" account group)))
-	 (args (or (and timestamp
-			(format "?timestamp_low=%d&timestamp_high=%d"
-				(elt timestamp 1) (elt timestamp 0)))
-		    "?"))
-	 (url (format "%s%s"
-		      (nngmail-get-group-marks-url account group)
-		      args))
-	 (smarks (nngmail-fetch-resource-url url))
-	 (marks (gnus-info-marks info)))
-    (gnus-info-set-read info (vector-to-list (plist-get smarks 'read)))
-    (when (not (assq 'unexist marks))
-      (push (cons 'unexist nil) marks))
-    (loop for (k v) on smarks by (function cddr)
-          do
-	  (let ((new-list (vector-to-list v)))
-	    (when (assoc k marks)
-	      (when timestamp
+  (let ((gnus-group (gnus-info-group info))
+	(active (cdr (assq 'active (gnus-info-params info))))
+	(timestamp (gnus-group-timestamp
+			(gnus-info-group info)))
+	(marks (gnus-info-marks info))
+	(base-url (nngmail-get-group-marks-url account group))
+	(start-article 1)
+	(args ()))
+    (when timestamp
+      (setq args (append args `((timestamp_low . ,(elt timestamp 1))
+				(timestamp_high . ,(elt timestamp 0))))))
+    (when active
+      (setq start-article (cdr active))
+      (message (format "  fast enabled (%d)" start-article))
+      (gnus-set-active gnus-group active)
+      (setq args (append args `((fast . ,(1- start-article))))))
+    (let ((smarks (nngmail-fetch-resource-url
+		   (concat base-url "?" (args-to-url-args args)))))
+      (setq start-article (plist-get smarks 'start-article))
+      (setq active (vector-to-list (plist-get smarks 'active)))
+      (gnus-info-set-read info (vector-to-list (plist-get smarks 'read)))
+      (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
+      (loop for (k v) on (plist-get smarks 'marks) by (function cddr)
+	    do
+	    (let ((new-list (vector-to-list v)))
+	      (when (not (assoc k marks))
+		(push (cons k nil) marks))
+	      (when (> start-article 1)
 		(setq new-list (gnus-range-nconcat
-				(cdr (assoc k marks))
+				(gnus-sorted-range-intersection
+				 (cons 1 (1- start-article))
+				 (cdr (assoc k marks)))
 				new-list)))
-	      (setcdr (assoc k marks) new-list))))
-	    ;(push (cons k new-list) marks)))
-    (gnus-info-set-marks info marks t)
+	      (setcdr (assq k marks) new-list)))
+      (gnus-group-set-parameter info 'active (gnus-active gnus-group))
+      (gnus-info-set-marks info marks t))
     ))
 
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences

@@ -40,48 +40,49 @@ point (messages received after the timestamp are nuseen).
     min_aid, max_aid = label.messages.\
         with_entities(func.min(Message.article_id),
                       func.max(Message.article_id)).one()
-    unread = set(sum(Label.query.filter_by(name='UNREAD').\
-                     filter_by(account=label.account).one().messages.\
-                     filter(Message.labels.any(Label.id == label.id)).\
-                     with_entities(Message.article_id).\
-                     order_by(Message.id.asc()).\
-                     all(), ()))
-    anums = set(range(1, max_aid + 1))
+    start_aid = min(int(request.args.get('fast', '1')), max_aid)
+
+    unread = sum(Label.query.filter_by(name='UNREAD').\
+                 filter_by(account=label.account).one().messages.\
+                 filter(Message.labels.any(Label.id == label.id)).\
+                 filter(Message.article_id >= start_aid).\
+                 with_entities(Message.article_id).\
+                 order_by(Message.id.desc()).\
+                 all(), ())[::-1]
+    all_mids = sum(label.messages.\
+                   filter(Message.article_id >= start_aid).\
+                   with_entities(Message.article_id).\
+                   order_by(Message.id.desc()).\
+                   all(), ())[::-1]
+    start_article = all_mids[0]
+
+    anums = set(range(start_aid, max_aid + 1))
 
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
-        all_mids = set(sum(label.messages.\
-                           with_entities(Message.article_id).\
-                           filter(Message.date > timestamp).\
-                           order_by(Message.id).\
-                           all(), ()))
-        unseen = set(sum(label.messages.\
-                         with_entities(Message.article_id).\
-                         filter(Message.date > timestamp).\
+        unseen = set(sum(label.messages.
+                         with_entities(Message.article_id).
+                         filter(Message.date > timestamp).
                          order_by(Message.id.asc()).all(), ()))
-        min_aid = Message.query.\
-            with_entities(Message.article_id).\
-            filter(Message.date <= timestamp).\
-            order_by(Message.id.desc()).limit(1).scalar()
-        anums2 = set(range(min_aid, max_aid + 1))
     else:
-        all_mids = set(sum(label.messages.\
-                           with_entities(Message.article_id).\
-                           order_by(Message.id).\
-                           all(), ()))
-        anums2 = anums
-        unseen = unread
+        unseen = set(unread)
+
     qtime = time.time()
-    read = anums - unread
-    unexist = anums2 - all_mids
+    read = anums - set(unread)
+    unexist = anums - set(all_mids)
     
     rtime = time.time()
-    marks = {'unseen': find_ranges(unseen),
+    marks = {'start-article': start_article,
+             'active': (min_aid, max_aid),
              'read': find_ranges(read),
-             'unexist': find_ranges(unexist)}
+             'marks': {
+                 'unseen': find_ranges(unseen),
+                 'unexist': find_ranges(unexist)
+             },
+    }
     ftime = time.time()
     xx = jsonify(marks)
     etime = time.time()
