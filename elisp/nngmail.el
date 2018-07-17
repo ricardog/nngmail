@@ -837,7 +837,7 @@ action."
 	  (when (and (eq action 'add)
 		     (member "-UNREAD" labels))
 	    (push (nngmail-request-set-mark
-		   group `((,range del ('unread))) server)
+		   group `((,range del (unread))) server)
 		  failures)
 	    (setq labels (delete "-UNREAD" labels)))
 	  (when (and (eq action 'del)
