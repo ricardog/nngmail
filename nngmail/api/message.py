@@ -3,6 +3,7 @@ import urllib
 import click
 from flask import abort, jsonify, make_response, render_template, request
 from flask.views import MethodView
+from sqlalchemy import exc
 from sqlalchemy.orm import undefer
 
 from nngmail import db, get_sync
@@ -128,14 +129,15 @@ class MessageAPI(MethodView):
             return make_response(jsonify({'error': 'Message not found'}),
                                  404)
         sync = get_sync(Account.query.get(account_id))
+        session = db.session()
         for msg in messages:
-            resp = sync.remote_delete(msg.google_id)
+            resp = sync.trash(msg)
             if resp:
                 click.echo('remote update failed')
                 abort(resp[0], resp[1]),
-            db.session().delete(msg)
+            session.add(msg)
         try:
-            db.session().commit()
+            session.commit()
         except exc.SQLAlchemyError as ex:
                 abort(500, ex)
         return jsonify({'result': True})
