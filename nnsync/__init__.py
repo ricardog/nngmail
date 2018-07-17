@@ -10,6 +10,7 @@ import threading
 import click
 from flask.logging import default_handler
 import httplib2
+import sqlite3
 from tqdm import tqdm
 
 from . import local
@@ -161,7 +162,7 @@ labels do change.
         """Delete a message from local storage."""
         self.sql3.delete(gids)
 
-    def remote_batch_update(self, ids, add_labels, rm_labels):
+    def remote_batch_update(self, gids, add_labels, rm_labels):
         """Update a set of message in Gmail.
 
 Only label updates are possible.
@@ -169,7 +170,7 @@ Only label updates are possible.
         """
         if not self.gmail.writable:
             return None
-        return self.gmail.update_messages(ids, add_labels, rm_labels)
+        return self.gmail.update_messages(gids, add_labels, rm_labels)
 
     def remote_update(self, id, labels):
         """Update a single message at the remote server."""
@@ -379,7 +380,8 @@ commands.
                 except (ConnectionResetError,
                         httplib2.ServerNotFoundError,
                         TimeoutError, socket.timeout,
-                        OSError) as ex:
+                        OSError,
+                        sqlite3.OperationalError) as ex:
                     ## Likely the connection died while talking to
                     ## or trying to establish a connection with the
                     ## server.  Go back to sleep and hope we have
