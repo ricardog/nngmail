@@ -9,7 +9,7 @@ local:
     max_size: 5M
 gmail:
   num_workers: 1
-  poll_interval: 120
+  poll_interval: 60
   client_secrets: data/client-secret.json
   batch_size: 100
   min_batch_size: 20
