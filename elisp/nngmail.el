@@ -741,7 +741,7 @@ causes a bit of complexity when dealing with updating marks.")
 (deffoo nngmail-retrive-groups (groups &optional server)
   "Retrieve information for GROUPS.
 
-This calls `nngmailrequest-list' for SERVER and returns 'active
+This calls `nngmail-request-list' for SERVER and returns 'active
 to Gnus can make sense of the data."
   (message (format "in nngmail-retrieve-group"))
   (nngmail-request-list server)
@@ -975,6 +975,29 @@ things."
 			nil)))
 		  articles)))
   )
+
+(deffoo nngmail-request-group-description (group &optional server)
+  "Return a brief description of GROUP in SERVER."
+  (with-current-buffer nntp-server-buffer
+    (erase-buffer)
+    (insert (format "%s\tMessages tagged %s in account %S <%s>\n"
+		    group group server
+		    (nngmail-get-account-email server))))
+  t)
+
+(deffoo nngmail-request-list-newsgroups (&optional server)
+  "Return a shodrt description of all groups available."
+  (when (not server)
+    (setq server nngmail-last-account))
+  (let ((email (nngmail-get-account-email server)))
+    (with-current-buffer nntp-server-buffer
+      (erase-buffer)
+      (maphash (lambda (group data)
+		 (insert (format
+			  "%s\tMessages tagged %s in account %S <%s>\n"
+			  group group server email)))
+	       (nngmail-get-account-groups server))))
+  t)
 
 (deffoo nngmail-request-move-article (article group server accept-form
 					      &optional last)
