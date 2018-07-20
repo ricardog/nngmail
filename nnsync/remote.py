@@ -217,7 +217,7 @@ between the two endpoints.
         "Authorize the service to access the user's mailbox."
         if not self.service:
             self.creds = self.get_credentials()
-            http = self.creds.authorize(Http(timeout=1.0))
+            http = self.creds.authorize(Http(timeout=10.0))
             self.service = build('gmail', 'v1', http=http)
         assert self.service is not None
 
@@ -457,3 +457,13 @@ Query string (query) is further limited to messages with matching labels
         except errors.HttpError as ex:
             print('An error occurred: %s' % ex)
         return []
+
+    def reset_http(self):
+        """Reset the http object.  
+
+If we don't reset the http object, the bad connection hangs around for a
+while and causes subsequent connection attempts to fail--even if the
+server is now reachable.
+
+        """
+        self.service = None

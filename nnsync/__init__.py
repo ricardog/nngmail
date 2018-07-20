@@ -388,6 +388,7 @@ commands.
                     ## better luck next time.
                     logger.info('%s: connection error: abort pull: %s' %
                                 (me.nickname, ex))
+                    me.gmail.reset_http()
                     pass
             logger.info("%s: stop sync" % me.nickname)
 
