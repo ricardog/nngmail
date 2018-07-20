@@ -960,8 +960,15 @@ backend since new (unread) mail will appear in INBOX."
 (deffoo nngmail-request-expire-articles (articles &optional group server force)
   "Expire ARTICLES in optional GROUP and SERVER.
 
-Make a DELETE request for each article and let the server handle
-things."
+Make a DELETE request for each article and let the proxy handle
+things.  Note that the proxy turns the DELETE into a Gmail
+trash() request (we never actually delete messages anywhere).
+
+Do the expire one at a time because Gmail does not provide a bulk
+trash() and the bulk of the time is spent talking to Gmail.  By
+handling one message per request we can more easily keep track of
+errors.
+"
   (message (format "in nngmail-request-expire-articles %s" group))
   (when (not server)
     (setq server nngmail-last-account))
