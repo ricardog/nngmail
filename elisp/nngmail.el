@@ -757,6 +757,13 @@ to Gnus can make sense of the data."
   "Convert vector VEC to a list."
   (cl-map 'list #'v2l vec))
 
+(defun merge-ranges (start lower upper)
+  "Combine ranges LOWER and UPPER by taking the ranges below START
+from LOWER and ranges above START from UPPER"
+  (gnus-range-nconcat
+   (gnus-sorted-range-intersection (cons 1 (1- start)) lower)
+   upper))
+
 (deffoo nngmail-update-info (group account info)
   "Update the GROUP info structure.
 
@@ -788,10 +795,7 @@ but I may implement support for other marks in the future."
       (setq active (vector-to-list (plist-get smarks 'active)))
       (setq read (vector-to-list (plist-get smarks 'read)))
       (when (> start-article 1)
-	(setq read (gnus-range-nconcat (gnus-sorted-range-intersection
-					(cons 1 (1- start-article))
-					(gnus-info-read info))
-				       read)))
+	(setq read (merge-ranges start-article (gnus-info-read info) read)))
       (gnus-info-set-read info read)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
       (loop for (k v) on (plist-get smarks 'marks) by (function cddr)
@@ -800,11 +804,9 @@ but I may implement support for other marks in the future."
 	      (when (not (assoc k marks))
 		(push (cons k nil) marks))
 	      (when (> start-article 1)
-		(setq new-list (gnus-range-nconcat
-				(gnus-sorted-range-intersection
-				 (cons 1 (1- start-article))
-				 (cdr (assoc k marks)))
-				new-list)))
+		(setq new-list (merge-ranges start-article
+					     (cdr (assoc k marks))
+					     new-list)))
 	      (setcdr (assq k marks) new-list)))
       (gnus-group-set-parameter info 'active (gnus-active gnus-group))
       (gnus-info-set-marks info marks t))
