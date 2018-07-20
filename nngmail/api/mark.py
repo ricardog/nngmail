@@ -18,7 +18,7 @@ Each range consists of either a (low, high) tuple, or a single number.
 
     """
     ranges = []
-    for _, g in groupby(enumerate(seq), lambda x: x[0] - x[1]):
+    for _, g in groupby(enumerate(sorted(seq)), lambda x: x[0] - x[1]):
         group = tuple(map(itemgetter(1), g))
         #group = list(map(int, group))
         if group[0] == group[-1]:
