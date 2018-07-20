@@ -150,14 +150,32 @@ Read the list of selected/marked candidates from
 	 (nnir-group-spec . ((,srv (,grp)))))))
   )
   
+(defun helm-nngmail-group-by-group (condidates)
+  "Group a list of CANDIDATES by server and group."
+  (let ((ht (make-hash-table :test 'equal)))
+    (dolist (candidate candidates)
+      (let ((group (helm-nngmail-candidate-group candidate))
+	    (id (cdr (assq 'article-id candidate))))
+	(push id (gethash group ht ()))))
+    ht))
 
-(defun helm-nngmail-action-mark-read (candidate)
-"Handle mark as read actions for helm buffers."
-  (message (format "mark read nngmail+%s:%s %d"
-		   (cdr (assq 'server candidate))
-		   (cdr (assq 'group candidate))
-		   (cdr (assq  'id candidate))))
-  )
+(defun helm-nngmail-action-mark-read (candidates)
+  "Handle mark as read actions for helm buffers."
+  (message "helm-nngmail-action-mark-read")
+  (setq candidates (helm-marked-candidates :all-sources t))
+  (let ((ht (helm-nngmail-group-by-group candidates)))
+    (maphash (lambda (key articles)
+	       (let ((server (car (last (split-string
+					 (gnus-group-server key)
+					 ":"))))
+		     (group (gnus-group-short-name key))
+		     (range (gnus-compress-sequence articles)))
+		 (nngmail-request-set-mark group
+					   `((,range add (read)))
+					   server))
+	       )
+	     ht)
+    ))
 
 (defun helm-nngmail-action-expire (candidate)
 "Handle expire actions for helm buffers."
