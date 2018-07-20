@@ -3,6 +3,7 @@ from datetime import datetime
 import enum
 import zlib
 
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm.exc import NoResultFound
@@ -203,7 +204,8 @@ label_association = db.Table('label_association',
     db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
               nullable=False),
     db.Column('message_id', db.Integer, db.ForeignKey('message.id'),
-              index=True, nullable=False)
+              index=True, nullable=False),
+    UniqueConstraint('label_id', 'message_id', name='mid_1')
 )
 
 class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
