@@ -69,9 +69,9 @@ class MessageAPI(MethodView):
             return make_response(jsonify({'error':
                                           'Specify add_labels or rm_labels'}),
                                  400)
-        added = [Label.query.filter_by(name=name).first_or_404()
+        added = [account.labels.filter_by(name=name).first_or_404()
                  for name in request.json.get('add_labels', []) or []]
-        removed = [Label.query.filter_by(name=name).first_or_404()
+        removed = [account.labels.filter_by(name=name).first_or_404()
                    for name in request.json.get('rm_labels', []) or []]
 
         sync = get_sync(Account.query.get(account_id))

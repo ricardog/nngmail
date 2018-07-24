@@ -82,7 +82,7 @@ This is done to avoid querying the Labels table all the time.
         """
         self.label_map = {}
         self.label_imap = {}
-        for label in Label.query.filter_by(account=self.account).all():
+        for label in self.account.labels.all():
             self.label_map[label.gid] = label
             self.label_imap[label.id] = label.gid
 
@@ -150,7 +150,7 @@ more than one account.
         gids = sorted(gids, key=lambda gid: int(gid, 16))
         for chunk in chunks(gids, 10000):
             if skip_ok:
-                exist = sum(Message.query.\
+                exist = sum(self.account.messages.\
                             filter(Message.google_id.in_(chunk)).\
                             with_entities(Message.google_id).all(), ())
                 chunk = list(set(chunk) - set(exist))
@@ -158,9 +158,9 @@ more than one account.
                     ## Skip this chunk if all messages already exist
                     continue
             with db.engine.begin() as connection:
-                current_id = Message.query.\
+                current_id = self.account.messages.\
                     with_entities(db.func.max(Message.article_id)).\
-                    filter_by(account_id=self.account.id).first()[0] or 0
+                    first()[0] or 0
                 aids = range(current_id + 1, current_id + 1 + len(chunk))
                 values = [{'article_id': aid, 'google_id': gid,
                            'account_id': self.account.id, 'message_id': '',
@@ -314,8 +314,7 @@ This function is rather ineffcient.
     def all_ids(self):
         """Return all Google id's in the database."""
         return [m.google_id for m in
-                Message.query.options(load_only('google_id')).\
-                filter_by(account=self.account).all()]
+                self.account.messages.options(load_only('google_id')).all()]
 
     def find(self, ids, undefer=False):
         """Find messages by id.
@@ -327,8 +326,7 @@ When undefer is True, read the raw message body (if available).
             return
         if '__getitem__' not in dir(ids):
             ids = (ids, )
-        query = Message.query.filter(and_(Message.id.in_(ids),
-                                          Message.account == self.account))
+        query = self.account.messages.filter(Message.id.in_(ids))
         if undefer:
             query = query.undefer('raw')
         return query.all()
@@ -339,8 +337,7 @@ When undefer is True, read the raw message body (if available).
             return
         if '__getitem__' not in dir(gids):
             gids = (gids, )
-        return Message.query.filter(and_(Message.google_id.in_(gids),
-                                         Message.account == self.account))
+        return self.account.messages.filter(Message.google_id.in_(gids))
 
     def find_by_gid(self, gids):
         """Find messages by Google id."""
@@ -363,19 +360,16 @@ When undefer is True, read the raw message body (if available).
             td = datetime.fromtimestamp(0)
         else:
             td = datetime.now() - timedelta(days=self.options.cache_timeout)
-        query = Message.query.with_entities(Message.id).\
-                filter(or_(Message.date > td,
-                           Message.modified > td)).\
-                filter(Message.account == self.account)
+        query = self.account.messages.with_entities(Message.id).\
+                filter(or_(Message.date > td, Message.modified > td))
         return sum(query.all(), ())
 
     def expire_cache(self):
         """Remove message body for messages that have expired."""
         cacheable = self.find_cacheable()
-        query = Message.query.\
+        query = self.account.messages.\
                 filter(Message._raw.isnot(None)).\
-                filter(~Message.id.in_(cacheable)).\
-                filter(Message.account == self.account)
+                filter(~Message.id.in_(cacheable))
         for message in query.all():
             message.raw = None
         db.session.commit()
@@ -386,16 +380,14 @@ When undefer is True, read the raw message body (if available).
 This happens when the message gets deleted in Gmail.
 
         """
-        query = Message.query.filter(Message.google_id.in_(gids)).\
-            filter_by(account=self.account).\
+        query = self.account.messages.filter(Message.google_id.in_(gids)).\
             delete(synchronize_session=False)
         db.session.commit()
 
     def __set_kv(self, key, value):
         """Store a key, value tuple in the database."""
         session = db.session()
-        kv = KeyValue.query.filter_by(key=key).\
-            filter_by(account=self.account).first()
+        kv = self.account.key_value.filter_by(key=key).first()
         if None and kv:
             ## Store the history of history_id for debugging purposes
             kv.value = value
@@ -406,9 +398,8 @@ This happens when the message gets deleted in Gmail.
 
     def __get_kv(self, key):
         """Retrieve a key, value tuple from the database."""
-        kv = KeyValue.query.filter_by(key=key).\
-            filter_by(account=self.account).order_by(KeyValue.id.desc()).\
-            first()
+        kv = self.account.key_value.filter_by(key=key).\
+            order_by(KeyValue.id.desc()).first()
         if kv:
             return kv.value
         return None

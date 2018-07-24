@@ -97,7 +97,8 @@ class KeyValue(db.Model):
                            index=True, nullable=False)
 
     account = db.relationship('Account',
-                              backref=backref('keys', cascade='all,delete'))
+                              backref=backref('key_value', lazy='dynamic',
+                                              cascade='all,delete'))
 
 class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
@@ -106,7 +107,7 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     writable = db.Column(db.Boolean, default = False)
     can_send = db.Column(db.Boolean, default = False)
 
-    omit = ('messages', 'threads', 'labels', 'keys')
+    omit = ('messages', 'threads', 'labels', 'key_value')
 
     @db.validates('email')
     def validates_email(self, key, email):
@@ -220,7 +221,8 @@ class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
     gid = db.Column(db.String)
 
     account = db.relationship('Account',
-                              backref=backref('labels', cascade='all,delete'))
+                              backref=backref('labels', cascade='all,delete',
+                                              lazy='dynamic'))
     messages = db.relationship('Message', secondary=label_association,
                                lazy='dynamic', passive_deletes=True,
                                back_populates='labels')
@@ -306,7 +308,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
     modified = db.Column(db.DateTime)
 
     account = db.relationship('Account',
-                              backref=backref('messages',
+                              backref=backref('messages', lazy='dynamic',
                                               cascade='all,delete'))
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
