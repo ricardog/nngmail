@@ -97,7 +97,8 @@ mechanisms.
         needed = tuple(map(lambda m: m.google_id,
                            filter(lambda m: m.raw is None, msgs)))
         if self.gmail.reachable():
-            logger.info('%s: reading %d messages' % (self.nickname, len(needed)))
+            logger.info('%s: reading %d messages' % (self.nickname,
+                                                     len(needed)))
             bar = self.bar(leave=True, total=len(needed),
                            desc="caching messages")
             for batch in self.gmail.get_messages(needed, format='raw'):
@@ -293,6 +294,7 @@ recently, do a full update.
         logger.info('%s: new historyId: %d' % (self.nickname, hid))
         self.sql3.set_history_id(hid)
         self.read(self.sql3.gid_to_id(tuple(added.keys())))
+        logger.info('%s: sync complete' % self.nickname)
 
     def full_pull(self):
         """Do a full update on the account.

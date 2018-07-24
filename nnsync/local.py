@@ -3,6 +3,7 @@
 import collections
 from datetime import datetime, timedelta
 import email
+import logging
 import re
 
 from options import Options, OptionsClass
@@ -19,6 +20,7 @@ from nngmail.models import ToAddressee, CcAddressee, BccAddressee
 import pdb
 
 RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
+logger = logging.getLogger('nnsync')
 
 class Sqlite3(OptionsClass):
     """Class for storing message metadata in a local sqlite3 database.
@@ -305,6 +307,9 @@ This function is rather ineffcient.
             else:
                 obj.labels = []
             obj.modified = datetime.now()
+            logger.info('%s: update: (%d, %d) -> %s' %
+                        (self.options.nickname, obj.id, obj.article_id,
+                         ', '.join(obj.label_names)))
         session.commit()
 
     def commit(self):
