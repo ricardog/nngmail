@@ -18,7 +18,7 @@ class QueryAPI(MethodView):
         query = request.args.get('q', None)
         base = Message.query.filter_by(account_id=account_id).\
             join(label_association).join(Label).\
-            with_entities(Message.id, Label.name).\
+            with_entities(Message.article_id, Label.name).\
             order_by(Message.id.desc())
         if labels:
             base = base.filter(Label.name.in_(labels))
