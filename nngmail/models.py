@@ -161,7 +161,9 @@ class Contact(UniqueMixin, db.Model, Serializeable):
                             db.func.lower(email))
 
     def __repr__(self):
-        return '%s <%s>' % (self.name, self.email)
+        if self.name:
+            return '%s <%s>' % (self.name, self.email)
+        return '<%s>' % self.email
 
 class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
