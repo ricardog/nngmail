@@ -43,33 +43,34 @@ point (messages received after the timestamp are nuseen).
                       func.max(Message.article_id)).one()
     start_aid = min(int(request.args.get('fast', '1')), max_aid)
 
+    base_query = label.messages.\
+                 with_entities(Message.article_id).\
+                 order_by(Message.id.asc())
     if ('timestamp_low' in request.args and
         'timestamp_high' in request.args):
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
+        query = base_query.filter(or_(Message.article_id >= start_aid,
+                                      Message.modified >= timestamp))
+
     else:
-        timestamp = datetime.fromtimestamp(0)
+        timestamp = None
+        query = base_query.filter(Message.article_id >= start_aid)
+
+    all_mids = sum(query.all(), ())
+    start_article = 1 if start_aid == 1 else all_mids[0]
+    anums = set(range(start_article, max_aid + 1))
 
     unread = sum(Label.query.filter_by(name='UNREAD').\
                  filter_by(account=label.account).one().messages.\
                  filter(Message.labels.any(Label.id == label.id)).\
-                 filter(or_(Message.article_id >= start_aid,
-                            Message.modified < timestamp)).\
+                 filter(Message.article_id >= start_aid).\
                  with_entities(Message.article_id).\
                  order_by(Message.id.asc()).\
                  all(), ())
-    all_mids = sum(label.messages.\
-                   filter(or_(Message.article_id >= start_aid,
-                              Message.modified < timestamp)).\
-                   with_entities(Message.article_id).\
-                   order_by(Message.id.asc()).\
-                   all(), ())
-    start_article = all_mids[0]
-
-    anums = set(range(min(start_aid, start_article), max_aid + 1))
-
-    if timestamp > datetime.fromtimestamp(0):
+    
+    if timestamp:
         unseen = set(sum(label.messages.
                          with_entities(Message.article_id).
                          filter(Message.date > timestamp).
