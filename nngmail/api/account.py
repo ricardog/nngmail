@@ -1,4 +1,4 @@
-from flask import abort, jsonify, make_response, request
+from flask import abort, jsonify, make_response, request, url_for
 from flask.views import MethodView
 from sqlalchemy import exc
 
@@ -7,11 +7,17 @@ from nngmail.api import api_bp
 from nngmail.models import Account
 from nngmail.api.utils import acct_base, acct_nick_base
 
+## Add a messages-url property to the JSON reprsentation
+Account.inject({'messages-url': [url_for, '.messages',
+                                 {'nickname': 'nickname',
+                                  '_external': True}]
+                })
+
 class AccountAPI(MethodView):
     def get(self, account_id):
         if not account_id:
             ## Return list
-            return jsonify({'accounts': tuple(Account.query.all())})
+            return jsonify({'accounts': Account.query.all()})
         else:
             ## Return single
             account = Account.query.get(account_id)

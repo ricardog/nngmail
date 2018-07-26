@@ -144,6 +144,10 @@ This list has all the accounts the server we connect to synchs.")
   "Get email of account NICKNAME."
   (nngmail-get-account-x nickname 'email))
 
+(defun nngmail-get-account-messages-url (nickname)
+  "Get email of account NICKNAME."
+  (nngmail-get-account-x nickname 'messages-url))
+
 (defun nngmail-get-account-groups (nickname)
   "Get groups hash table of account NICKNAME."
   (nngmail-get-account-x nickname 'groups))
@@ -656,7 +660,7 @@ to grovel over the response."
 		    (length articles)))
 	 (ids (nngmail-article-ranges (gnus-compress-sequence articles)))
 	 (url (format "%s?%s"
-		      (nngmail-get-group-url account group)
+		      (nngmail-get-account-messages-url account)
 		      (args-to-url-args `((format . "nov")
 					  (article-id . ,ids)))))
 	 (buffer (url-retrieve-synchronously url t)))
