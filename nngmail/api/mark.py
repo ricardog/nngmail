@@ -62,19 +62,15 @@ point (messages received after the timestamp are nuseen).
     start_article = 1 if start_aid == 1 else all_mids[0]
     anums = set(range(start_article, max_aid + 1))
 
-    unread = sum(Label.query.filter_by(name='UNREAD').\
-                 filter_by(account=label.account).one().messages.\
-                 filter(Message.labels.any(Label.id == label.id)).\
-                 filter(Message.article_id >= start_aid).\
+    unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
+                 messages.filter(Message.article_id.in_(all_mids)).\
                  with_entities(Message.article_id).\
-                 order_by(Message.id.asc()).\
                  all(), ())
     
     if timestamp:
         unseen = set(sum(label.messages.
                          with_entities(Message.article_id).
-                         filter(Message.date > timestamp).
-                         order_by(Message.id.asc()).all(), ()))
+                         filter(Message.date >= timestamp).all(), ()))
     else:
         unseen = set(unread)
 
@@ -86,6 +82,7 @@ point (messages received after the timestamp are nuseen).
     marks = {'start-article': start_article,
              'active': (min_aid, max_aid),
              'read': find_ranges(read),
+             'unread': find_ranges(unread),
              'marks': {
                  'unseen': find_ranges(unseen),
                  'unexist': find_ranges(unexist)
