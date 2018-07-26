@@ -209,7 +209,7 @@ default."
 				    nil t nil
 				    helm-nngmail-label-history)
 		 "INBOX")))
-    (helm :sources (helm-source-nngmail-build label t)
+    (helm :sources (helm-source-nngmail-build label (not current-prefix-arg))
 	  :buffer "*helm-nngmail*"
 	  :prompt "Messages matching: "
 	  :history 'helm-nngmail-history-input
