@@ -791,7 +791,7 @@ but I may implement support for other marks in the future."
       (setq start-article (cdr active))
       (message (format "  fast enabled (%d)" start-article))
       (gnus-set-active gnus-group active)
-      (setq args (append args `((fast . ,(1- start-article))))))
+      (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
 	  read)
