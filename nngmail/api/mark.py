@@ -52,7 +52,7 @@ point (messages received after the timestamp are nuseen).
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
         query = base_query.filter(or_(Message.article_id >= start_aid,
-                                      Message.modified >= timestamp))
+                                      Message.date >= timestamp))
 
     else:
         timestamp = None
