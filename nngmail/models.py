@@ -59,16 +59,19 @@ class UniqueMixin(object):
 class Serializeable(object):
     include = []
     omit = []
-
     links = {}
 
-    def serialize(self):
+    def serialize(self, include=[], omit=[], links={}):
+        _include = include if include else self.include
+        _omit = omit if omit else self.omit
+        _links = links if links else self.links
+
         obj = {c: getattr(self, c) for c in
-                filter(lambda c: not self.include or c in self.include,
-                       filter(lambda c: c not in self.omit,
+                filter(lambda c: not _include or c in _include,
+                       filter(lambda c: c not in _omit,
                               inspect(self).attrs.keys()))}
-        if self.links:
-            for key, args in  self.links.items():
+        if _links:
+            for key, args in _links.items():
                 if isinstance(args[2], dict):
                     mapped = dict([(k, getattr(self, v)
                                     if v in dir(self) else v)
@@ -81,7 +84,8 @@ class Serializeable(object):
     @classmethod
     def inject(cls, links, omit=[]):
         cls.links = links
-        #self.omit.extend(omit)
+        cls.links.update(links)
+        #cls.omit.extend(omit)
 
 class TimestampMixin(object):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
