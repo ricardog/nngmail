@@ -145,8 +145,12 @@ This list has all the accounts the server we connect to synchs.")
   (nngmail-get-account-x nickname 'email))
 
 (defun nngmail-get-account-messages-url (nickname)
-  "Get email of account NICKNAME."
+  "Get URL for retrieving messages for account NICKNAME."
   (nngmail-get-account-x nickname 'messages-url))
+
+(defun nngmail-get-account-info-url (nickname)
+  "Get the URL for retriving group information for account NICKNAME."
+  (nngmail-get-account-x nickname 'labels-url))
 
 (defun nngmail-get-account-groups (nickname)
   "Get groups hash table of account NICKNAME."
@@ -195,11 +199,11 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-group-url (nickname group)
   "Get messages URL of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'messages_url))
+  (nngmail-get-group-x nickname group 'messages-url))
 
 (defun nngmail-get-group-marks-url (nickname group)
   "Get messages URL of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'marks_url))
+  (nngmail-get-group-x nickname group 'marks-url))
 
 (defun nngmail-get-group-min (nickname group)
   "Get min article number in GROUP for account NICKNAME."
@@ -387,8 +391,8 @@ all groups.  Gnus-related functions store the hash table in
 `nngmail-servers' for fast access."
   (message (format "in nngmail-get-groups for %s" server))
   (let* ((groups (nngmail-get-account-groups server))
-	 (resource (nngmail-fetch-resource 'label server nil
-					   '((format . "info"))))
+	 (resource (nngmail-fetch-resource-url
+		    (nngmail-get-account-info-url server)))
 	 (data (plist-get resource 'labels))
 	 (tmp ()))
     (seq-map
