@@ -10,7 +10,11 @@ from nngmail.api.utils import acct_base, acct_nick_base
 ## Add a messages-url property to the JSON reprsentation
 Account.inject({'messages-url': [url_for, '.messages',
                                  {'nickname': 'nickname',
-                                  '_external': True}]
+                                  '_external': True}],
+                'labels-url': [url_for, '.account_labels',
+                               {'nickname': 'nickname',
+                                'format': 'info',
+                                '_external': True}],
                 })
 
 class AccountAPI(MethodView):
