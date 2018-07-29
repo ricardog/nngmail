@@ -1,6 +1,9 @@
+import time
+
 from flask import abort, jsonify, render_template, request, url_for
 from flask.views import MethodView
 from sqlalchemy import exc
+from sqlalchemy.orm import joinedload
 
 from nngmail import db
 from nngmail.api import api_bp
@@ -19,11 +22,11 @@ class LabelAPI(MethodView):
                                         'min', 'max', 'count'], e)))
                              for e in data)
                 for obj in info:
-                    obj.update({'messages_url':
+                    obj.update({'messages-url':
                                 url_for('.label_messages',
                                         label_id=obj['id'],
                                         _external=True),
-                                'marks_url': url_for('.marks',
+                                'marks-url': url_for('.marks',
                                                      label_id=obj['id'],
                                                      _external=True)
                     })
@@ -89,7 +92,7 @@ def label_by_name(nickname, label):
 def label_named_messages(nickname, label):
     obj = Label.query.filter(Account.nickname == nickname).\
         filter_by(name=label).first_or_404()
-    return label_messages(obj.id)
+    return label_messages(obj.id, None)
 
 @api_bp.route('/labels/<int:label_id>/messages/',
               defaults={'tag': None})
@@ -105,13 +108,22 @@ def label_messages(label_id, tag):
         ids = get_article_ids(request.args['article-id'])
         query = query.filter(Message.article_id.in_(ids))
     else:
-        ## Must appear after the over_by clause
+        ## Must appear after the order_by clause
         query = query.limit(request.args.get('limit', 200))
+    query = query.options(joinedload(Message.sender))
+    stime = time.time()
     messages = query.all()
+    qtime = time.time()
 
     fmt = request.args.get('format', 'json')
     if fmt.lower() == 'nov':
         return render_template('nov.txt', messages=messages)
     if fmt.lower() == 'header':
         return render_template('header.txt', messages=messages)
+    ## Skip attributes that require querying the database twice.
+    messages = [msg.serialize(omit=['to_', 'cc', 'bcc', 'labels'])
+                for msg in messages]
+    etime = time.time()
+    print('query  time: %7.2f' % (qtime - stime))
+    print('serial time: %7.2f' % (etime - qtime))
     return jsonify({'messages': messages})
