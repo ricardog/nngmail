@@ -63,8 +63,8 @@ class Serializeable(object):
     links = {}
 
     def serialize(self, include=[], omit=[], links={}):
-        _include = include if include else self.include
-        _omit = omit if omit else self.omit
+        _include = list(include) + list(self.include)
+        _omit = list(self.omit) + list(omit)
         _links = links if links else self.links
 
         obj = {c: getattr(self, c) for c in
