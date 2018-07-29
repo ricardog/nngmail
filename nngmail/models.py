@@ -4,8 +4,9 @@ import enum
 import zlib
 
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import backref
+from sqlalchemy.orm import backref, deferred
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.inspection import inspect
 
@@ -88,8 +89,14 @@ class Serializeable(object):
         #cls.omit.extend(omit)
 
 class TimestampMixin(object):
-    created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created = db.Column(db.DateTime, nullable=False,
+                        default=datetime.utcnow)
     updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    @declared_attr
+    def __mapper_args__(cls):
+        return {'properties': {'created': deferred(cls.__table__.c.created),
+                               'updated': deferred(cls.__table__.c.updated)}}
 
 class KeyValue(db.Model):
     #__table_args__ = (db.UniqueConstraint('account_id', 'key',
@@ -214,6 +221,8 @@ label_association = db.Table('label_association',
               index=True, nullable=False),
     UniqueConstraint('label_id', 'message_id', name='mid_1')
 )
+ix_lid_mid = db.Index('ix_lid_mid', label_association.c.label_id,
+                      label_association.c.message_id)
 
 class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
     __table_args__ = (db.UniqueConstraint('account_id', 'gid',
@@ -309,8 +318,8 @@ class Message(TimestampMixin, Serializeable, db.Model):
     snippet = db.Column(db.String(200))
     size = db.Column(db.Integer, default=0)
     _raw = db.deferred(db.Column(db.BLOB))
-    modified = db.Column(db.DateTime)
-
+    modified = db.deferred(db.Column(db.DateTime))
+    
     account = db.relationship('Account',
                               backref=backref('messages', lazy='dynamic',
                                               cascade='all,delete'))
@@ -331,7 +340,8 @@ class Message(TimestampMixin, Serializeable, db.Model):
     bccs = association_proxy('bcc', 'contact',
                              creator=lambda c: BccAddressee(contact=c))
 
-    omit = ('_raw', 'raw', 'account', 'thread', 'addressees')
+    omit = ('_raw', 'raw', 'account', 'thread', 'addressees',
+            'created', 'modified', 'updated')
 
     @property
     def __raw(self):
