@@ -68,6 +68,11 @@
 (require 'parse-time)
 (require 'nnmail)
 
+(defun nngmail-flatten-list (list)
+  "Flatten LIST."
+  (apply 'nconc
+	 (mapcar (lambda (x) (if (listp x) x nil)) list)))
+
 (nnoo-declare nngmail)
 (gnus-declare-backend "nngmail" 'mail 'address 'server-marks)
 
@@ -128,9 +133,9 @@ This list has all the accounts the server we connect to synchs.")
   "Get info alist for account NICKNAME."
   (cdr (assoc nickname nngmail-servers)))
 
-(defun nngmail-get-account-x (nickname what)
+(defmacro nngmail-get-account-x (nickname what)
   "Get parameter WHAT for account NICKNAME."
-  (plist-get (nngmail-get-account nickname) what))
+  `(plist-get (nngmail-get-account ,nickname) ,what))
 
 (defun nngmail-get-account-base-url (nickname)
   "Get ID of account NICKNAME."
@@ -189,9 +194,13 @@ This list has all the accounts the server we connect to synchs.")
   "Switch to GROUP in account NICKNAME."
   (nngmail-set-account-x nickname 'group group))
 
-(defun nngmail-get-group-x (nickname group what)
+(defun nngmail-set-account-message (nickname message)
+  "Set the error MESSAGE for account NICKNAME."
+  (nngmail-set-account-x nickname 'message message))
+
+(defmacro nngmail-get-group-x (nickname group what)
   "Get parameter WHAT from GROUP for account NICKNAME."
-  (plist-get (ht-get (nngmail-get-account-groups nickname) group) what))
+  `(plist-get (ht-get (nngmail-get-account-groups ,nickname) ,group) ,what))
 
 (defun nngmail-get-group-id (nickname group)
   "Get ID of GROUP for account NICKNAME."
@@ -349,7 +358,7 @@ URL for the resource."
 			  (format "Connection error fetching %s" url))
 		    (nnheader-report
 		     'nngmail (format "Connection error fetching %s" url))
-		    (setq retval nil))))
+		    )))
 	 (response (if (bufferp buffer)
 		       (safe-parse
 			(nngmail-parse-json buffer)
@@ -715,7 +724,7 @@ requests from the server."
   "Unused."
   (let ((account (or server nngmail-last-account)))
     (if account
-	(nngmail-set-account-message "Read-only server")))
+	(nngmail-set-account-message server "Read-only server")))
   nil)
 
 ;; This function is not needed because the back-end is defined as
@@ -823,7 +832,7 @@ but I may implement support for other marks in the future."
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
 						    &optional dont-insert)
   "FIXME: what is this function for?"
-  (message (format "in nngmail-request-update-infos for %s" group))
+  (message (format "in nngmail-request-update-infos for %s" server))
   ;; Iterate through all groups updating marks in group info.
   nil)
 
@@ -891,7 +900,7 @@ action."
 		  ;; use the return value of this function.
 		  (push range failures)))))
 	  )))
-    (flatten failures)))
+    (nngmail-flatten-list failures)))
 
 (deffoo nngmail-request-update-mark (group article mark)
   "Filter MARK for GROUP.
@@ -1026,7 +1035,7 @@ FIXME: not implemented."
   "Used for respooling?
 
 FIXME: not implemented."
-  (message (format "in nngmail-request-accept-article %d" article))
+  (message (format "in nngmail-request-accept-article %s" group))
   nil)
 
 (deffoo nngmail-request-delete-group (group force &optional server)
@@ -1120,10 +1129,6 @@ source."
       (cons server nil))
     ))
 
-(defun flatten (list)
-  "Flatten LIST."
-  (mapcan (lambda (x) (if (listp x) x nil)) list))
-
 (defun nngmail-get-all-labels ()
   "Return a list of all labels in all accounts.
 
@@ -1134,7 +1139,7 @@ The return list is used to construct the completion list of
     (delq nil
 	  (sort
 	   (delete-dups
-	    (flatten
+	    (nngmail-flatten-list
 	     (mapcar (lambda (server)
 		       (ht-keys (nngmail-get-groups (car server))))
 		     servers)))

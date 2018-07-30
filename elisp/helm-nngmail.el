@@ -150,7 +150,7 @@ Read the list of selected/marked candidates from
 	 (nnir-group-spec . ((,srv (,grp)))))))
   )
 
-(defun helm-nngmail-group-by-group (condidates)
+(defun helm-nngmail-group-by-group (candidates)
   "Group a list of CANDIDATES by server and group."
   (let ((ht (make-hash-table :test 'equal)))
     (dolist (candidate candidates)
@@ -177,7 +177,7 @@ Read the list of selected/marked candidates from
 	     ht)
     ))
 
-(defun helm-nngmail-action-expire (candidate)
+(defun helm-nngmail-action-expire (candidates)
 "Handle expire actions for helm buffers."
   (message "helm-nngmail-action-expire")
   (setq candidates (helm-marked-candidates :all-sources t))
