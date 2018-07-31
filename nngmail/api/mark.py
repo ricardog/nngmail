@@ -59,7 +59,7 @@ point (messages received after the timestamp are nuseen).
         query = base_query.filter(Message.article_id >= start_aid)
 
     all_mids = sum(query.all(), ())
-    start_article = 1 if start_aid == 1 else all_mids[0]
+    start_article = start_aid if start_aid < all_mids[0] else all_mids[0]
     anums = set(range(start_article, max_aid + 1))
 
     unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
