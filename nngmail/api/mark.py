@@ -51,42 +51,84 @@ point (messages received after the timestamp are nuseen).
         low = request.args.get('timestamp_low', 0, int)
         high = request.args.get('timestamp_high', 0, int) << 16
         timestamp = datetime.fromtimestamp(low + high)
-        query = base_query.filter(or_(Message.article_id >= start_aid,
-                                      Message.date >= timestamp))
+        query = base_query.filter(or_(Message.article_id > start_aid,
+                                      Message.created >= timestamp,
+                                      Message.modified >= timestamp))
 
     else:
         timestamp = None
-        query = base_query.filter(Message.article_id >= start_aid)
+        query = base_query.filter(Message.article_id > start_aid)
 
+    ## Find all messages that are either:
+    ##  - Created after last sync, i.e. new
+    ##  - Have an article ID > than what the client knows about
+    ##  - Modified since last sync
     all_mids = sum(query.all(), ())
-    start_article = start_aid if start_aid < all_mids[0] else all_mids[0]
-    anums = set(range(start_article, max_aid + 1))
 
+    ## Find unread messages that are marked as unread in the list above.
     unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
                  messages.filter(Message.article_id.in_(all_mids)).\
                  with_entities(Message.article_id).\
                  all(), ())
+
+    ## Find new article ID's.
+    new_mids = set(filter(lambda aid: aid > start_aid, all_mids))
+    ## Find new unread article ID's.
+    new_unread = set(filter(lambda aid: aid > start_aid, unread))
+
+    ## If there are new articles, compute the new unexist set
+    if new_mids:
+        anum = set(range(start_aid + 1, max_aid + 1))
+        new_unexist = anum - new_mids
+        new_read = anum - new_unread
+    else:
+        new_unexist = set()
+        new_read = set()
+
+    ## Find the old article ID's that need update
+    old_mids = set(filter(lambda aid: aid <= start_aid, all_mids))
+    old_unread = set(filter(lambda aid: aid <= start_aid, unread))
     
+    ## Find any articles that are not in this label and were
+    ## modified since last sync.  They *may* have been in the group
+    ## and hence are candidates from insertion into unexist.
+    if timestamp:
+        removed_query = label.account.messages.\
+                        with_entities(Message.article_id).\
+                        filter(Message.article_id <= start_aid).\
+                        filter(Message.modified >= timestamp).\
+                        filter(~Message.labels.any(Label.id == label_id))
+        #import pdb; pdb.set_trace()
+        add_unexist = set(sum(removed_query.all(), ()))
+    else:
+        add_unexist = set()
+
+    ## Now compute deltas for read and unexist.  We represent this
+    ## as two sets per mark-type; one set is new ID's that should be
+    ## in the set, and the other is ID's that should not be in the set.
+    rm_unexist = old_mids
+    add_read = old_mids - old_unread
+    rm_read = old_unread
+
     if timestamp:
         unseen = set(sum(label.messages.
                          with_entities(Message.article_id).
                          filter(Message.date >= timestamp).all(), ()))
     else:
-        unseen = set(unread)
+        unseen = new_unread
 
     qtime = time.time()
-    read = anums - set(unread)
-    unexist = anums - set(all_mids)
 
     rtime = time.time()
-    marks = {'start-article': start_article,
+    marks = {'start-article': start_aid,
              'active': (min_aid, max_aid),
-             'read': find_ranges(read),
-             'unread': find_ranges(unread),
-             'marks': {
-                 'unseen': find_ranges(unseen),
-                 'unexist': find_ranges(unexist)
-             },
+             'new-read': find_ranges(new_read),
+             'add-read': find_ranges(add_read),
+             'rm-read': find_ranges(rm_read),
+             'new-unexist': find_ranges(new_unexist),
+             'add-unexist': find_ranges(add_unexist),
+             'rm-unexist': find_ranges(rm_unexist),
+             'unseen': find_ranges(unseen),
     }
     ftime = time.time()
     serialized = jsonify(marks)

@@ -807,27 +807,45 @@ but I may implement support for other marks in the future."
       (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
-	  read)
+	  read unexist unseen)
       (setq start-article (plist-get smarks 'start-article))
       (setq active (vector-to-list (plist-get smarks 'active)))
-      (setq read (vector-to-list (plist-get smarks 'read)))
+      (setq read (vector-to-list (plist-get smarks 'new-read)))
+      (setq unexist (vector-to-list (plist-get smarks 'new-unexist)))
+      (setq unseen (vector-to-list (plist-get smarks 'unseen)))
       (when (> start-article 1)
-	(setq read (merge-ranges start-article (gnus-info-read info) read)))
+	(setq read (gnus-range-nconcat
+		    (gnus-add-to-range
+		     (gnus-remove-from-range
+		      (gnus-info-read info)
+		      (vector-to-list (plist-get smarks 'rm-read)))
+		     (gnus-uncompress-range
+		      (vector-to-list (plist-get smarks 'add-read))))
+		    read))
+	(setq unexist (gnus-range-nconcat
+		       (gnus-add-to-range
+			(gnus-remove-from-range
+			 (cdr (assoc 'unexist marks))
+			 (vector-to-list (plist-get smarks 'rm-unexist)))
+			(gnus-uncompress-range
+			 (vector-to-list (plist-get smarks 'add-unexist))))
+		       unexist))
+	(setq unseen (merge-ranges start-article
+				   (cdr (assoc 'unseen marks))
+				   unseen))
+	)
+      (when (not (assoc 'unexist marks))
+	(push (cons 'unexist nil) marks))
+      (when (not (assoc 'unseen marks))
+	(push (cons 'unseen nil) marks))
+
       (gnus-info-set-read info read)
+      (setcdr (assq 'unexist marks) unexist)
+      (setcdr (assq 'unseen marks) unseen)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
-      (loop for (k v) on (plist-get smarks 'marks) by (function cddr)
-	    do
-	    (let ((new-list (vector-to-list v)))
-	      (when (not (assoc k marks))
-		(push (cons k nil) marks))
-	      (when (> start-article 1)
-		(setq new-list (merge-ranges start-article
-					     (cdr (assoc k marks))
-					     new-list)))
-	      (setcdr (assq k marks) new-list)))
       (gnus-group-set-parameter info 'active (gnus-active gnus-group))
       (gnus-info-set-marks info marks t))
-    ))
+      ))
 
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
 						    &optional dont-insert)
