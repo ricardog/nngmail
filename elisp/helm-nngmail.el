@@ -106,6 +106,7 @@ all messages from that group."
 		  (action
 		   ("Read" . helm-nngmail-action-read)
 		   ("Mark read" . helm-nngmail-action-mark-read)
+		   ("Star" . helm-nngmail-action-tick)
 		   ("Delete" . helm-nngmail-action-expire)))))
 	    data)
     ))
@@ -161,9 +162,18 @@ Read the list of selected/marked candidates from
     ht))
 
 (defun helm-nngmail-action-mark-read (candidates)
-  "Handle mark as read actions for helm buffers."
+  "Handle mark as read action for helm CANDIDATES."
   (message "helm-nngmail-action-mark-read")
-  (setq candidates (helm-marked-candidates :all-sources t))
+  (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t) 'read))
+
+(defun helm-nngmail-action-tick (candidates)
+  "Handle tick action for helm CANDIDATES."
+  (message "helm-nngmail-action-tick")
+  (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t) 'tick))
+
+(defun helm-nngmail-action-set-mark (candidates mark)
+  "Set mark MARK for CANDIDATES messages."
+  (message "helm-nngmail-action-mark-read")
   (let ((ht (helm-nngmail-group-by-group candidates)))
     (maphash (lambda (key articles)
 	       (let ((server (car (last (split-string
@@ -172,14 +182,14 @@ Read the list of selected/marked candidates from
 		     (group (gnus-group-short-name key))
 		     (range (gnus-compress-sequence articles)))
 		 (nngmail-request-set-mark group
-					   `((,range add (read)))
+					   `((,range add (,mark)))
 					   server))
 	       )
 	     ht)
     ))
 
 (defun helm-nngmail-action-expire (candidates)
-"Handle expire actions for helm buffers."
+"Handle expire actions for helm CANDIDATES."
   (message "helm-nngmail-action-expire")
   (setq candidates (helm-marked-candidates :all-sources t))
   (let ((ht (helm-nngmail-group-by-group candidates)))
@@ -192,14 +202,6 @@ Read the list of selected/marked candidates from
 	       )
 	     ht)
     ))
-
-(defvar helm-nngmail-actions
-  '(("Read" . (lambda (candidate)
-		(helm-nngmail-action-read candidate)))
-    ("Mark as read" . (lambda (candidate)
-			(helm-nngmail-action-mark-read candidate)))
-    ("Delete" . (lambda (candidate)
-		  (helm-nngmail-action-expire candidate)))))
 
 (defvar helm-nngmail-history-input nil
   "Helm nngmail filter history.")
