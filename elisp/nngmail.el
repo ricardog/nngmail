@@ -829,8 +829,7 @@ but I may implement support for other marks in the future."
 			 (cdr (assoc 'unexist marks))
 			 (vector-to-list (plist-get smarks 'rm-unexist)))
 			(gnus-uncompress-range
-			 (vector-to-list (plist-get smarks 'add-unexist)))
-			)
+			 (vector-to-list (plist-get smarks 'add-unexist))))
 		       unexist))
 	(setq tick (gnus-range-nconcat
 		    (gnus-add-to-range

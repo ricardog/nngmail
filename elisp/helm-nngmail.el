@@ -98,8 +98,9 @@ all messages from that group."
     (mapcar (lambda (srv)
 	      (let* ((account (car srv))
 		     (messages (cdr srv))
-		     (candidates (helm-source-nngmail-get-candidates account
-								     (or group "UNREAD") messages)))
+		     (candidates
+		      (helm-source-nngmail-get-candidates
+		       account (or group "UNREAD") messages)))
 		`((name . ,account)
 		  (candidates . ,candidates)
 		  (multilne . 2)
