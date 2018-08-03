@@ -742,7 +742,7 @@ to be a mail only back end, this function never gets called."
 (defvar nngmail-mark-alist
   '((read "-UNREAD")
     (unread "UNREAD")
-    (tick "IMPORTANT")
+    (tick "STARRED")
     (reply "answered")
     (expire "TRASH")
     (dormant "dormant")
@@ -807,11 +807,12 @@ but I may implement support for other marks in the future."
       (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
-	  read unexist unseen)
+	  read unexist tick unseen)
       (setq start-article (plist-get smarks 'start-article))
       (setq active (vector-to-list (plist-get smarks 'active)))
       (setq read (vector-to-list (plist-get smarks 'new-read)))
       (setq unexist (vector-to-list (plist-get smarks 'new-unexist)))
+      (setq tick (vector-to-list (plist-get smarks 'new-ticked)))
       (setq unseen (vector-to-list (plist-get smarks 'unseen)))
       (when (> start-article 1)
 	(setq read (gnus-range-nconcat
@@ -828,8 +829,17 @@ but I may implement support for other marks in the future."
 			 (cdr (assoc 'unexist marks))
 			 (vector-to-list (plist-get smarks 'rm-unexist)))
 			(gnus-uncompress-range
-			 (vector-to-list (plist-get smarks 'add-unexist))))
+			 (vector-to-list (plist-get smarks 'add-unexist)))
+			)
 		       unexist))
+	(setq tick (gnus-range-nconcat
+		    (gnus-add-to-range
+		     (gnus-remove-from-range
+		      (cdr (assoc 'tick marks))
+		      (vector-to-list (plist-get smarks 'rm-ticked)))
+		     (gnus-uncompress-range
+		      (vector-to-list (plist-get smarks 'add-ticked))))
+		    tick))
 	(setq unseen (merge-ranges start-article
 				   (cdr (assoc 'unseen marks))
 				   unseen))
@@ -838,9 +848,12 @@ but I may implement support for other marks in the future."
 	(push (cons 'unexist nil) marks))
       (when (not (assoc 'unseen marks))
 	(push (cons 'unseen nil) marks))
+      (when (not (assoc 'tick marks))
+	(push (cons 'tick nil) marks))
 
       (gnus-info-set-read info read)
       (setcdr (assq 'unexist marks) unexist)
+      (setcdr (assq 'tick marks) tick)
       (setcdr (assq 'unseen marks) unseen)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
       (gnus-group-set-parameter info 'active (gnus-active gnus-group))
