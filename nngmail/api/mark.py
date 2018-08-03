@@ -65,8 +65,14 @@ point (messages received after the timestamp are nuseen).
     ##  - Modified since last sync
     all_mids = sum(query.all(), ())
 
-    ## Find unread messages that are marked as unread in the list above.
+    ## Find any messages that are marked as unread in the list above.
     unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
+                 messages.filter(Message.article_id.in_(all_mids)).\
+                 with_entities(Message.article_id).\
+                 all(), ())
+
+    ## Find any messages that are marked as starred in the list above.
+    starred = sum(label.account.labels.filter_by(name='STARRED').one().\
                  messages.filter(Message.article_id.in_(all_mids)).\
                  with_entities(Message.article_id).\
                  all(), ())
@@ -75,6 +81,8 @@ point (messages received after the timestamp are nuseen).
     new_mids = set(filter(lambda aid: aid > start_aid, all_mids))
     ## Find new unread article ID's.
     new_unread = set(filter(lambda aid: aid > start_aid, unread))
+    ## Find new starred article ID's.
+    new_starred = set(filter(lambda aid: aid > start_aid, starred))
 
     ## If there are new articles, compute the new unexist set
     if new_mids:
@@ -88,6 +96,7 @@ point (messages received after the timestamp are nuseen).
     ## Find the old article ID's that need update
     old_mids = set(filter(lambda aid: aid <= start_aid, all_mids))
     old_unread = set(filter(lambda aid: aid <= start_aid, unread))
+    old_starred = set(filter(lambda aid: aid <= start_aid, starred))
     
     ## Find any articles that are not in this label and were
     ## modified since last sync.  They *may* have been in the group
@@ -109,6 +118,8 @@ point (messages received after the timestamp are nuseen).
     rm_unexist = old_mids
     add_read = old_mids - old_unread
     rm_read = old_unread
+    add_starred = old_starred
+    rm_starred = old_mids - old_starred
 
     if timestamp:
         unseen = set(sum(label.messages.
@@ -128,6 +139,9 @@ point (messages received after the timestamp are nuseen).
              'new-unexist': find_ranges(new_unexist),
              'add-unexist': find_ranges(add_unexist),
              'rm-unexist': find_ranges(rm_unexist),
+             'new-ticked': find_ranges(new_starred),
+             'add-ticked': find_ranges(add_starred),
+             'rm-ticked': find_ranges(rm_starred),
              'unseen': find_ranges(unseen),
     }
     ftime = time.time()
