@@ -50,6 +50,8 @@ class MessageAPI(MethodView):
     def put(self, account_id, article_id):
         def process_message(message, added, removed):
             for label in added:
+                if label in message.labels:
+                    return message.id
                 message.labels.append(label)
             for label in removed:
                 if label not in message.labels:
@@ -73,8 +75,7 @@ class MessageAPI(MethodView):
                  for name in request.json.get('add_labels', []) or []]
         removed = [account.labels.filter_by(name=name).first_or_404()
                    for name in request.json.get('rm_labels', []) or []]
-
-        sync = get_sync(Account.query.get(account_id))
+        sync = get_sync(account)
         query = Message.query.filter_by(account_id=account_id)
         if account_id and not article_id:
             if 'article-id' not in request.json:
