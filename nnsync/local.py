@@ -19,7 +19,6 @@ from nngmail.models import ToAddressee, CcAddressee, BccAddressee
 
 import pdb
 
-RE_CATEGORY = re.compile(r'^CATEGORY_([AA-Z]+)$')
 logger = logging.getLogger('nnsync')
 
 class Sqlite3(OptionsClass):
@@ -110,9 +109,6 @@ This is done to avoid querying the Labels table all the time.
 Translate Gmail category labels to something that is easier to read.
 
         """
-        m = RE_CATEGORY.match(name)
-        if m:
-            name = 'Inbox:%s' % m.group(1).capitalize()
         session = db.session()
         label = Label.as_unique(session, name=name, gid=gid,
                                 account=self.account)

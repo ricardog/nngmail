@@ -53,12 +53,12 @@ def test_sync_labels(client, sync):
 
     assert Label.query.count() == 21
     label = sync.sql3.get_label('CATEGORY_PROMOTIONS')
-    assert label.name == 'Inbox:Promotions'
+    assert label.name == 'CATEGORY_PROMOTIONS'
     assert sync.sql3.get_label_gid(label.id) == 'CATEGORY_PROMOTIONS'
     label = sync.sql3.get_label('CATEGORY_PERSONAL')
-    assert label.name == 'Inbox:Personal'
+    assert label.name == 'CATEGORY_PERSONAL'
 
-    #label = sync.sql3.get_label('Inbox:Personal')
+    #label = sync.sql3.get_label('CATEGORY_PERSONAL')
     #assert sync.sql3.get_label_gid(label.id) == 'CATEGORY_PERSONAL'
     
 @my_vcr.use_cassette()

@@ -259,18 +259,9 @@ is trying to search (see the documentation for nnir for more details).
 Because the query is passed as-is to Gmail, you can use the usual Gmail
 search tricks.
 
-For now the synchronization exports Gmail-specific labels, like
-*CATEGORY_PERSONAL*.  But it mangles the name in an attempt to make them
-more readable.  Here is the mapping of category names:
-
-| Category          | New label      |
-|-------------------|----------------|
-| CATEGORY_PERSONAL | Inbox:Personal |
-| CATEGORY_SOCIAL   | Inbox:Social   |
-| CATEGORY_FORUMS   | Inbox:Forums   |
-| CATEGORY_UPDATES  | Inbox:Updates  |
-| CATEGORY_PROMOTIO | Inbox:Promotio |
-
+The synchronization does not exports Gmail-assigned category labels,
+like *CATEGORY_PERSONAL*, as groups.  Although there are hooks to export
+them if someone really wanted to.
 
 ## Performance
 

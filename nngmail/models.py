@@ -255,9 +255,11 @@ class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
         return '%s' % self.name
 
     @staticmethod
-    def info(account_id):
+    def info(account_id, skip_categories=True):
         query = Message.query.filter_by(account_id=account_id)
         query = query.join(label_association).join(Label)
+        if skip_categories:
+            query = query.filter(~Label.name.like('CATEGORY_%'))
         query = query.with_entities(Label.id,
                                     Label.name,
                                     Label.gid,

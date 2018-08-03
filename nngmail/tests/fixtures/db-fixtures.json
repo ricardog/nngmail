@@ -80,7 +80,7 @@
         "account_id": 1,
         "gid": "CATEGORY_PERSONAL",
         "id": 1,
-        "name": "Inbox:Personal"
+        "name": "CATEGORY_PERSONAL"
       },
       {
         "account_id": 1,
@@ -92,7 +92,7 @@
         "account_id": 1,
         "gid": "CATEGORY_SOCIAL",
         "id": 3,
-        "name": "Inbox:Social"
+        "name": "CATEGORY_SOCIAL"
       },
       {
         "account_id": 1,
@@ -110,7 +110,7 @@
         "account_id": 1,
         "gid": "CATEGORY_FORUMS",
         "id": 6,
-        "name": "Inbox:Forums"
+        "name": "CATEGORY_FORUMS"
       },
       {
         "account_id": 1,
@@ -146,7 +146,7 @@
         "account_id": 1,
         "gid": "CATEGORY_UPDATES",
         "id": 12,
-        "name": "Inbox:Updates"
+        "name": "CATEGORY_UPDATES"
       },
       {
         "account_id": 1,
@@ -176,7 +176,7 @@
         "account_id": 1,
         "gid": "CATEGORY_PROMOTIONS",
         "id": 17,
-        "name": "Inbox:Promotions"
+        "name": "CATEGORY_PROMOTIONS"
       },
       {
         "account_id": 1,
