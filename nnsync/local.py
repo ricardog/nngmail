@@ -216,7 +216,7 @@ values).
         message_id = headers.get('Message-ID',
                                  headers.get('Message-Id',
                                              '<%s@x.gmail.com>' % msg['id']))
-        data = {'thread_id': thread.id,
+        data = {'thread': thread,
                 'message_id': message_id,
                 'subject': headers.get('Subject',
                                        headers.get('subject', '')),

@@ -26,7 +26,7 @@ evicting cached messages that have expired.
     """
     config = load_config()
     for account in Account.query.all():
-        if account.nickname not in zync:
+        if account.nickname != 'no.name' and account.nickname not in zync:
             gmail = NnSync(account.email, account.nickname, config)
             zync[account.nickname] = gmail.sync()
     #atexit.register(kill_zync)

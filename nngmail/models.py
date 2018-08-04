@@ -108,10 +108,6 @@ class KeyValue(db.Model):
                                                      ondelete='CASCADE'),
                            index=True, nullable=False)
 
-    account = db.relationship('Account',
-                              backref=backref('key_value', lazy='dynamic',
-                                              cascade='all,delete'))
-
 class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
@@ -120,6 +116,21 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     can_send = db.Column(db.Boolean, default = False)
 
     omit = ('messages', 'threads', 'labels', 'key_value')
+
+    key_value = db.relationship('KeyValue', lazy='dynamic',
+                                cascade='delete',
+                                passive_deletes=True,
+                                backref=backref('account'))
+    labels = db.relationship('Label', lazy='dynamic', cascade='delete',
+                             passive_deletes=True,
+                             backref=backref('account'))
+    threads = db.relationship('Thread', lazy='dynamic', cascade='delete',
+                              passive_deletes=True,
+                              backref=backref('account'))
+    messages = db.relationship('Message', lazy='dynamic',
+                               cascade='delete',
+                               passive_deletes=True,
+                               backref=backref('account'))
 
     @db.validates('email')
     def validates_email(self, key, email):
@@ -238,12 +249,9 @@ class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
     name = db.Column(db.String)
     gid = db.Column(db.String)
 
-    account = db.relationship('Account',
-                              backref=backref('labels', cascade='all,delete',
-                                              lazy='dynamic'))
     messages = db.relationship('Message', secondary=label_association,
                                lazy='dynamic', passive_deletes=True,
-                               back_populates='labels')
+                               backref='labels')
     nickname = association_proxy('account', 'nickname')
 
     omit = ('account', 'messages', 'nickname')
@@ -281,12 +289,10 @@ class Thread(UniqueMixin, Serializeable, TimestampMixin, db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('account.id',
                                                      ondelete='CASCADE'),
                            nullable=False)
-    thread_id = db.Column(db.String, index=True)
+    thread_id = db.Column(db.String, index=True, nullable=False)
 
-    account = db.relationship('Account',
-                              backref=backref('threads', cascade='all,delete'))
-    messages = db.relationship('Message', backref='thread',
-                               cascade='all, delete')
+    messages = db.relationship('Message', cascade='all, delete',
+                               backref=backref('thread'))
     senders = association_proxy('messages', 'sender')
     subjects = association_proxy('messages', 'subject')
     dates = association_proxy('messages', 'date')
@@ -331,18 +337,13 @@ class Message(TimestampMixin, Serializeable, db.Model):
     _raw = db.deferred(db.Column(db.BLOB))
     modified = db.deferred(db.Column(db.DateTime))
     
-    account = db.relationship('Account',
-                              backref=backref('messages', lazy='dynamic',
-                                              cascade='all,delete'))
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
     to_ = db.relationship('ToAddressee', cascade='all,delete')
     cc = db.relationship('CcAddressee', cascade='all,delete')
     bcc = db.relationship('BccAddressee', cascade='all,delete')
-    labels = db.relationship('Label', secondary=label_association,
-                             passive_deletes=True,
-                             back_populates='messages')
+
     label_names = association_proxy('labels', 'name')
     tos = association_proxy('to_', 'contact',
                             creator=lambda c: ToAddressee(contact=c))
