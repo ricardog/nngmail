@@ -774,12 +774,26 @@ to Gnus can make sense of the data."
   "Convert vector VEC to a list."
   (cl-map 'list #'v2l vec))
 
-(defun merge-ranges (start lower upper)
+(defun nngmail-merge-ranges (start lower upper)
   "Combine ranges LOWER and UPPER by taking the ranges below START
 from LOWER and ranges above START from UPPER"
   (gnus-range-nconcat
    (gnus-sorted-range-intersection (cons 1 (1- start)) lower)
    upper))
+
+(defun nngmail-apply-range-delta (current new add rm)
+  "Apply delta update to CURRENT by appending NEW, adding ADD and removing RM."
+  (when (vectorp add)
+    (setq add (vector-to-list add)))
+  (when (vectorp rm)
+    (setq rm (vector-to-list rm)))
+  (gnus-range-nconcat
+   (gnus-add-to-range
+    (gnus-remove-from-range
+     current
+     rm)
+    (gnus-uncompress-range add))
+   new))
 
 (deffoo nngmail-update-info (group account info)
   "Update the GROUP info structure.
@@ -803,7 +817,6 @@ but I may implement support for other marks in the future."
     (when active
       (setq start-article (cdr active))
       (message (format "  fast enabled (%d)" start-article))
-      (gnus-set-active gnus-group active)
       (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
@@ -815,40 +828,32 @@ but I may implement support for other marks in the future."
       (setq tick (vector-to-list (plist-get smarks 'new-ticked)))
       (setq unseen (vector-to-list (plist-get smarks 'unseen)))
       (when (> start-article 1)
-	(setq read (gnus-range-nconcat
-		    (gnus-add-to-range
-		     (gnus-remove-from-range
-		      (gnus-info-read info)
-		      (vector-to-list (plist-get smarks 'rm-read)))
-		     (gnus-uncompress-range
-		      (vector-to-list (plist-get smarks 'add-read))))
-		    read))
-	(setq unexist (gnus-range-nconcat
-		       (gnus-add-to-range
-			(gnus-remove-from-range
-			 (cdr (assoc 'unexist marks))
-			 (vector-to-list (plist-get smarks 'rm-unexist)))
-			(gnus-uncompress-range
-			 (vector-to-list (plist-get smarks 'add-unexist))))
-		       unexist))
-	(setq tick (gnus-range-nconcat
-		    (gnus-add-to-range
-		     (gnus-remove-from-range
-		      (cdr (assoc 'tick marks))
-		      (vector-to-list (plist-get smarks 'rm-ticked)))
-		     (gnus-uncompress-range
-		      (vector-to-list (plist-get smarks 'add-ticked))))
-		    tick))
-	(setq unseen (merge-ranges start-article
-				   (cdr (assoc 'unseen marks))
-				   unseen))
+	(setq read (nngmail-apply-range-delta
+		    (gnus-info-read info)
+		    read
+		    (plist-get smarks 'add-read)
+		    (plist-get smarks 'rm-read)
+		    ))
+	(setq unexist (nngmail-apply-range-delta
+		       (cdr (assoc 'unexist marks))
+		       unexist
+		       (plist-get smarks 'add-unexist)
+		       (plist-get smarks 'rm-unexist)
+		       ))
+	(setq tick (nngmail-apply-range-delta
+		    (cdr (assoc 'tick marks))
+		    tick
+		    (plist-get smarks 'add-tick)
+		    (plist-get smarks 'rm-tick)
+		    ))
+	(setq unseen (nngmail-merge-ranges start-article
+					   (cdr (assoc 'unseen marks))
+					   unseen))
 	)
-      (when (not (assoc 'unexist marks))
-	(push (cons 'unexist nil) marks))
-      (when (not (assoc 'unseen marks))
-	(push (cons 'unseen nil) marks))
-      (when (not (assoc 'tick marks))
-	(push (cons 'tick nil) marks))
+      (loop for mark in '(unexist unseen tick) do
+	    (when (not (assoc mark marks))
+	      (push (cons mark nil) marks))
+	    )
 
       (gnus-info-set-read info read)
       (setcdr (assq 'unexist marks) unexist)
