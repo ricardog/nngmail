@@ -104,7 +104,8 @@ class KeyValue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, nullable=False)
     value = db.Column(db.String, nullable=False)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id',
+                                                     ondelete='CASCADE'),
                            index=True, nullable=False)
 
     account = db.relationship('Account',
@@ -181,7 +182,8 @@ class Addressee(db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     contact_id = db.Column(db.Integer, db.ForeignKey('contact.id'),
                            nullable=False)
-    message_id = db.Column(db.Integer, db.ForeignKey('message.id'),
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id',
+                                                     ondelete='CASCADE'),
                            nullable=False)
     type_ = db.Column('type_', db.Enum(AddresseeEnum))
 
@@ -215,9 +217,11 @@ class BccAddressee(Addressee):
       }
 
 label_association = db.Table('label_association',
-    db.Column('label_id', db.Integer, db.ForeignKey('label.id'),
+    db.Column('label_id', db.Integer, db.ForeignKey('label.id',
+                                                    ondelete='CASCADE'),
               nullable=False),
-    db.Column('message_id', db.Integer, db.ForeignKey('message.id'),
+    db.Column('message_id', db.Integer, db.ForeignKey('message.id',
+                                                      ondelete='CASCADE'),
               index=True, nullable=False),
     UniqueConstraint('label_id', 'message_id', name='mid_1')
 )
@@ -228,7 +232,8 @@ class Label(UniqueMixin, db.Model, Serializeable, TimestampMixin):
     __table_args__ = (db.UniqueConstraint('account_id', 'gid',
                                           name='gid_1'), )
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id',
+                                                     ondelete='CASCADE'),
                            nullable=False)
     name = db.Column(db.String)
     gid = db.Column(db.String)
@@ -273,7 +278,8 @@ class Thread(UniqueMixin, Serializeable, TimestampMixin, db.Model):
     __table_args__ = (db.UniqueConstraint('account_id', 'thread_id',
                                           name='tid_1'), )
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id',
+                                                     ondelete='CASCADE'),
                            nullable=False)
     thread_id = db.Column(db.String, index=True)
 
@@ -307,12 +313,15 @@ class Message(TimestampMixin, Serializeable, db.Model):
                                           name='aid_1'))
 
     id = db.Column(db.Integer, primary_key=True, unique=True, nullable=False)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'),
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id',
+                                                     ondelete='CASCADE'),
                            index=True, nullable=False)
     article_id = db.Column(db.Integer, nullable=False)
     google_id = db.Column(db.String(20), index=True, nullable=False)
     message_id = db.Column(db.String(100), index=True, nullable=False)
-    thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), index=True)
+    thread_id = db.Column(db.Integer, db.ForeignKey('thread.id',
+                                                    ondelete='CASCADE'),
+                          index=True)
     from_id = db.Column(db.Integer, db.ForeignKey('contact.id'), nullable=False)
     date = db.Column(db.DateTime)
     subject = db.Column(db.String)
