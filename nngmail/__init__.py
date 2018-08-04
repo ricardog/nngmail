@@ -1,9 +1,13 @@
+import os
+import yaml
+
 import click
 from flask import Flask, jsonify, make_response
 from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
-import os
-import yaml
+from sqlalchemy.engine import Engine
+from sqlalchemy import event
+
 
 class MyJSONEncoder(JSONEncoder):
     def default(self, o):
@@ -29,6 +33,12 @@ import nngmail.views
 import nngmail.background
 
 app.register_blueprint(api_bp)
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 @app.errorhandler(404)
 def not_found(error):
