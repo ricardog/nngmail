@@ -8,4 +8,5 @@ credentials.json
 *.sqlite3-journal
 *.egg-info
 *.pyc
+*.elc
 *-creds.json
