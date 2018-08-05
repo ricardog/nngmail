@@ -41,7 +41,7 @@ point (messages received after the timestamp are nuseen).
     min_aid, max_aid = label.messages.\
         with_entities(func.min(Message.article_id),
                       func.max(Message.article_id)).one()
-    start_aid = min(int(request.args.get('fast', '1')), max_aid)
+    start_aid = min(int(request.args.get('fast', '0')), max_aid)
 
     base_query = label.messages.\
                  with_entities(Message.article_id).\
