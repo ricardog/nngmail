@@ -362,7 +362,8 @@ When undefer is True, read the raw message body (if available).
         else:
             td = datetime.now() - timedelta(days=self.options.cache_timeout)
         query = self.account.messages.with_entities(Message.id).\
-                filter(or_(Message.date > td, Message.modified > td))
+                filter(or_(Message.date > td, Message.modified > td,
+                           Message.labels.any(Label.name == 'STARRED')))
         return sum(query.all(), ())
 
     def expire_cache(self):
