@@ -245,7 +245,7 @@ skipped.
                                       map(lambda m: m['message'],
                                           item[kind])):
                         if msg['id'] not in updated:
-                            updated[msg['id']] = msg['labelIds']
+                            updated[msg['id']] = msg.get('labelIds', [])
             bar.update(1)
         bar.close()
         return(int(history[-1]['id']), deleted, added, updated)
