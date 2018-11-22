@@ -66,14 +66,14 @@ def init_db_command():
 @click.option('--init-cache', is_flag=True, default=False)
 @click.option('--quiet', '-q', is_flag=True, default=False)
 def import_email(email, nickname, init_cache, quiet):
-    """Add a new account to the database and import all the message metadata. 
+    """Add a new account to the database and import all the message metadata.
 
     email - email address to add
     nickname - nickname for the account
     """
-    
+
     gmail = GmSync(email, nickname, load_config(not quiet))
-    gmail.pull()    
+    gmail.pull()
     if init_cache:
         print('fetching cacheable messages')
         gmail.init_cache()
