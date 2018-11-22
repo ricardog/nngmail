@@ -24,9 +24,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json_encoder = MyJSONEncoder
 db = SQLAlchemy(app)
 zync = dict()
-get_sync = lambda account: NnSync.from_account(account, sync_config)
+get_sync = lambda account: GmSync.from_account(account, sync_config)
 
-from nnsync import NnSync
+from gmsync import GmSync
 from nngmail.models import Account, Contact, Thread
 from nngmail.api import api_bp
 import nngmail.views
@@ -72,7 +72,7 @@ def import_email(email, nickname, init_cache, quiet):
     nickname - nickname for the account
     """
     
-    gmail = NnSync(email, nickname, load_config(not quiet))
+    gmail = GmSync(email, nickname, load_config(not quiet))
     gmail.pull()    
     if init_cache:
         print('fetching cacheable messages')

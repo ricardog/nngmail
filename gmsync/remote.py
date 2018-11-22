@@ -13,6 +13,7 @@ from apiclient.discovery import build
 from apiclient import errors
 import googleapiclient
 from httplib2 import Http
+import json
 from oauth2client import file, client, tools
 from options import Options
 
@@ -409,17 +410,48 @@ between the two endpoints.
     @authorized
     def update_message(self, id, labels):
         """Update a message at the remote endpoint."""
-        return(501, 'Not implemented')
+        try:
+            message = self.service.users().messages().\
+                modify(userId='me', id=id, body=labels).execute()
+        except errors.HttpError as ex:
+            msg = json.loads(ex.content)['error']['message']
+            return (ex.resp.status, msg)
+        return
 
     @authorized
     def update_messages(self, ids, add_labels, rm_labels):
         """Update acollection of messages at the remote endpoint."""
-        return (501, 'Not implemented')
+        try:
+            messages = self.service.users().messages().\
+                batchModify(userId='me',
+                            body={'ids': ids, 'addLabelIds': add_labels,
+                                  'removeLabelIds': rm_labels}).execute()
+        except errors.HttpError as ex:
+            msg = json.loads(ex.content)['error']['message']
+            return (ex.resp.status, msg)
+        return
 
     @authorized
-    def delete_message(self, id):
-        """Delete a message at the remote endpoint."""
-        return (501, 'Not implemented')
+    def trash(self, id):
+        """Move a message to the trash at the remote endpoint."""
+        try:
+            message = self.service.users().messages().\
+                trash(userId='me', id=id).execute()
+        except errors.HttpError as ex:
+            msg = json.loads(ex.content)['error']['message']
+            return (ex.resp.status, msg)
+        return
+
+    @authorized
+    def untrash(self, id):
+        """Move a message from the trash at the remote endpoint."""
+        try:
+            message = self.service.users().messages().\
+                untrash(userId='me', id=id).execute()
+        except errors.HttpError as ex:
+            msg = json.loads(ex.content)['error']['message']
+            return (ex.resp.status, msg)
+        return
 
     @authorized
     def search(self, query, labels=[]):

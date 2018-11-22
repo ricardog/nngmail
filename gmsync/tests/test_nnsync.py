@@ -8,7 +8,7 @@ import vcr
 
 from nngmail import db
 from nngmail.models import Account, Contact, Label, Message
-from nnsync import NnSync
+from gmsync import GmSync
 
 
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -34,7 +34,7 @@ def sync(client):
                       can_send=False)
     db.session().commit()
     
-    sync = NnSync(email, nickname, config)
+    sync = GmSync(email, nickname, config)
     yield sync
 
 def test_nop(client, sync):

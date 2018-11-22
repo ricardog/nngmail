@@ -19,7 +19,7 @@ from nngmail.models import ToAddressee, CcAddressee, BccAddressee
 
 import pdb
 
-logger = logging.getLogger('nnsync')
+logger = logging.getLogger('gmsync')
 
 class Sqlite3(OptionsClass):
     """Class for storing message metadata in a local sqlite3 database.
@@ -311,6 +311,25 @@ This function is rather ineffcient.
     def commit(self):
         """Commit pending session changes to the database."""
         db.session().commit()
+
+    def trash(self, msg):
+        """Move a message to the trash."""
+        trash = self.get_label('TRASH')
+        inbox = self.get_label('INBOX')
+        if trash not in msg.labels:
+            msg.labels.remove(inbox)
+            msg.labels.append(trash)
+        msg.updated = datetime.now()
+
+    def untrash(self, msg):
+        """Move a message from the trash."""
+        trash = self.get_label('TRASH')
+        inbox = self.get_label('INBOX')
+        if trash in msg.labels:
+            msg.labels.remove(trash)
+        if inbox not in msg.labels:
+            msg.labels.append(trash)
+        msg.updated = datetime.now()
 
     def all_ids(self):
         """Return all Google id's in the database."""

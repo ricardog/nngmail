@@ -20,11 +20,11 @@ class RequestFormatter(logging.Formatter):
     pass
 
 formatter = logging.Formatter(
-    '[%(asctime)s] %(levelname)s nnsync: %(message)s'
+    '[%(asctime)s] %(levelname)s gmsync: %(message)s'
 )
 default_handler.setFormatter(formatter)
 
-logger = logging.getLogger('nnsync')
+logger = logging.getLogger('gmsync')
 logger.setLevel(logging.INFO)
 logger.addHandler(default_handler)
 
@@ -40,7 +40,7 @@ class _tqdm(tqdm):
     def update(self, n=1):
         return
 
-class NnSync():
+class GmSync():
     """A synchronization object for keeping a local copy of message metadata in a local storage.
 
 This object represents only one Gmail account.  When synchronizng
@@ -179,14 +179,30 @@ Only label updates are possible.
             return None
         return self.gmail.update_message(id, labels)
 
-    def remote_delete(self, id):
-        """Delete a message at the remote."""
+    def trash(self, msg):
+        """Move a message to the trash."""
         if not self.gmail.writable:
             return None
-        return self.gmail.delete_message(id)
+        rval = self.gmail.trash(msg.google_id)
+        #rval = None
+        if rval:
+            # Remote trash failed so skip local trash
+            return rval
+        return self.sql3.trash(msg)
+
+    def untrash(self, msg):
+        """Move a message from the trash."""
+        if not self.gmail.writable:
+            return None
+        rval = self.gmail.untrash(msg.google_id)
+        #rval = None
+        if rval:
+            # Remote trash failed so skip local trash
+            return rval
+        return self.sql3.untrash(msg)
 
     def get_history(self):
-        """Request a of changes for the account since we last synchronized.
+        """Request a list of changes since last synch for the account.
 
 This is a faster way to synchronize that doing a full pull of the
 account and is valid so long as we sycnhronize regularly (Gmail docs say
@@ -353,7 +369,7 @@ commands.
 
         """
         def __sync(email, nickname, opts, ingress, egress):
-            me = NnSync(email, nickname, opts)
+            me = GmSync(email, nickname, opts)
             logger.info("%s: start sync" % me.nickname)
             while True:
                 try:
