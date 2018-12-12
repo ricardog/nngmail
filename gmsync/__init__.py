@@ -266,6 +266,38 @@ skipped.
         bar.close()
         return(int(history[-1]['id']), deleted, added, updated)
 
+    def verify(self):
+        """Verify messages received in the last month.
+
+Verifies that all messages received in the past month have the correct
+properties in the local database.
+
+        """
+        if not self.opts.get('verify', True):
+            return
+        all_ids = []
+        for _, msgs in self.gmail.list_messages(limit=None,
+                                                query='newer_than:7d'):
+            all_ids += [m['id'] for m in msgs]
+        lmsgs = self.sql3.find_by_gid(all_ids)
+        lhash = dict((lm.google_id, lm) for lm in lmsgs)
+        assert len(lmsgs) == len(all_ids)
+        bar = self.bar(leave=True, total=len(all_ids), desc='verify')
+        for gid in all_ids:
+            rmsg = self.gmail.get_message(gid, 'metadata')
+            lmsg = lhash[gid]
+            if (set([lm.gid for lm in lmsg.labels]) !=
+                    set(rmsg['labelIds'])):
+                print('verify failed: %d: %s: %s' % (lmsg.id, lmsg.google_id,
+                                                     lmsg.subject))
+                print('  local : ', ', '.join(sorted([lm.gid for lm in lmsg.labels])))
+                print('  remote: ', ', '.join(sorted(rmsg['labelIds'])))
+            bar.update(1)
+        bar.close()
+        ## FIXME: verify there local DB doesn't have extra messages
+        return
+
+
     def pull(self):
         """Do an incremental update of the account.
 
@@ -311,6 +343,8 @@ recently, do a full update.
         self.sql3.set_history_id(hid)
         self.read(self.sql3.gid_to_id(tuple(added.keys())))
         logger.info('%s: sync complete' % self.nickname)
+        self.verify()
+
 
     def full_pull(self):
         """Do a full update on the account.
@@ -369,12 +403,18 @@ commands.
 
         """
         def __sync(email, nickname, opts, ingress, egress):
+            first = True
             me = GmSync(email, nickname, opts)
             logger.info("%s: start sync" % me.nickname)
             while True:
+                if first:
+                    timeout = 0
+                    first = False
+                else:
+                    timeout = me.gmail.poll_interval
                 try:
                     data = ingress.get(block=True,
-                                       timeout=me.gmail.poll_interval)
+                                       timeout=timeout)
                     if not data:
                         ingress.task_done()
                         break

@@ -95,6 +95,19 @@ def resync_email(nickname, init_cache, quiet):
         print('fetching cacheable messages')
         gmail.init_cache()
 
+@app.cli.command('verify')
+@click.argument('nickname', type=click.STRING)
+@click.option('--quiet', '-q', is_flag=True, default=False)
+def verify_email(nickname, quiet):
+    """Verify all the message metadata for account.
+
+    nickname - nickname for the account
+    """
+
+    account = Account.query.filter_by(nickname=nickname).one()
+    gmail = GmSync.from_account(account, load_config(not quiet))
+    gmail.verify()
+
 def load_config(verbose=False):
     config_file = os.path.normpath(os.path.join(app.root_path, '..',
                                                 'data', 'config.yaml'))

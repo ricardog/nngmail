@@ -287,15 +287,17 @@ between the two endpoints.
                 raise Gmail.GenericException(ex)
 
     @authorized
-    def list_messages(self, limit=1):
+    def list_messages(self, limit=1, query=None):
         "Returns a list of messages (max = limit)."
         total = 0
         token = None
         results = []
-        while token is None or 'nextPageToken' in results:
+        if query is None:
+            query = self.opts.query
+        while True:
             results = self.service.users().messages().list(userId='me',
                                                            pageToken=token,
-                                                           q=self.opts.query,
+                                                           q=query,
                                                            maxResults=limit,
                                                            includeSpamTrash=True).\
                                                            execute()
@@ -305,6 +307,8 @@ between the two endpoints.
                 yield results['resultSizeEstimate'], results['messages']
             if 'nextPageToken' in results:
                 token = results['nextPageToken']
+            else:
+                break
             if limit is not None and total >= limit:
                 break
 
