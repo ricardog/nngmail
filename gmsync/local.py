@@ -296,8 +296,10 @@ This function is rather ineffcient.
             msgs = (msgs, )
         session = db.session()
         objs = self.find_by_gid([m['id'] for m in msgs])
+        ohash = dict([(o.google_id, o) for o in objs])
         assert len(objs) == len(msgs)
-        for obj, msg in zip(objs, msgs):
+        for msg in msgs:
+            obj = ohash[msg['id']]
             if 'labelIds' in msg:
                 obj.labels = [self.get_label(lgid) for lgid in msg['labelIds']]
             else:
