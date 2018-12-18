@@ -108,6 +108,9 @@ class KeyValue(db.Model):
                                                      ondelete='CASCADE'),
                            index=True, nullable=False)
 
+    def __repr__(self):
+        return '%d: %s => %s' % (self.id, self.key, self.value)
+
 class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String, unique=True)
