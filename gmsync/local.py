@@ -122,7 +122,7 @@ Translate Gmail category labels to something that is easier to read.
 Because I use a composite key for the Messages table (id, account_id), I
 can't use the standard autoincrement logic for the id column.  Instead I
 have to implement it in code.  I tried using the default_value in
-SQLAlchemy, but I could nt find a way to make things work.
+SQLAlchemy, but I could not find a way to make things work.
 
 So instead what I do is start a transaction, read the max id for that
 account, and then generate a list of tuples that will create the
