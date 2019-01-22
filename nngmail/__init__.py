@@ -8,6 +8,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 
+class MySQLAlchemy(SQLAlchemy):
+
+    def apply_driver_hacks(self, app, info, options):
+        super(MySQLAlchemy, self).apply_driver_hacks(app, info, options)
+        options['connect_args'] = {'timeout': 15}
 
 class MyJSONEncoder(JSONEncoder):
     def default(self, o):
@@ -22,7 +27,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../data/nngmail.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SQLALCHEMY_ECHO'] = True
 app.json_encoder = MyJSONEncoder
-db = SQLAlchemy(app)
+db = MySQLAlchemy(app)
 zync = dict()
 get_sync = lambda account: GmSync.from_account(account, sync_config)
 
