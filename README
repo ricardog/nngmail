@@ -62,13 +62,13 @@ with old LinkedIn messages).
 
 ### Emacs & OS Support
 
-I use this code on Ubuntu (16.04 LTS) and OSX (10.12) on Emacs 25.3 and
-26.1.  I haven't tried running it on Windows (and probably won't).
-Patches for older/newer versions of Emacs are welcome.
+I use this code on Ubuntu (16.04 LTS and 18.04 LTS) and OSX (10.12) on
+Emacs 25.3 and 26.1.  I haven't tried running it on Windows (and
+probably won't).  Patches for older/newer versions of Emacs are welcome.
 
 ### Security
 
-**The serves responds to un-authenticated http requests and makes no
+**The server responds to un-authenticated http requests and makes no
 attempt at preventing unauthorized access to your email.** The only
 (small) nod at security is to listen on the local interface only.
 
@@ -98,16 +98,17 @@ with low overhead.  In particular, I want:
 
 I tried **offlineimap** and **notmuch** but neither was what I am
 looking for.  I don't want to keep an complete copy of all my Gmail
-accounts on my laptop (someday soon this won't be a problem but right
-now it requires a significant fraction of available storage).  Plus I
-find search works best in Gmail because it searches through attachments.
+accounts on my laptop (someday this may not be a problem but right now
+it requires a significant fraction of available storage).  Plus I find
+search works best in Gmail because it searches through attachments.
 
 Which brings up the topic of why Gmail since we should be wary of
 providing Google too much of our personal and private information.  This
 is absolutely true.  However, when I looked at all the email I received,
 a significant portion of it either originated from or was delivered to
 Gmail anyway.  That is, even if I move my account elsewhere Google will
-still have my information.
+still have my information.  Furthermore, sometimes you are forced to use
+Gmail, e.g. for a work account.
 
 When I do move elsewhere, I think the system should be easy to extend to
 other mail service providers.
@@ -160,14 +161,14 @@ other mail service providers.
 	
 	4.2 For each account you want to sync locally run
 
-		./nngmail.sh import user@exampke.com nickname --init-cache
+		./nngmail.sh import user@example.com nickname --init-cache
 	
-	Where you clearly need to replace your user name.  You will be
-	directed to a web browser where you need to login to Google and
-	authorize the application (nngmail or whatever you called it in
-	step 1) to access your mail.  In some instances (I have only
-	seen this on Ubuntu) you will be asked to copy-paste a URL into
-	your browser.
+	Where you clearly need to replace your user name and the
+	nickname.  You will be directed to a web browser where you need
+	to login to Google and authorize the application (nngmail or
+	whatever you called it in step 1) to access your mail.  In some
+	instances (I have only seen this on Ubuntu) you will be asked to
+	copy-paste a URL into your browser.
 
 	Pick a different nickname for each account as you will use it to
 	identify the accounts to Gnus.
@@ -305,8 +306,10 @@ you want to try out *destructive mode* and you add **modify** scope in
 If you enable *destructive* mode Gnus marks get propagated to the server
 for posterity.
 
-Note that the local proxy does not (yet) support offline mode.  It
-relies on synchronous calls to Gmail to update state.  I plan to
-implement support for offline mode so marks set while Gmail is not
-reachable will be synchronized next time the API is available.
+Note that the local proxy does not support offline mode.  It relies on
+synchronous calls to Gmail to update state.  I may someday implement
+support for offline mode so marks set while Gmail is not reachable will
+be synchronized next time the API is available, but it is not a goal at
+the moement.
+
 
