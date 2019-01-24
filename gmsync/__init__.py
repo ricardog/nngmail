@@ -287,7 +287,7 @@ properties in the local database.
             rmsg = self.gmail.get_message(gid, 'metadata')
             lmsg = lhash[gid]
             if (set([lm.gid for lm in lmsg.labels]) !=
-                    set(rmsg['labelIds'])):
+                 set(rmsg.get('labelIds', []))):
                 print('verify failed: %d: %s: %s' % (lmsg.id, lmsg.google_id,
                                                      lmsg.subject))
                 print('  local : ', ', '.join(sorted([lm.gid for lm in lmsg.labels])))
