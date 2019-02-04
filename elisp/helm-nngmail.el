@@ -107,6 +107,7 @@ all messages from that group."
 		  (action
 		   ("Read" . helm-nngmail-action-read)
 		   ("Mark read" . helm-nngmail-action-mark-read)
+		   ("Mark unread" . helm-nngmail-action-mark-unread)
 		   ("Star" . helm-nngmail-action-tick)
 		   ("Delete" . helm-nngmail-action-expire)))))
 	    data)
@@ -167,6 +168,12 @@ Read the list of selected/marked candidates from
   (message "helm-nngmail-action-mark-read")
   (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t) 'read))
 
+(defun helm-nngmail-action-mark-unread (candidates)
+  "Handle mark as read action for helm CANDIDATES."
+  (message "helm-nngmail-action-mark-unread")
+  (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t)
+				'unread))
+
 (defun helm-nngmail-action-tick (candidates)
   "Handle tick action for helm CANDIDATES."
   (message "helm-nngmail-action-tick")
@@ -174,7 +181,7 @@ Read the list of selected/marked candidates from
 
 (defun helm-nngmail-action-set-mark (candidates mark)
   "Set mark MARK for CANDIDATES messages."
-  (message "helm-nngmail-action-mark-read")
+  (message "helm-nngmail-action-set-mark")
   (let ((ht (helm-nngmail-group-by-group candidates)))
     (maphash (lambda (key articles)
 	       (let ((server (car (last (split-string
