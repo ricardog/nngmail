@@ -941,7 +941,7 @@ action."
   "Filter MARK for GROUP.
 
 This function is called whenever a mark is set, e.g. as soon as
-an article is displayed it is mark as read.
+an article is displayed it is marked as read.
 
 FIXME: unsed."
   (let ((name (cond
