@@ -34,18 +34,20 @@ sqlite!
 
 ## Status 
 
-I use this on a daily basis but you should consider it pre-alpha.  I
-wrote it in a bit of a hurry as I was more interested in how much work
-would be required to write a new Gnus back end.  Now that I have
-convinced myself it is a possible and worthwhile effort, I will go back
-and develop a test suite before adding more features.  Plus setup is a
-bit involved--you need to be comfortable with *shell*, *python*, and
-*Emacs*.
+I use this on a daily basis but you should consider it
+["me-ware"](https://ericsink.com/articles/Yours_Mine_Ours.html).  I am
+not adverse to it becoming "us-ware" but that's not what has driven the
+effort.  I wrote it in a bit of a hurry as I was more interested in how
+much work would be required to write a new Gnus back end.  Now that I
+have convinced myself it is a possible and worthwhile effort, I will go
+back and develop a test suite before adding more features.  Plus setup
+is a bit involved--you need to be comfortable with *shell*, *python*,
+and *Emacs*.
 
 This software will **not** eat your mail no matter how hungry it is.  By
 default the system requests read-only access to your Gmail account.  The
 Gmail API service will thus deny requests to modify or delete messages
-(if it doesn't, something seriously wrong).
+(if it doesn't, something is seriously wrong).
 
 There is experimental^2 support for updating and deleting messages in
 the *destructive* branch.  Use with caution, it may well eat your email.
@@ -62,9 +64,10 @@ with old LinkedIn messages).
 
 ### Emacs & OS Support
 
-I use this code on Ubuntu (16.04 LTS and 18.04 LTS) and OSX (10.12) on
-Emacs 25.3 and 26.1.  I haven't tried running it on Windows (and
-probably won't).  Patches for older/newer versions of Emacs are welcome.
+I use this code on Ubuntu (16.04 LTS and 18.04 LTS) and OSX (10.12 and
+10.13) on Emacs 25.3 and 26.1.  I haven't tried running it on Windows
+(and probably won't).  Patches for older/newer versions of Emacs are
+welcome.
 
 ### Security
 
@@ -95,6 +98,7 @@ with low overhead.  In particular, I want:
 
  - Fast access to recent email 
  - Fast and accurate search for everything else
+ - Use Emacs to compose email
 
 I tried **offlineimap** and **notmuch** but neither was what I am
 looking for.  I don't want to keep an complete copy of all my Gmail
@@ -139,8 +143,8 @@ other mail service providers.
 
 3. Setup the local server
 
-	3.1 Create a new virtual environment (virtualenv).  I recommend *pyenv*
-		to set this up, but *virtualenv* works well too.
+	3.1 Create a new virtual environment (virtualenv).  I recommend
+	    *pyenv* to set this up, but *virtualenv* works well too.
 	
 	3.2 Install nngmail by running
 
@@ -157,11 +161,11 @@ other mail service providers.
 
 	4.1 Create the database with
 
-		./nngmail.sh init-db
+		FLASK_ENV=development ./nngmail.sh init-db
 	
 	4.2 For each account you want to sync locally run
 
-		./nngmail.sh import user@example.com nickname --init-cache
+		FLASK_ENV=development ./nngmail.sh import user@example.com nickname --init-cache
 	
 	Where you clearly need to replace your user name and the
 	nickname.  You will be directed to a web browser where you need
@@ -309,7 +313,9 @@ for posterity.
 Note that the local proxy does not support offline mode.  It relies on
 synchronous calls to Gmail to update state.  I may someday implement
 support for offline mode so marks set while Gmail is not reachable will
-be synchronized next time the API is available, but it is not a goal at
-the moement.
+be synchronised next time the API is available, but it is not a goal at
+the moment.  It may be possible to get Gnus caching to work with
+nngmail to enable offline access but I haven't tried.
+
 
 
