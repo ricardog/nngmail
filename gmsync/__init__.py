@@ -269,7 +269,7 @@ skipped.
     def verify(self):
         """Verify messages received in the last month.
 
-Verifies that all messages received in the past month have the correct
+Verifies that all messages received in the past week have the correct
 properties in the local database.
 
         """
@@ -280,8 +280,11 @@ properties in the local database.
                                                 query='newer_than:7d'):
             all_ids += [m['id'] for m in msgs]
         lmsgs = self.sql3.find_by_gid(all_ids)
-        lhash = dict((lm.google_id, lm) for lm in lmsgs)
-        assert len(lmsgs) == len(all_ids)
+        if lmsgs:
+            lhash = dict((lm.google_id, lm) for lm in lmsgs)
+            assert len(lmsgs) == len(all_ids)
+        else:
+            assert len(all_ids) == 0
         bar = self.bar(leave=True, total=len(all_ids), desc='verify')
         for gid in all_ids:
             rmsg = self.gmail.get_message(gid, 'metadata')
