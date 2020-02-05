@@ -139,8 +139,9 @@ Messages are identified by google ID's
         for msgs in self.gmail.get_messages(gids, 'metadata'):
             self.sql3.create(msgs)
             bar.update(len(msgs))
-            history_id = max(history_id,
-                             max([int(msg['historyId']) for msg in msgs]))
+            if msgs:
+                history_id = max(history_id,
+                                 max([int(msg['historyId']) for msg in msgs]))
         bar.close()
         return history_id
 
