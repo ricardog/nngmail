@@ -43,7 +43,7 @@ class Gmail:
 
     @staticmethod
     def batch_executor(creds, cmds):
-        """Execute a batc command and check for errors.
+        """Execute a batch command and check for errors.
 
 Batch Gmail commands require a callback.  Thus function wraps the call
 plus callback into a single synchronous function.  Rather than relying
@@ -117,7 +117,7 @@ interpret the data in either queue.  It merly acts as a dumb pipeline
 between the two endpoints.
 
    :param inq queue.Queue: Inress queue.  Commands received on this
-        queue are set to a batch_executor.
+        queue are sent to a batch_executor.
 
    :param outq queue.Queue: Egress queue.  Data returned by the batch
         executor is written to the queue for consumption by the
@@ -138,6 +138,7 @@ between the two endpoints.
                 outq.put([ridx, responses])
             finally:
                 inq.task_done()
+        print("worker %d stoping" % my_idx)
 
     def __init__(self, **kwargs):
         """Initialize a new object using the options passed in."""
@@ -155,7 +156,7 @@ between the two endpoints.
         self.creds = None
         self.service = None
         self.threads = []
-        if self.opts.num_workers > 1:
+        if self.opts.num_workers >= 1:
             self.outq = queue.Queue(maxsize=self.opts.num_workers + 1)
             self.inq = queue.Queue(maxsize=self.opts.num_workers + 1)
             for idx in range(self.opts.num_workers):
