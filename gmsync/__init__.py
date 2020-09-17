@@ -2,13 +2,12 @@
 import base64
 from copy import deepcopy
 import logging
-import pdb
 import queue
 import socket
 import threading
 
-import click
 from flask.logging import default_handler
+import googleapiclient
 import httplib2
 import sqlite3
 from tqdm import tqdm
@@ -288,14 +287,21 @@ properties in the local database.
             assert len(all_ids) == 0
         bar = self.bar(leave=True, total=len(all_ids), desc='verify')
         for gid in all_ids:
-            rmsg = self.gmail.get_message(gid, 'metadata')
-            lmsg = lhash[gid]
-            if (set([lm.gid for lm in lmsg.labels]) !=
-                 set(rmsg.get('labelIds', []))):
-                print('verify failed: %d: %s: %s' % (lmsg.id, lmsg.google_id,
-                                                     lmsg.subject))
-                print('  local : ', ', '.join(sorted([lm.gid for lm in lmsg.labels])))
-                print('  remote: ', ', '.join(sorted(rmsg['labelIds'])))
+            try: 
+                rmsg = self.gmail.get_message(gid, 'metadata')
+                lmsg = lhash[gid]
+                if (set([lm.gid for lm in lmsg.labels]) !=
+                    set(rmsg.get('labelIds', []))):
+                    print('verify failed: %d: %s: %s' % (lmsg.id, lmsg.google_id,
+                                                         lmsg.subject))
+                    print('  local : ', ', '.join(sorted([lm.gid for lm in lmsg.labels])))
+                    print('  remote: ', ', '.join(sorted(rmsg['labelIds'])))
+            except googleapiclient.errors.HttpError as ex:
+                if ex.resp.status == 404:
+                    # FIXME: Why am I getting 404?  Message deleted
+                    # between list and get?
+                    logger.info('Verify failed to fetch message')
+                    pass
             bar.update(1)
         bar.close()
         ## FIXME: verify there local DB doesn't have extra messages
