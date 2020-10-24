@@ -127,7 +127,8 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
     labels = db.relationship('Label', lazy='dynamic', cascade='delete',
                              passive_deletes=True,
                              backref=backref('account'))
-    threads = db.relationship('Thread', lazy='dynamic', cascade='delete',
+    threads = db.relationship('Thread', lazy='dynamic',
+                              cascade='all, delete',
                               passive_deletes=True,
                               backref=backref('account'))
     messages = db.relationship('Message', lazy='dynamic',
