@@ -282,7 +282,11 @@ properties in the local database.
         lmsgs = self.sql3.find_by_gid(all_ids)
         if lmsgs:
             lhash = dict((lm.google_id, lm) for lm in lmsgs)
-            assert len(lmsgs) == len(all_ids)
+            if len(lmsgs) != len(all_ids):
+                print('ERROR: verification failed')
+                print('\tlen(msgs) != len(all_ids) --'
+                      f'{len(msgs)} != {len(all_ids)}')
+                import os; os._exit(-1)
         else:
             assert len(all_ids) == 0
         bar = self.bar(leave=True, total=len(all_ids), desc='verify')
