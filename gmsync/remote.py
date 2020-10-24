@@ -6,6 +6,7 @@ import queue
 import socket
 import sys
 import threading
+from time import sleep
 from urllib.error import URLError
 import urllib.parse as urlparse
 
@@ -45,9 +46,9 @@ class Gmail:
     def batch_executor(creds, cmds):
         """Execute a batch command and check for errors.
 
-Batch Gmail commands require a callback.  Thus function wraps the call
-plus callback into a single synchronous function.  Rather than relying
-on callbacks, use threads for parallelism.
+Batch Gmail commands require a callback.  This function wraps the call
+        plus callback into a single synchronous function.  Rather than relying
+        on callbacks, use threads for parallelism.
 
     :param cmds list: A list (or other iterable) with a collections of
         commands.  Each command consists of a tuple (google_id,
@@ -82,7 +83,7 @@ on callbacks, use threads for parallelism.
                     return
 
                 elif ex_is_error(ex, 403) or ex_is_error(ex, 429):
-                    import pdb; pdb.set_trace()
+                    #import pdb; pdb.set_trace()
                     raise Gmail.UserRateException(ex)
                 elif ex_is_error(ex, 500):
                     raise Gmail.GenericException(ex)
@@ -125,13 +126,26 @@ between the two endpoints.
 
         """
         print("worker %d starting" % my_idx)
+        backoff = .05
+        try_again = False
         while True:
-            cmd = inq.get()
-            if cmd is None:
-                break
-            ridx, creds, cmds = cmd
+            #import pdb; pdb.set_trace()
+            if not try_again:
+                cmd = inq.get()
+                if cmd is None:
+                    break
+                ridx, creds, cmds = cmd
+            else:
+                import pdb; pdb.set_trace()
+                try_again = False
+                print('trying again after backoff')
             try:
                 responses = Gmail.batch_executor(creds, cmds)
+            except UserRateException:
+                print('backoff')
+                sleep(backoff)
+                backoff *= 2
+                try_again = True
             except Exception as ex:
                 outq.put([ridx, ex])
             else:
