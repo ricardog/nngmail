@@ -61,6 +61,7 @@ def init_db_command():
     Contact.as_unique(db.session, email='no.name@example.com', name='No Name')
     ac = Account.as_unique(db.session, email='no.name@example.com',
                            nickname='no.name')
+    db.session.flush()
     Thread.as_unique(db.session, account=ac, thread_id='No thread')
     db.session.commit()
     click.echo('Initialized the database.')

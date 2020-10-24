@@ -72,6 +72,7 @@ Gmail REST API client provides message data.
                                            nickname=self.options.nickname,
                                            writable=self.options.writable,
                                            can_send=False))
+        db.session.flush()
         self.label_map = {}
         self.label_imap = {}
 
@@ -168,7 +169,8 @@ more than one account.
                     connection.execute(Message.__table__.insert().\
                                        values(values))
                 except exc.SQLAlchemyError as ex:
-                    pdb.set_trace()
+                    #pdb.set_trace()
+                    import os; os_exit(-1)
                     pass
             
     def process_gmail_message(self, session, mid, msg):
