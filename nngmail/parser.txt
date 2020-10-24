@@ -1,0 +1,77 @@
+?start: value+
+?value: key_value
+	| date
+	| rel_date
+	| has
+	| is
+	| category
+	| OR
+	| word
+	| string
+
+key_value: (FROM | TO | CC | BCC | SUBJECT | LABEL) ":" addr
+//AT: "@"
+_user: (WORD | INT | "_" | ".")+
+_domain: (WORD | INT | "_" | ".")
+!addr: _user ("@" _domain*)?
+
+date: (AFTER | BEFORE | OLDER | NEWER) ":" _date
+rel_date: (OLDER_THAN | NEWER_THAN) ":" number (DAY | MONTH | YEAR)
+has: HAS ":" (ATTACHMENT | YELLOW_STAR | BLUE_INFO)
+is: IS ":" (IMPORTANT | READ | UNREAD | SNOOZED)
+category: CATEGORY ":" (PRIMARY | SOCIAL | PROMOTIONS | UPDATES
+	  	       | FORUMS | RESERVATIONS | PURCHASES)
+
+FROM: "from"i
+TO: "to"i
+CC: "cc"i
+BCC: "bcc"i
+SUBJECT: "subject"i
+LABEL: "label"i
+
+AFTER: "after"i
+BEFORE: "before"i
+OLDER: "older"i
+NEWER: "newer"i
+DATE1: DIGIT~4 "/" "0".."1" DIGIT "/" "0".."3" DIGIT
+DATE2: "0".."3" DIGIT "/" "0".."1" DIGIT "/" DIGIT~4
+_date: DATE1 | DATE2
+
+OLDER_THAN: "older_than"i
+NEWER_THAN: "newer_than"i
+DAY: "d"
+MONTH: "m"
+YEAR: "y"
+
+HAS: "has"i
+ATTACHMENT: "attachment"i
+YELLOW_STAR: "yellow-star"i
+BLUE_INFO: "blue-info"i
+
+IS: "is"i
+IMPORTANT: "important"i
+READ: "read"i
+UNREAD: "unread"i
+SNOOZED: "snoozed"i
+
+CATEGORY: "category"i
+PRIMARY: "primary"i
+SOCIAL: "social"i
+PROMOTIONS: "promotions"i
+UPDATES: "updates"i
+FORUMS: "forums"i
+RESERVATIONS: "reservations"i
+PURCHASES: "purchases"i
+OR: "or"
+
+string: ESCAPED_STRING
+number: INT
+word: WORD
+
+%import common.ESCAPED_STRING
+%import common.INT
+%import common.LETTER
+%import common.DIGIT
+%import common.WORD
+%import common.WS
+%ignore WS
