@@ -812,8 +812,7 @@ but I may implement support for other marks in the future."
 	(start-article 1)
 	(args ()))
     (when timestamp
-      (setq args (append args `((timestamp_low . ,(elt timestamp 1))
-				(timestamp_high . ,(elt timestamp 0))))))
+      (setq args `((timestamp . ,timestamp))))
     (when active
       (setq start-article (cdr active))
       (message (format "  fast enabled (%d)" start-article))
@@ -855,14 +854,16 @@ but I may implement support for other marks in the future."
 	      (push (cons mark nil) marks))
 	    )
 
-      (gnus-info-set-read info read)
+      (setf (gnus-info-read info) read)
       (setcdr (assq 'unexist marks) unexist)
       (setcdr (assq 'tick marks) tick)
       (setcdr (assq 'unseen marks) unseen)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
       (gnus-group-set-parameter info 'active (gnus-active gnus-group))
-      (gnus-info-set-marks info marks t))
-      ))
+      (setf (gnus-info-marks info) marks)
+      )
+    )
+  )
 
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
 						    &optional dont-insert)
