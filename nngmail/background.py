@@ -11,7 +11,8 @@ def load_config():
     config_file = os.path.normpath(os.path.join(app.root_path, '..',
                                                 'data', 'config.yaml'))
     try:
-        return yaml.load(open(config_file, mode='rb'))
+        return yaml.load(open(config_file, mode='rb'),
+                         Loader=yaml.SafeLoader)
     except IOError:
         print('Error: reading config file (%s)' % config_file)
         return {}
