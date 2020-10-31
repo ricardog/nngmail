@@ -104,7 +104,7 @@ Batch Gmail commands require a callback.  This function wraps the call
 
     @staticmethod
     def worker(my_idx, inq, outq):
-        """Enry point for new executor threads.
+        """Entry point for new executor threads.
 
 Downloading (or importing) metadata is limited by the round-trip time to
 Gmail if we only use one thread.  This wrapper function makes it
@@ -125,33 +125,27 @@ between the two endpoints.
         initiator.
 
         """
-        print("worker %d starting" % my_idx)
-        backoff = .05
-        try_again = False
+        print("worker %d: starting" % my_idx)
         while True:
-            #import pdb; pdb.set_trace()
-            if not try_again:
-                cmd = inq.get()
-                if cmd is None:
+            cmd = inq.get()
+            if cmd is None:
+                break
+            ridx, creds, cmds = cmd
+            backoff = .001
+            while True:
+                try:
+                    responses = Gmail.batch_executor(creds, cmds)
+                except Gmail.UserRateException:
+                    print(f'worker {my_idx}: backoff {backoff} sec')
+                    sleep(backoff)
+                    backoff = min(backoff * 2, 1.0)
+                except Exception as ex:
+                    outq.put([ridx, ex])
                     break
-                ridx, creds, cmds = cmd
-            else:
-                import pdb; pdb.set_trace()
-                try_again = False
-                print('trying again after backoff')
-            try:
-                responses = Gmail.batch_executor(creds, cmds)
-            except UserRateException:
-                print('backoff')
-                sleep(backoff)
-                backoff *= 2
-                try_again = True
-            except Exception as ex:
-                outq.put([ridx, ex])
-            else:
-                outq.put([ridx, responses])
-            finally:
-                inq.task_done()
+                else:
+                    outq.put([ridx, responses])
+                    break
+            inq.task_done()
         print("worker %d stoping" % my_idx)
 
     def __init__(self, **kwargs):
@@ -369,7 +363,7 @@ between the two endpoints.
         if '__getitem__' not in dir(ids):
             ids = (ids, )
 
-        if self.opts.num_workers < 2:
+        if self.opts.num_workers < 1:
             what = self.service.users().messages()
             for chunk in chunks(ids, self.opts.batch_size):
                 try:
@@ -404,6 +398,7 @@ between the two endpoints.
                             raise resp
                         yield resp
                 except Gmail.UserRateException as ex:
+                    assert False, "UserRateException propagated to caller"
                     print("remote: user rate error: ", ex)
                 except Gmail.BatchException as ex:
                     print("remote: batch request error: ", ex)

@@ -1097,7 +1097,7 @@ FIXME: not implemented."
 In the common case we are passed a query string in QUERY and pass
 that along to the local proxy.  The local nnsync server will
 query Gmail and return a list, where each element is a
-two-element tuple (list in JSON) conssting of (id, group).  SRV
+two-element tuple (list in JSON) consisting of (id, group).  SRV
 is the name of the server (acount or nickname) and GROUPS
 specifies which groups to search.
 

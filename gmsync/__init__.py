@@ -204,8 +204,8 @@ Only label updates are possible.
     def get_history(self):
         """Request a list of changes since last synch for the account.
 
-This is a faster way to synchronize that doing a full pull of the
-account and is valid so long as we sycnhronize regularly (Gmail docs say
+This is a faster way to synchronize than doing a full pull of the
+account and is valid so long as we synchronized recently (Gmail docs say
 the history list should be valid for about a week).
 
         """
@@ -384,8 +384,8 @@ database, then only update the labels.
         bar.close()
 
         ## Created here means they need a placeholder.  Assume any
-        ## messages already in the DB came from a previous (interrupted)
-        ## import.
+        ## messages already in the DB came from a previous (interrupted
+        ## or older) import.
         self.sql3.placeholder(created)
         hid1 = self.create(created + updated)
         self.delete(local_gids)
@@ -407,7 +407,7 @@ This function creates a thread that does two things:
     - Listen for commands on a queue
     - Periodically polls for changes in the account
 
-The command queue is meant to provide a backfround job processing
+The command queue is meant to provide a background job processing
 mechanism for the front-end server.  It could, for example, be asked to
 prefetch all messages in a thread when accessing any of the messages in
 the thread.
