@@ -222,10 +222,12 @@ With optional LABEL fetch messages with that label or UNREAD by
 default."
   (interactive)
   (let ((label (if current-prefix-arg
-		   (completing-read "Label : "
-				    (nngmail-get-all-labels)
-				    nil t nil
-				    helm-nngmail-label-history)
+		   (let ((nngmail-servers (or nngmail-servers
+                                              (nngmail-get-accounts))))
+		     (completing-read "Label : "
+				      (nngmail-get-all-labels)
+				      nil t nil
+				      helm-nngmail-label-history))
 		 "INBOX")))
     (helm :sources (helm-source-nngmail-build label (not current-prefix-arg))
 	  :buffer "*helm-nngmail*"
