@@ -353,7 +353,7 @@ URL for the resource."
 	 (buffer (condition-case ex
 		     (url-retrieve-synchronously url t)
 		   ('file-error
-		    (message (format "Connection error fetching %s" url))
+		    (error "Connection error fetching %s" url)
 		    (setq nngmail-status-string
 			  (format "Connection error fetching %s" url))
 		    (nnheader-report
@@ -398,7 +398,7 @@ Each group has an ID, an article range(min, max) and an article
 count.  The function returns a hash table with information for
 all groups.  Gnus-related functions store the hash table in
 `nngmail-servers' for fast access."
-  (message (format "in nngmail-get-groups for %s" server))
+  (nnheader-message 7 "in nngmail-get-groups for %s" server)
   (let* ((groups (nngmail-get-account-groups server))
 	 (resource (nngmail-fetch-resource-url
 		    (nngmail-get-account-info-url server)))
@@ -425,7 +425,7 @@ case an API function is called without an explicit server."
   "Verify GROUP exists for SERVER and switch to it.
 Switching is implemented by remembering the group name for future
 reference."
-  (message (format "in nngmail-change-groups for %s %s" server group))
+  (nnheader-message 7 "in nngmail-change-groups for %s %s" server group)
   (and (nngmail-get-account-groups server)
        (ht-get (nngmail-get-account-groups server) group)
        (nngmail-set-account-group server group)))
@@ -437,7 +437,7 @@ reference."
   "Verify the nngmail server syncs the account SERVER.
 
 FIXME: Understand what gets passed in DEFINITIONS and use the data."
-  (message (format "in nngmail-open-server for %s" server))
+  (nnheader-message 7 "in nngmail-open-server for %s" server)
   (nnoo-change-server 'nngmail server definitions)
   (let ((servers (nngmail-get-accounts)))
     (if (assoc server servers)
@@ -452,7 +452,7 @@ FIXME: Understand what gets passed in DEFINITIONS and use the data."
 		 (string-equal email-ser email-def)
 	       (error (format "Email address mismatch %s != %s"
 			      email-ser email-def)))))
-	  (message (format "nngmail: opened server '%s'" server))
+	  (nnheader-message 5 "nngmail: opened server '%s'" server)
 	  (nngmail-set-account-base-url server (nngmail-base-url))
 	  (nngmail-touch-server server))
       (progn
@@ -465,10 +465,10 @@ FIXME: Understand what gets passed in DEFINITIONS and use the data."
 (deffoo nngmail-close-server (server)
   "Close connection to server.  Removes the server from the
 accounts alist."
-  (message (format "in nngmail-close-server for %s" server))
+  (nnheader-message 7 "in nngmail-close-server for %s" server)
   (setq nngmail-servers
 	(delq (assoc-string server nngmail-servers) nngmail-servers))
-  (message (format "nngmail: closed server '%s'" server))
+  (nnheader-message 7 "nngmail: closed server '%s'" server)
   (and (eq nngmail-last-account-id
 	   (nngmail-get-account-id server))
        (setq nngmail-last-account-id nil
@@ -479,7 +479,7 @@ accounts alist."
 (deffoo nngmail-request-close ()
   "Close connection to all servers.  Removes all entries from the
 accounts alist."
-  (message (format "in nngmail-request-close"))
+  (nnheader-message 7 "in nngmail-request-close")
   (setq nngmail-servers ()
 	nngmail-last-account-id nil
 	nngmail-last-account nil
@@ -587,7 +587,7 @@ server.  Otherwise use data previously fetched and stored in
   ;;; 211 56 1000 1059 ifi.discussion
   (when group
     (setq group (nngmail-decode-gnus-group group)))
-  (message (format "in nngmail-request-group %s" group))
+  (nnheader-message 7 "in nngmail-request-group %s" group)
   (let* ((account (or server nngmail-last-account))
 	 (result (nngmail-change-group account group)))
     (with-current-buffer nntp-server-buffer
@@ -607,7 +607,7 @@ server.  Otherwise use data previously fetched and stored in
   
 (deffoo nngmail-close-group (group &optional server)
   "Close the group.  A nop for this back end."
-  (message (format "in nngmail-close-group for %s" group)))
+  (nnheader-message 7 "in nngmail-close-group for %s" group))
 
 (deffoo nngmail-request-list (&optional server)
   "Return a list of all groups available on SERVER.
@@ -622,7 +622,7 @@ creation, then list all groups as read-only."
   (let ((account (or server nngmail-last-account)))
     (if account
 	(with-current-buffer nntp-server-buffer
-	  (message (format "in nngmail-request list for %s" account))
+	  (nnheader-message 7 "in nngmail-request list for %s" account)
 	  (nngmail-set-account-groups account (nngmail-get-groups account))
 	  (erase-buffer)
 	  (maphash (lambda (key value)
@@ -665,7 +665,7 @@ The server is kind enough to return NOV format so we don't need
 to grovel over the response."
   (when group
     (setq group (nngmail-decode-gnus-group group)))
-  (message (format "in nngmail-retrieve-headers for %s" group))
+  (nnheader-message 7 "in nngmail-retrieve-headers for %s" group)
   (let* ((account (or server nngmail-last-account))
 	 (limit (or (and (eq fetch-old t)
 			 (min (nngmail-get-group-count account group) 5000))
@@ -704,7 +704,7 @@ requests from the server."
   (when group
     (setq group (nnimap-decode-gnus-group group)))
   (setq server (or server nngmail-last-account))
-  (message (format "in nngmail-request-tread  %d" (elt header 0)))
+  (nnheader-message 7 "in nngmail-request-tread  %d" (elt header 0))
   (let* ((message (nngmail-fetch-resource 'message server (elt header 0)))
 	 (thread-id (plist-get message 'thread_id))
 	 (url (nngmail-url-for 'thread thread-id nil
@@ -760,7 +760,7 @@ causes a bit of complexity when dealing with updating marks.")
 
 This calls `nngmail-request-list' for SERVER and returns 'active
 to Gnus can make sense of the data."
-  (message (format "in nngmail-retrieve-group"))
+  (nnheader-message 7 "in nngmail-retrieve-group")
   (nngmail-request-list server)
   'active)
 
@@ -802,7 +802,7 @@ Given an info structure (INFO) for GROUP in ACCOUNT, update the
 structure with marks from the server, c.f. Info node `(Gnus)
 Group Info'.  Currently this propagates read and unexist marks,
 but I may implement support for other marks in the future."
-  (message (format "in nngmail-request-update-info for %s" group))
+  (nnheader-message 7 "in nngmail-request-update-info for %s" group)
   (let ((gnus-group (gnus-info-group info))
 	(active (cdr (assq 'active (gnus-info-params info))))
 	(timestamp (gnus-group-timestamp
@@ -815,7 +815,7 @@ but I may implement support for other marks in the future."
       (setq args `((timestamp . ,timestamp))))
     (when active
       (setq start-article (cdr active))
-      (message (format "  fast enabled (%d)" start-article))
+      (nnheader-message 7 "  fast enabled (%d)" start-article)
       (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
@@ -868,7 +868,7 @@ but I may implement support for other marks in the future."
 (deffoo nngmail-finish-retrieve-group-infos (server infos sequences
 						    &optional dont-insert)
   "FIXME: what is this function for?"
-  (message (format "in nngmail-request-update-infos for %s" server))
+  (nnheader-message 7 "in nngmail-request-update-infos for %s" server)
   ;; Iterate through all groups updating marks in group info.
   nil)
 
@@ -899,7 +899,7 @@ action."
   ;;; (RANGE ACTION MARK), e.g.
   ;;; ((((2157 . 2160)) add (read)))
   ;;; Gnus marks are:
-  (message (format "in nngmail-request-set-mark for %s" group))
+  (nnheader-message 9 "in nngmail-request-set-mark for %s" group)
   (setq server (or server nngmail-last-account))
   (let (failures)
     (dolist (action actions)
@@ -982,8 +982,8 @@ FIXME: unsed."
 		"no mark")
 	       (t
 		"unknown mark"))))
-	(message (format "in nngmail-request-update-mark for %s:%d %s"
-			 group article name)))
+	(nnheader-message 9 "in nngmail-request-update-mark for %s:%d %s"
+			 group article name))
   mark)
 
 (deffoo nngmail-request-scan (group &optional server info)
@@ -991,7 +991,7 @@ FIXME: unsed."
 
 If possible only on GROUP (although that makes no sense for this
 backend since new (unread) mail will appear in INBOX."
-  (message (format "in nngmail-request-scan %s" group))
+  (nnheader-message 9 "in nngmail-request-scan %s" group)
   (when group
     (setq group (nngmail-decode-gnus-group group)))
   (when (not server)
@@ -1007,7 +1007,7 @@ backend since new (unread) mail will appear in INBOX."
 
 (deffoo nngmail-request-newsgroups (date &optional server)
   "Returns a list of newsgroups created after DATE."
-  (message (format "in nngmail-request-newsgroups %s" date))
+  (nnheader-message 9 "in nngmail-request-newsgroups %s" date)
   nil)
 
 (deffoo nngmail-request-expire-articles (articles &optional group server force)
@@ -1022,7 +1022,7 @@ trash() and the bulk of the time is spent talking to Gmail.  By
 handling one message per request we can more easily keep track of
 errors.
 "
-  (message (format "in nngmail-request-expire-articles %s" group))
+  (nnheader-message 9 "in nngmail-request-expire-articles %s" group)
   (when (not server)
     (setq server nngmail-last-account))
   (let ((url-request-method "DELETE"))
@@ -1064,14 +1064,14 @@ errors.
   "Move article to a new group.
 
 FIXME: not implemented."
-  (message (format "in nngmail-request-move-article %d" article))
+  (nnheader-message 9 "in nngmail-request-move-article %d" article)
   nil)
 
 (deffoo nngmail-request-accept-article (group &optional server last)
   "Used for respooling?
 
 FIXME: not implemented."
-  (message (format "in nngmail-request-accept-article %s" group))
+  (nnheader-message 9 "in nngmail-request-accept-article %s" group)
   nil)
 
 (deffoo nngmail-request-delete-group (group force &optional server)
@@ -1080,7 +1080,7 @@ FIXME: not implemented."
 Will remove the label from the Gmail account.
 
 FIXME: not implemented."
-  (message (format "in nngmail-request-delete-group %s" group))
+  (nnheader-message 9 "in nngmail-request-delete-group %s" group)
   nil)
 
 (deffoo nngmail-request-rename-group (group new-name &optional server)
@@ -1089,7 +1089,7 @@ FIXME: not implemented."
 Rename the label in the Gmail account.
 
 FIXME: not implemented."
-  (message (format "in nngmail-request-rename-group %s" group))
+  (nnheader-message 9 "in nngmail-request-rename-group %s" group)
   nil)
  
 (defun nnir-run-gmail (query srv &optional groups)

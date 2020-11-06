@@ -51,6 +51,7 @@
 ;;; Code:
 (require 'helm)
 (require 'nngmail)
+(require 'nnheader)
 
 (defun trunc (len s &optional ellipsis)
   "If S is longer than LEN, cut it down and add ELLIPSIS to the end.
@@ -94,7 +95,7 @@ all messages from that group."
 					      (or group "INBOX")
 					      unread))
 		      (nngmail-get-accounts))))
-    (message "fetched accounts")
+    (nnheader-message 9 "fetched accounts")
     (mapcar (lambda (srv)
 	      (let* ((account (car srv))
 		     (messages (cdr srv))
@@ -165,23 +166,23 @@ Read the list of selected/marked candidates from
 
 (defun helm-nngmail-action-mark-read (candidates)
   "Handle mark as read action for helm CANDIDATES."
-  (message "helm-nngmail-action-mark-read")
+  (nnheader-message 9 "helm-nngmail-action-mark-read")
   (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t) 'read))
 
 (defun helm-nngmail-action-mark-unread (candidates)
   "Handle mark as read action for helm CANDIDATES."
-  (message "helm-nngmail-action-mark-unread")
+  (nnheader-message 9 "helm-nngmail-action-mark-unread")
   (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t)
 				'unread))
 
 (defun helm-nngmail-action-tick (candidates)
   "Handle tick action for helm CANDIDATES."
-  (message "helm-nngmail-action-tick")
+  (nnheader-message 9 "helm-nngmail-action-tick")
   (helm-nngmail-action-set-mark (helm-marked-candidates :all-sources t) 'tick))
 
 (defun helm-nngmail-action-set-mark (candidates mark)
   "Set mark MARK for CANDIDATES messages."
-  (message "helm-nngmail-action-set-mark")
+  (nnheader-message 9 "helm-nngmail-action-set-mark")
   (let ((ht (helm-nngmail-group-by-group candidates)))
     (maphash (lambda (key articles)
 	       (let ((server (car (last (split-string
@@ -198,7 +199,7 @@ Read the list of selected/marked candidates from
 
 (defun helm-nngmail-action-expire (candidates)
 "Handle expire actions for helm CANDIDATES."
-  (message "helm-nngmail-action-expire")
+  (nnheader-message 9 "helm-nngmail-action-expire")
   (setq candidates (helm-marked-candidates :all-sources t))
   (let ((ht (helm-nngmail-group-by-group candidates)))
     (maphash (lambda (key articles)
