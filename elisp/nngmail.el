@@ -143,39 +143,39 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-account-id (nickname)
   "Get ID of account NICKNAME."
-  (nngmail-get-account-x nickname 'id))
+  (nngmail-get-account-x nickname :id))
 
 (defun nngmail-get-account-email (nickname)
   "Get email of account NICKNAME."
-  (nngmail-get-account-x nickname 'email))
+  (nngmail-get-account-x nickname :email))
 
 (defun nngmail-get-account-messages-url (nickname)
   "Get URL for retrieving messages for account NICKNAME."
-  (nngmail-get-account-x nickname 'messages-url))
+  (nngmail-get-account-x nickname :messages-url))
 
 (defun nngmail-get-account-info-url (nickname)
   "Get the URL for retriving group information for account NICKNAME."
-  (nngmail-get-account-x nickname 'labels-url))
+  (nngmail-get-account-x nickname :labels-url))
 
 (defun nngmail-get-account-groups (nickname)
   "Get groups hash table of account NICKNAME."
-  (nngmail-get-account-x nickname 'groups))
+  (nngmail-get-account-x nickname :groups))
 
 (defun nngmail-get-account-writable (nickname)
   "Get writable flag of account NICKNAME."
-  (nngmail-get-account-x nickname 'writable))
+  (nngmail-get-account-x nickname :writable))
 
 (defun nngmail-get-account-can-send (nickname)
   "Get can-send flag of account NICKNAME."
-  (nngmail-get-account-x nickname 'can-send))
+  (nngmail-get-account-x nickname :can-send))
 
 (defun nngmail-get-account-message (nickname)
   "Get error string of account NICKNAME."
-  (nngmail-get-account-x nickname 'message))
+  (nngmail-get-account-x nickname :message))
 
 (defun nngmail-get-account-group (nickname)
   "Get last group we switch to for account NICKNAME."
-  (nngmail-get-account-x nickname 'group))
+  (nngmail-get-account-x nickname :group))
 
 (defun nngmail-set-account-x (nickname what value)
   "Set property WHAT for account NICKNAME to VALUE."
@@ -184,19 +184,19 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-set-account-base-url (nickname url)
   "Set URL parameter for account NICKNAME."
-  (nngmail-set-account-x nickname 'base-url url) )
+  (nngmail-set-account-x nickname :base-url url) )
 
 (defun nngmail-set-account-groups (nickname groups)
   "Set GROUPS hash table for account NICKNAME."
-  (nngmail-set-account-x nickname 'groups groups))
+  (nngmail-set-account-x nickname :groups groups))
 
 (defun nngmail-set-account-group (nickname group)
   "Switch to GROUP in account NICKNAME."
-  (nngmail-set-account-x nickname 'group group))
+  (nngmail-set-account-x nickname :group group))
 
 (defun nngmail-set-account-message (nickname message)
   "Set the error MESSAGE for account NICKNAME."
-  (nngmail-set-account-x nickname 'message message))
+  (nngmail-set-account-x nickname :message message))
 
 (defmacro nngmail-get-group-x (nickname group what)
   "Get parameter WHAT from GROUP for account NICKNAME."
@@ -204,31 +204,31 @@ This list has all the accounts the server we connect to synchs.")
 
 (defun nngmail-get-group-id (nickname group)
   "Get ID of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'id))
+  (nngmail-get-group-x nickname group :id))
 
 (defun nngmail-get-group-url (nickname group)
   "Get messages URL of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'messages-url))
+  (nngmail-get-group-x nickname group :messages-url))
 
 (defun nngmail-get-group-marks-url (nickname group)
   "Get messages URL of GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'marks-url))
+  (nngmail-get-group-x nickname group :marks-url))
 
 (defun nngmail-get-group-min (nickname group)
   "Get min article number in GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'min))
+  (nngmail-get-group-x nickname group :min))
 
 (defun nngmail-get-group-max (nickname group)
   "Get max article number in GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'max))
+  (nngmail-get-group-x nickname group :max))
 
 (defun nngmail-get-group-count (nickname group)
   "Get article count in GROUP for account NICKNAME."
-  (nngmail-get-group-x nickname group 'count))
+  (nngmail-get-group-x nickname group :count))
 
 (defun nngmail-get-error-string (response)
   "Get the error string of a JSON RESPONSE from the proxy."
-  (plist-get response 'error))
+  (plist-get response :error))
 
 (defun nngmail-get-message-params (elem)
   "Get message parameters from plist ELEM.
@@ -236,20 +236,20 @@ The JSON parser returns a plist.  This function extracts the
 message parameters we want to keep around and stores them in an
 alist.  It's all a bit bogus at the moment and I should perhas
 change the JSON parser to return an alist and be done."
-  (let ((id (plist-get elem 'id))
-	(article-id (plist-get elem 'article_id))
-	(google_id (plist-get elem 'google_id))
-	(name (plist-get (plist-get elem 'sender) 'name))
-	(email (plist-get (plist-get elem 'sender) 'email))
+  (let ((id (plist-get elem :id))
+	(article-id (plist-get elem :article_id))
+	(google_id (plist-get elem :google_id))
+	(name (plist-get (plist-get elem :sender) :name))
+	(email (plist-get (plist-get elem :sender) :email))
 	(from (format "%s <%s>"
-		      (plist-get (plist-get elem 'sender) 'name)
-		      (plist-get (plist-get elem 'sender) 'email)))
-	(subject (plist-get elem 'subject))
-	(snippet (plist-get elem 'snippet))
+		      (plist-get (plist-get elem :sender) :name)
+		      (plist-get (plist-get elem :sender) :email)))
+	(subject (plist-get elem :subject))
+	(snippet (plist-get elem :snippet))
 	(labels (mapcar (lambda (label)
-			  (cons (plist-get label 'gid)
-				(plist-get label 'name)))
-			(plist-get elem 'labels)))
+			  (cons (plist-get label :gid)
+				(plist-get label :name)))
+			(plist-get elem :labels)))
 	)
     (cons id `((id . ,id)
 	       (article-id . ,article-id)
@@ -310,7 +310,7 @@ move point to somewhere in the headers."
    (let ((response (url-http-parse-response)))
      (when (or (< response 200) (>= response 300))
        (let ((json-object-type 'plist)
-	     (json-key-type 'symbol)
+	     (json-key-type 'keyword)
 	     (json-array-type 'vector))
 	 (goto-char (point-min))
 	 (re-search-forward "^$")
@@ -323,9 +323,9 @@ move point to somewhere in the headers."
 Currently converts objects to plists and arrays to vectors."
   (with-current-buffer buffer
     (nngmail-handle-response)
-    (goto-char url-http-end-of-headers)
+    (re-search-forward "^$")
     (let* ((json-object-type 'plist)
-	   (json-key-type 'symbol)
+	   (json-key-type 'keyword)
 	   (json-array-type 'vector))
       (json-read))))
 
@@ -349,22 +349,37 @@ function."
 This assumed we already have a URL to tickle.  Most use cases
 should prefer `nngmail-fetch-resource' which will generate the
 URL for the resource."
-  (let* ((url-mime-accept-string "application/json")
-	 (buffer (condition-case ex
-		     (url-retrieve-synchronously url t)
-		   ('file-error
-		    (error "Connection error fetching %s" url)
-		    (setq nngmail-status-string
-			  (format "Connection error fetching %s" url))
-		    (nnheader-report
-		     'nngmail (format "Connection error fetching %s" url))
-		    )))
-	 (response (if (bufferp buffer)
-		       (safe-parse
-			(nngmail-parse-json buffer)
-			(kill-buffer buffer)
-			))))
-    response))
+  (let ((url-mime-accept-string "application/json"))
+    (if (featurep 'json)
+	(condition-case ex
+	    (with-temp-buffer
+	      (url-insert-file-contents url)
+	      (json-parse-buffer :object-type 'plist :null-object nil))
+	  ('file-error
+	   (error "Connection error fetching %s" url)
+	   (setq nngmail-status-string
+		 (format "Connection error fetching %s" url)))
+	  ('json-parse-error
+	   (error "Parse error fetching %s" url)
+	   (setq nngmail-status-string
+		 (formar "Parse error fetching %s" url)))
+	  )
+      (let* ((buffer (condition-case ex
+			 (url-retrieve-synchronously url t)
+		       ('file-error
+			(error "Connection error fetching %s" url)
+			(setq nngmail-status-string
+			      (format "Connection error fetching %s" url))
+			(nnheader-report
+			 'nngmail (format "Connection error fetching %s" url))
+			)))
+	     (response (if (bufferp buffer)
+			   (safe-parse
+			    (nngmail-parse-json buffer)
+			    (kill-buffer buffer)
+			    ))))
+	response)))
+  )
 
 (defun nngmail-fetch-resource (resource &optional account-id id args)
   "Retrieve a RESOURCE from the nngmail server.
@@ -380,11 +395,11 @@ Each account will have an ID, a nickname, and and email
 addresses.  The list of accounts is stored in `nngmail-servers'
 for fast access."
   (let* ((resource (nngmail-fetch-resource 'account))
-	 (accounts (plist-get resource 'accounts))
+	 (accounts (plist-get resource :accounts))
 	 servers)
     (seq-map
      (lambda (elem)
-       (push (cons (plist-get elem 'nickname) elem) servers))
+       (push (cons (plist-get elem :nickname) elem) servers))
      accounts)
     servers))
 
@@ -402,11 +417,11 @@ all groups.  Gnus-related functions store the hash table in
   (let* ((groups (nngmail-get-account-groups server))
 	 (resource (nngmail-fetch-resource-url
 		    (nngmail-get-account-info-url server)))
-	 (data (plist-get resource 'labels))
+	 (data (plist-get resource :labels))
 	 (tmp ()))
     (seq-map
      (lambda (elem)
-       (push (cons (plist-get elem 'name) elem) tmp))
+       (push (cons (plist-get elem :name) elem) tmp))
      data)
     (ht-from-alist tmp)
     ))
@@ -517,7 +532,7 @@ FIXME: Remove re-try mechanism (no longer used)."
 	  (setq rbuffer nil))
 	 ((or (< response 200) (>= response 300))
 	  (let ((json-object-type 'plist)
-		(json-key-type 'symbol)
+		(json-key-type 'keyword)
 		(json-array-type 'vector))
 	    (goto-char (point-min))
 	    (re-search-forward "^$")
@@ -540,7 +555,7 @@ ID.
 
 This function is used when fetching referring articles."
   (let* ((message (nngmail-fetch-resource 'message account message-id)))
-    (plist-get message 'article-id)))
+    (plist-get message :article-id)))
  
 (deffoo nngmail-request-article (article &optional group server to-buffer)
   "Issue an HTTP request for ARTICLE body.
@@ -628,8 +643,8 @@ creation, then list all groups as read-only."
 	  (maphash (lambda (key value)
 		     (insert (format "%S %d %d %s\n"
 				     key
-				     (plist-get value 'max)
-				     (plist-get value 'min)
+				     (plist-get value :max)
+				     (plist-get value :min)
 				     (if (nngmail-get-account-writable account)
 					 "y"
 				       "n")
@@ -701,12 +716,10 @@ that thread.
 
 Most of the work is done by the server.  All we do here is do two
 requests from the server."
-  (when group
-    (setq group (nnimap-decode-gnus-group group)))
   (setq server (or server nngmail-last-account))
   (nnheader-message 7 "in nngmail-request-tread  %d" (elt header 0))
   (let* ((message (nngmail-fetch-resource 'message server (elt header 0)))
-	 (thread-id (plist-get message 'thread_id))
+	 (thread-id (plist-get message :thread_id))
 	 (url (nngmail-url-for 'thread thread-id nil
 			       `((format . "nov"))))
 	 (buffer (url-retrieve-synchronously url t)))
@@ -776,7 +789,7 @@ to Gnus can make sense of the data."
 
 (defun nngmail-merge-ranges (start lower upper)
   "Combine ranges LOWER and UPPER by taking the ranges below START
-from LOWER and ranges above START from UPPER"
+from LOWER and ranges above START from UPPER."
   (gnus-range-nconcat
    (gnus-sorted-range-intersection (cons 1 (1- start)) lower)
    upper))
@@ -815,41 +828,42 @@ but I may implement support for other marks in the future."
       (setq args `((timestamp . ,timestamp))))
     (when active
       (setq start-article (cdr active))
-      (nnheader-message 7 "  fast enabled (%d)" start-article)
+      (nnheader-message 3 "nngmail-update-info fast enabled (%d)"
+			start-article)
       (setq args (append args `((fast . ,start-article)))))
     (let ((smarks (nngmail-fetch-resource-url
 		   (concat base-url "?" (args-to-url-args args))))
 	  read unexist tick unseen)
-      (setq start-article (plist-get smarks 'start-article))
-      (setq active (vector-to-list (plist-get smarks 'active)))
-      (setq read (vector-to-list (plist-get smarks 'new-read)))
-      (setq unexist (vector-to-list (plist-get smarks 'new-unexist)))
-      (setq tick (vector-to-list (plist-get smarks 'new-ticked)))
-      (setq unseen (vector-to-list (plist-get smarks 'unseen)))
+      (setq start-article (plist-get smarks :start-article))
+      (setq active (vector-to-list (plist-get smarks :active)))
+      (setq read (vector-to-list (plist-get smarks :new-read)))
+      (setq unexist (vector-to-list (plist-get smarks :new-unexist)))
+      (setq tick (vector-to-list (plist-get smarks :new-ticked)))
+      (setq unseen (vector-to-list (plist-get smarks :unseen)))
       (when (> start-article 1)
 	(setq read (nngmail-apply-range-delta
 		    (gnus-info-read info)
 		    read
-		    (plist-get smarks 'add-read)
-		    (plist-get smarks 'rm-read)
+		    (plist-get smarks :add-read)
+		    (plist-get smarks :rm-read)
 		    ))
 	(setq unexist (nngmail-apply-range-delta
 		       (cdr (assoc 'unexist marks))
 		       unexist
-		       (plist-get smarks 'add-unexist)
-		       (plist-get smarks 'rm-unexist)
+		       (plist-get smarks :add-unexist)
+		       (plist-get smarks :rm-unexist)
 		       ))
 	(setq tick (nngmail-apply-range-delta
 		    (cdr (assoc 'tick marks))
 		    tick
-		    (plist-get smarks 'add-tick)
-		    (plist-get smarks 'rm-tick)
+		    (plist-get smarks :add-tick)
+		    (plist-get smarks :rm-tick)
 		    ))
 	(setq unseen (nngmail-merge-ranges start-article
 					   (cdr (assoc 'unseen marks))
 					   unseen))
 	)
-      (loop for mark in '(unexist unseen tick) do
+      (loop for mark in '(unexist unseen tick expire) do
 	    (when (not (assoc mark marks))
 	      (push (cons mark nil) marks))
 	    )
@@ -921,10 +935,14 @@ action."
 	    (setq labels (delete "-UNREAD" labels)))
 	  (when labels
 	    (let* ((articles (nngmail-article-ranges range))
-		   (data `((article-id . ,articles)
-			   (add_labels . ,(if (eq action 'add) labels ()))
-			   (rm_labels . ,(if (eq action 'del) labels ()))))
-		   (entity (json-encode data))
+		   (add-labels (if (eq action 'add) (vconcat labels) nil))
+		   (rm-labels (if (eq action 'del) (vconcat labels) nil))
+		   (data (list :article-id articles
+			       :add_labels add-labels
+			       :rm_labels rm-labels))
+		   (entity (if (featurep 'json)
+			       (json-serialize data)
+			     (json-encode data)))
 		   (url-request-extra-headers
 		    '(("Content-Type" . "application/json")))
 		   (url-request-data (encode-coding-string entity 'utf-8)))
@@ -1111,7 +1129,7 @@ be a full group name."
 	(server (cadr (gnus-server-to-method srv)))
 	(defs (caddr (gnus-server-to-method srv)))
 	(groups (mapconcat (lambda (group) (gnus-group-short-name group))
-			   (or groups (nnir-get-active srv)) ",")))
+			   (or groups (gnus-server-get-active srv)) ",")))
     
     (if articles
 	(vconcat
@@ -1127,7 +1145,7 @@ be a full group name."
 		   (let ((group (gnus-group-full-name (elt res 1) srv))
 			 (id (elt res 0)))
 		     (vector group id 100)))
-		 (plist-get response 'result)
+		 (plist-get response :result)
 		 ))))))
 
 ;;;
@@ -1160,7 +1178,7 @@ source."
 			  (let ((msg (cdr (nngmail-get-message-params result))))
 			    (push `(server . ,server) msg)
 			    (push `(group . ,group) msg)))
-			(plist-get (nngmail-fetch-resource-url url) 'messages)))
+			(plist-get (nngmail-fetch-resource-url url) :messages)))
 	  )
       (cons server nil))
     ))
