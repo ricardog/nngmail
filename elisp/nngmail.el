@@ -26,7 +26,7 @@
 ;;; source for quickly dealing with email.
 
 ;;; To use this back end you must first set up the synchronizing proxy
-;;; (see the README for details).  Once that is setup and running, all
+;;; (see the README for details).  Once that is setup and running, add
 ;;; something like the following to your `gnus-secondary-select-methods'
 
 ;;;		(nngmail "personal"
@@ -362,7 +362,7 @@ URL for the resource."
 	  ('json-parse-error
 	   (error "Parse error fetching %s" url)
 	   (setq nngmail-status-string
-		 (formar "Parse error fetching %s" url)))
+		 (format "Parse error fetching %s" url)))
 	  )
       (let* ((buffer (condition-case ex
 			 (url-retrieve-synchronously url t)

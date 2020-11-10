@@ -86,7 +86,7 @@ When not specified, ELLIPSIS defaults to ‘...’."
 	  messages))
   
 (defun helm-source-nngmail-build (&optional group unread)
-  "Create a helm source of all unread messages in all accounts/servers.
+  "Create a helm source of all UNREAD messages in all accounts/servers.
 
 If optional GROUP parameter is given, then create a source with
 all messages from that group."
@@ -149,7 +149,7 @@ Read the list of selected/marked candidates from
 	  ;; the server/group lists.
 	(srv (helm-nngmail-candidate-server (elt candidates 0)))
 	(grp (helm-nngmail-candidate-group (elt candidates 0))))
-      (gnus-group-make-nnir-group
+      (gnus-group-read-ephemeral-search-group
        nil
        `((nnir-query-spec . ((query . nil) (articles . ,articles)))
 	 (nnir-group-spec . ((,srv (,grp)))))))
