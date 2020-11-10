@@ -45,13 +45,6 @@
 ;;; IMAP interface, Gmail labels are mapped to groups.
 
 ;;; Code:
-(eval-and-compile
-  (require 'nnheader)
-  ;; In Emacs 24, `open-protocol-stream' is an autoloaded alias for
-  ;; `make-network-stream'.
-  (unless (fboundp 'open-protocol-stream)
-    (require 'proto-stream)))
-
 (eval-when-compile
   (require 'cl))
 
@@ -509,42 +502,6 @@ accounts alist."
 (deffoo nngmail-status-message (&optional server)
   (or (nngmail-get-account-message (or server nngmail-last-account))
       nngmail-status-string))
-
-(defun nngmail-handle-article-request-response (buffer)
-  "Check for errors when fetching articles.
-
-This functions takes as input a pointer to a BUFFER with the
-response from `url-retrieve-synchronously'.
-
-Fetching articles retruns plain text (text/plain) on success and
-JSON on error hence we can't use the normal response parsing
-routine.  If an error occurred (via the response code), parse the
-JSON and extract the error message.  Without error, return a
-pointer to the BUFFER.
-
-FIXME: Remove re-try mechanism (no longer used)."
-  (let (rbuffer)
-    (with-current-buffer buffer
-      (let ((response (url-http-parse-response)))
-	(cond
-	 ((= response 409)
-	  ;; Message not available, retry
-	  (setq rbuffer nil))
-	 ((or (< response 200) (>= response 300))
-	  (let ((json-object-type 'plist)
-		(json-key-type 'keyword)
-		(json-array-type 'vector))
-	    (goto-char (point-min))
-	    (re-search-forward "^$")
-	    (setq nngmail-status-string
-		  (nngmail-get-error-string (json-read)))
-	    (setq rbuffer nil)))
-	 (t
-	  ;;(error "Error: nngmail server responded with error"))))
-	  (setq rbuffer buffer)))))
-    (when (not rbuffer)
-      (kill-buffer buffer))
-    rbuffer))
 
 (defun nngmail-message-id-to-id (message-id account)
   "Fetch the ID (article number) for message with MESSAGE-ID in ACCOUNT..
