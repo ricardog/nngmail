@@ -829,6 +829,7 @@ but I may implement support for other marks in the future."
       (setcdr (assq 'unexist marks) unexist)
       (setcdr (assq 'tick marks) tick)
       (setcdr (assq 'unseen marks) unseen)
+      (setcdr (assq 'expire marks) nil)
       (gnus-set-active (gnus-info-group info) (cons (car active) (cadr active)))
       (gnus-group-set-parameter info 'active (gnus-active gnus-group))
       (setf (gnus-info-marks info) marks)
