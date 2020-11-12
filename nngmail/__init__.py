@@ -43,6 +43,7 @@ app.register_blueprint(api_bp)
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 
 @app.errorhandler(404)
