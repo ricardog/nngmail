@@ -141,6 +141,8 @@ Messages are identified by google ID's
             if msgs:
                 history_id = max(history_id,
                                  max([int(msg['historyId']) for msg in msgs]))
+                self.sql3.set_partial_history_id(history_id,
+                                                 int(msgs[-1]['id'], 16))
         bar.close()
         return history_id
 
@@ -358,6 +360,25 @@ recently, do a full update.
         self.read(self.sql3.gid_to_id(tuple(added.keys())))
         logger.info('%s: sync complete' % self.nickname)
         self.verify()
+        return
+
+
+    def filter_gids(self, history_id, gids):
+        """Filter Google ID's after a partial synchronization happened.
+
+This allow re-starting a full synchronization on a large mailbox (or a
+small one, but it matters for addresses with many messages).  I ensure
+synchronization happens in order (by Google ID).  If, when we restart
+synch, we are still at the same history ID, then we can restart
+synchronization at the last updated Google ID.
+
+        """
+        min_gid = self.sql3.get_partial_history_id(history_id)
+        if min_gid is None:
+            return ["%x" % x for x in sorted([int(gid, 16) for gid in gids])]
+        print('Found partial sync history (starting with gid %x)' % min_gid)
+        int_gids = sorted([int(gid, 16) for gid in gids])
+        return ["%x" % x for x in int_gids if x > min_gid]
 
 
     def full_pull(self):
@@ -386,8 +407,10 @@ database, then only update the labels.
         ## Created here means they need a placeholder.  Assume any
         ## messages already in the DB came from a previous (interrupted
         ## or older) import.
+        print(f"{len(created)} messages created -- {len(updated)} messages updated")
         self.sql3.placeholder(created)
-        hid1 = self.create(created + updated)
+        hid1 = self.create(self.filter_gids(self.gmail.get_history_id(),
+                                            created + updated))
         self.delete(local_gids)
 
         history_id = max(hid1, history_id)

@@ -126,12 +126,13 @@ between the two endpoints.
 
         """
         print("worker %d: starting" % my_idx)
+        backoff = .001
         while True:
             cmd = inq.get()
             if cmd is None:
                 break
             ridx, creds, cmds = cmd
-            backoff = .001
+            backoff = max(backoff / 2, 0.001)
             while True:
                 try:
                     responses = Gmail.batch_executor(creds, cmds)

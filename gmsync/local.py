@@ -409,11 +409,11 @@ This happens when the message gets deleted in Gmail.
             delete(synchronize_session=False)
         db.session.commit()
 
-    def __set_kv(self, key, value):
+    def __set_kv(self, key, value, upsert=False):
         """Store a key, value tuple in the database."""
         session = db.session()
         kv = self.account.key_value.filter_by(key=key).first()
-        if None and kv:
+        if upsert and kv:
             ## Store the history of history_id for debugging purposes
             kv.value = value
         else:
@@ -439,3 +439,15 @@ This happens when the message gets deleted in Gmail.
         if hid is not None:
             return int(hid)
         return 0
+
+    def set_partial_history_id(self, history_id, gid):
+        """Set the partial history id for the account."""
+        value = gid if isinstance(gid, int) else int(gid, 16)
+        self.__set_kv(f'hid:{history_id}', value, upsert=True)
+
+    def get_partial_history_id(self, history_id):
+        """Retrieve the partial history id for the account."""
+        hid = self.__get_kv(f'hid:{history_id}')
+        if hid is not None:
+            return int(hid)
+        return None
