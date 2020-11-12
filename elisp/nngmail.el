@@ -343,7 +343,7 @@ This assumed we already have a URL to tickle.  Most use cases
 should prefer `nngmail-fetch-resource' which will generate the
 URL for the resource."
   (let ((url-mime-accept-string "application/json"))
-    (if (featurep 'json)
+    (if (fboundp 'json-parse-buffer)
 	(condition-case ex
 	    (with-temp-buffer
 	      (url-insert-file-contents url)
@@ -898,7 +898,7 @@ action."
 		   (data (list :article-id articles
 			       :add_labels add-labels
 			       :rm_labels rm-labels))
-		   (entity (if (featurep 'json)
+		   (entity (if (fboundp 'json-serialize)
 			       (json-serialize data)
 			     (json-encode data)))
 		   (url-request-extra-headers
