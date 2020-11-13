@@ -9,6 +9,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref, deferred
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.inspection import inspect
+import sqlalchemy.types as types
 
 from nngmail import db
 from sqlalchemy.sql import and_, or_, not_
@@ -98,6 +99,20 @@ class TimestampMixin(object):
         return {'properties': {'created': deferred(cls.__table__.c.created),
                                'updated': deferred(cls.__table__.c.updated)}}
 
+class HexInt(types.TypeDecorator):
+    """Converts a hex value to an int on the way in and reverses the
+    conversion on the way out.
+
+    """
+
+    impl = types.INT
+
+    def process_bind_param(self, value, dialect):
+        return int(value, 16)
+
+    def process_result_value(self, value, dialect):
+        return "%x" % value
+    
 class KeyValue(db.Model):
     #__table_args__ = (db.UniqueConstraint('account_id', 'key',
     #                                      name='key_1'), )
@@ -327,7 +342,7 @@ class Message(TimestampMixin, Serializeable, db.Model):
                                                      ondelete='CASCADE'),
                            index=True, nullable=False)
     article_id = db.Column(db.Integer, nullable=False)
-    google_id = db.Column(db.String(20), index=True, nullable=False)
+    google_id = db.Column(HexInt, index=True, nullable=False)
     message_id = db.Column(db.String(100), index=True, nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id',
                                                     ondelete='CASCADE'),
