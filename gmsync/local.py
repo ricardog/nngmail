@@ -258,7 +258,7 @@ is called once per batch received from Gmail.
         """
         if '__getitem__' not in dir(msgs):
             msgs = (msgs, )
-        msgs = sorted(msgs, key=lambda msg: msg['id'])
+        msgs = sorted(msgs, key=lambda msg: int(msg['id'], 16))
         gids = [m['id'] for m in msgs]
         session = db.session()
         with session.no_autoflush:
@@ -335,10 +335,15 @@ This function is rather ineffcient.
             msg.labels.append(trash)
         msg.updated = datetime.now()
 
-    def all_ids(self):
+    def all_ids(self, since=None):
         """Return all Google id's in the database."""
-        return [m.google_id for m in
-                self.account.messages.options(load_only('google_id')).all()]
+        query = self.account.messages.options(load_only('google_id'))
+        if since:
+            if isinstance(since, int):
+                since = '%x' % since
+            query = query.filter(Message.google_id > since)
+        query = query.order_by(Message.google_id.asc())
+        return [m.google_id for m in query.all()]
 
     def find(self, ids, undefer=False):
         """Find messages by id.
@@ -440,14 +445,23 @@ This happens when the message gets deleted in Gmail.
             return int(hid)
         return 0
 
-    def set_partial_history_id(self, history_id, gid):
+    def set_partial_hid(self, history_id):
         """Set the partial history id for the account."""
-        value = gid if isinstance(gid, int) else int(gid, 16)
-        self.__set_kv(f'hid:{history_id}', value, upsert=True)
+        self.__set_kv('partial_id', history_id)
 
-    def get_partial_history_id(self, history_id):
+    def get_partial_hid(self):
         """Retrieve the partial history id for the account."""
-        hid = self.__get_kv(f'hid:{history_id}')
-        if hid is not None:
-            return int(hid)
-        return None
+        value = self.__get_kv('partial_id')
+        if value is not None:
+            return int(value)
+        return 0
+
+    def set_partial_gid(self, gid):
+        """Set the last sync-ed Google ID for the account."""
+        self.__set_kv('min_gid', gid, upsert=True)
+
+    def get_partial_gid(self):
+        """Retrieve the last sync-ed Google ID for the account."""
+        return self.__get_kv('min_gid')
+
+        

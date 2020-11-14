@@ -88,16 +88,23 @@ def import_email(email, nickname, init_cache, quiet):
 @app.cli.command('resync')
 @click.argument('nickname', type=click.STRING)
 @click.option('--init-cache', is_flag=True, default=False)
+@click.option('--reset', is_flag=True, default=False)
 @click.option('--quiet', '-q', is_flag=True, default=False)
-def resync_email(nickname, init_cache, quiet):
-    """Re-sync all the message metadata for account.
+def resync_email(nickname, init_cache, reset, quiet):
+    """Re-sync message metadata for account.
 
-    nickname - nickname for the account
+    nickname - select which account to re-synchronize
+    init-cache - fetch recent messages into the cache
+    reset - ignore local sync state and do a full resynchronization
+
     """
 
     account = Account.query.filter_by(nickname=nickname).one()
     gmail = GmSync.from_account(account, load_config(not quiet))
-    gmail.full_pull()
+    if reset:
+        gmail.full_pull()
+    else:
+        gmail.partial_pull()
     if init_cache:
         print('fetching cacheable messages')
         gmail.init_cache()

@@ -141,8 +141,7 @@ Messages are identified by google ID's
             if msgs:
                 history_id = max(history_id,
                                  max([int(msg['historyId']) for msg in msgs]))
-                self.sql3.set_partial_history_id(history_id,
-                                                 int(msgs[-1]['id'], 16))
+                self.sql3.set_partial_gid(msgs[-1]['id'])
         bar.close()
         return history_id
 
@@ -203,7 +202,7 @@ Only label updates are possible.
             return rval
         return self.sql3.untrash(msg)
 
-    def get_history(self):
+    def get_history(self, history_id=None):
         """Request a list of changes since last synch for the account.
 
 This is a faster way to synchronize than doing a full pull of the
@@ -213,7 +212,8 @@ the history list should be valid for about a week).
         """
         history = []
         no_history = False
-        history_id = self.sql3.get_history_id()
+        if not history_id:
+            history_id = self.sql3.get_history_id()
 
         bar = self.bar(leave=True, total=10, desc='fetching changes')
         pages = 0
@@ -332,8 +332,8 @@ recently, do a full update.
         else:
             history = self.get_history()
         if history is None:
-            logger.info('No history available; attempting full pull')
-            self.full_pull()
+            logger.info('No history available; attempting partial pull')
+            self.partial_pull()
             return
 
         if len(history) == 0:
@@ -363,23 +363,39 @@ recently, do a full update.
         return
 
 
-    def filter_gids(self, history_id, gids):
-        """Filter Google ID's after a partial synchronization happened.
+    def partial_pull(self):
+        """Do a partial (full) update for account.
 
-This allow re-starting a full synchronization on a large mailbox (or a
-small one, but it matters for addresses with many messages).  I ensure
-synchronization happens in order (by Google ID).  If, when we restart
-synch, we are still at the same history ID, then we can restart
-synchronization at the last updated Google ID.
+Partial in this context means restarting a full pull that was
+interrupted.  We can restart a partial or interrupted full pull if:
+
+  - We at least create placeholders for all messages.
+
+  - Google can provide us with incremental history since the interrupted
+    pull.
+
+A partial pull first completes the interrupted pull and then does an
+incremental pull to complete the sync.
 
         """
-        min_gid = self.sql3.get_partial_history_id(history_id)
-        if min_gid is None:
-            return ["%x" % x for x in sorted([int(gid, 16) for gid in gids])]
-        print('Found partial sync history (starting with gid %x)' % min_gid)
-        int_gids = sorted([int(gid, 16) for gid in gids])
-        return ["%x" % x for x in int_gids if x > min_gid]
+        history_id = self.sql3.get_partial_hid()
+        if history_id is None:
+            logger.info('No partial history available; attempting full pull')
+            return self.full_pull()
+        if self.get_history(history_id) is None:
+            logger.info('No incremental history available; attempting full pull')
+            return self.full_pull()
+        logger.info('Starting partial pull')
+        min_gid = self.sql3.get_partial_gid()
+        self.sync_labels()
+        gids = self.sql3.all_ids(min_gid)
+        hid1 = self.create(gids)
 
+        assert hid1 == history_id, 'history_id mismatch'
+        history_id = max(hid1, history_id)
+        logger.info('new historyId: %d' % history_id)
+        self.sql3.set_history_id(history_id)
+        return self.pull()
 
     def full_pull(self):
         """Do a full update on the account.
@@ -406,16 +422,19 @@ database, then only update the labels.
 
         ## Created here means they need a placeholder.  Assume any
         ## messages already in the DB came from a previous (interrupted
-        ## or older) import.
-        print(f"{len(created)} messages created -- {len(updated)} messages updated")
+        ## or old) import.
+        logger.info(f"{len(created)} / {len(updated)} / {len(local_gids)} "
+                    "messages created / updated / deleted")
         self.sql3.placeholder(created)
-        hid1 = self.create(self.filter_gids(self.gmail.get_history_id(),
-                                            created + updated))
         self.delete(local_gids)
+        self.sql3.set_partial_hid(self.gmail.get_history_id())
+        hid1 = self.create(sorted(created + updated,
+                                  key=lambda gid: (int(gid, 16))))
 
         history_id = max(hid1, history_id)
         logger.info('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
+        return
 
     def init_cache(self):
         """Fetch cacheable messages."""
