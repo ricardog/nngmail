@@ -452,9 +452,9 @@ This happens when the message gets deleted in Gmail.
     def get_partial_hid(self):
         """Retrieve the partial history id for the account."""
         value = self.__get_kv('partial_id')
-        if value is not None:
-            return int(value)
-        return 0
+        if value is None:
+            return value
+        return int(value)
 
     def set_partial_gid(self, gid):
         """Set the last sync-ed Google ID for the account."""

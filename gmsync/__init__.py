@@ -286,8 +286,8 @@ properties in the local database.
             lhash = dict((lm.google_id, lm) for lm in lmsgs)
             if len(lmsgs) != len(all_ids):
                 print('ERROR: verification failed')
-                print('\tlen(msgs) != len(all_ids) --'
-                      f'{len(msgs)} != {len(all_ids)}')
+                print('\tlen(lmsgs) != len(all_ids) -- '
+                      f'{len(lmsgs)} != {len(all_ids)}')
                 import os; os._exit(-1)
         else:
             assert len(all_ids) == 0
@@ -391,8 +391,7 @@ incremental pull to complete the sync.
         gids = self.sql3.all_ids(min_gid)
         hid1 = self.create(gids)
 
-        assert hid1 == history_id, 'history_id mismatch'
-        history_id = max(hid1, history_id)
+        assert hid1 >= history_id, 'history_id mismatch (%d >= %d)' %(hid1, history_id)
         logger.info('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
         return self.pull()
@@ -404,7 +403,7 @@ If a message (based on the Google ID) is already present in the local
 database, then only update the labels.
 
         """
-        history_id = 0
+        history_id = self.gmail.get_history_id()
         local_gids = set(self.sql3.all_ids())
         created = []
         updated = []
@@ -427,11 +426,10 @@ database, then only update the labels.
                     "messages created / updated / deleted")
         self.sql3.placeholder(created)
         self.delete(local_gids)
-        self.sql3.set_partial_hid(self.gmail.get_history_id())
+        self.sql3.set_partial_hid(history_id)
         hid1 = self.create(sorted(created + updated,
                                   key=lambda gid: (int(gid, 16))))
 
-        history_id = max(hid1, history_id)
         logger.info('new historyId: %d' % history_id)
         self.sql3.set_history_id(history_id)
         return
