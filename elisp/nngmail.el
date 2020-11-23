@@ -713,7 +713,7 @@ to be a mail only back end, this function never gets called."
   '((read "-UNREAD")
     (unread "UNREAD")
     (tick "STARRED")
-    (reply "answered")
+    ;;(reply "answered")
     (expire "TRASH")
     (dormant "dormant")
     (score "score")
@@ -783,7 +783,7 @@ but I may implement support for other marks in the future."
 	(args ()))
     (when timestamp
       (setq args `((timestamp . ,timestamp))))
-    (when active
+    (when (or nil active)
       (setq start-article (cdr active))
       (nnheader-message 5 "nngmail-update-info fast enabled (%d)"
 			start-article)
@@ -906,7 +906,7 @@ action."
 		   (url-request-data (encode-coding-string entity 'utf-8)))
 	      (let ((response (nngmail-fetch-resource 'message server)))
 		(when (eq (car response) 'exception)
-		  ;; FIXME: Determine which updates failes and return
+		  ;; FIXME: Determine which updates failed and return
 		  ;; the appropriate list to Gnus.  For now assume all
 		  ;; articles failed update.  Fortunately Gnus does not
 		  ;; use the return value of this function.
