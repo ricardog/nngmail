@@ -7,12 +7,11 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref, deferred
-from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.inspection import inspect
 import sqlalchemy.types as types
 
 from nngmail import db
-from sqlalchemy.sql import and_, or_, not_
+from sqlalchemy.sql import and_
 
 def _unique(session, cls, hashfunc, queryfunc, constructor, arg, kw):
     cache = getattr(session, '_unique_cache', None)
@@ -79,7 +78,7 @@ class Serializeable(object):
                                     if v in dir(self) else v)
                                    for k,v in args[2].items()])
                 else:
-                    mapped = v[2]
+                    mapped = args[2]
                 obj.update({key: args[0](args[1], **mapped)})
         return obj
 
