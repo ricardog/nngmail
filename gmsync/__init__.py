@@ -508,9 +508,9 @@ commands.
         egress = queue.Queue()
         thread = threading.Thread(daemon=True,
                                   target=lambda: __sync(self.email,
-                                                        self.nickname,
-                                                        self.opts,
-                                                        ingress, egress))
+                                                   self.nickname,
+                                                   self.opts,
+                                                   ingress, egress))
         thread.start()
         return (thread, ingress, egress)
 
