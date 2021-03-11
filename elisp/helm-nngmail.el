@@ -149,10 +149,9 @@ Read the list of selected/marked candidates from
 	  ;; the server/group lists.
 	(srv (helm-nngmail-candidate-server (elt candidates 0)))
 	(grp (helm-nngmail-candidate-group (elt candidates 0))))
-      (gnus-group-read-ephemeral-search-group
-       nil
-       `((nnir-query-spec . ((query . nil) (articles . ,articles)))
-	 (nnir-group-spec . ((,srv (,grp)))))))
+    (setq foo `((nnir-query-spec . ((query . nil) (articles . ,articles)))
+	 (nnir-group-spec . ((,srv (,grp))))))
+    (gnus-group-read-ephemeral-search-group nil foo))
   )
 
 (defun helm-nngmail-group-by-group (candidates)

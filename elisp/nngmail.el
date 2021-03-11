@@ -52,6 +52,7 @@
 (require 'url-http)
 (require 'nnheader)
 (require 'nnir)
+(require 'nnselect)
 (require 'gnus-util)
 (require 'gnus)
 (require 'nnoo)
@@ -820,7 +821,7 @@ but I may implement support for other marks in the future."
 					   (cdr (assoc 'unseen marks))
 					   unseen))
 	)
-      (loop for mark in '(unexist unseen tick expire) do
+      (cl-loop for mark in '(unexist unseen tick expire) do
 	    (when (not (assoc mark marks))
 	      (push (cons mark nil) marks))
 	    )
@@ -1067,8 +1068,15 @@ Rename the label in the Gmail account.
 FIXME: not implemented."
   (nnheader-message 9 "in nngmail-request-rename-group %s" group)
   nil)
+
+(defclass gnus-search-nngmail (gnus-search-engine)
+  ((raw-queries-p
+    :initform t))
+    :documentation
+  "The base nngmail search engine.")
  
-(defun nnir-run-gmail (query srv &optional groups)
+(cl-defmethod gnus-search-run-search ((engine gnus-search-nngmail)
+				      srv query groups)
   "Implements the back end for nnir search.
 
 In the common case we are passed a query string in QUERY and pass
@@ -1086,8 +1094,9 @@ be a full group name."
 	(articles (cdr (assq 'articles query)))
 	(server (cadr (gnus-server-to-method srv)))
 	(defs (caddr (gnus-server-to-method srv)))
-	(groups (mapconcat (lambda (group) (gnus-group-short-name group))
-			   (or groups (gnus-server-get-active srv)) ",")))
+	(groups (gnus-group-short-name
+		 (or (nth 0 groups)
+		     (gnus-server-get-active srv)))))
     
     (if articles
 	(vconcat
@@ -1109,8 +1118,8 @@ be a full group name."
 ;;;
 ;;; Add nngmail back end to nnir.
 ;;;
-(push (cons 'nngmail 'gmail) nnir-method-default-engines)
-(push (list 'gmail 'nnir-run-gmail nil) nnir-engines)
+(push (cons 'nngmail 'gnus-search-nngmail) nnir-method-default-engines)
+(push (list 'nngmail 'nnir-run-gmail nil) nnir-engines)
 
 ;;;
 ;;; Functions used by helm interface
