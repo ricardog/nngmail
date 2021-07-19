@@ -26,5 +26,5 @@ def contacts():
 def sync():
     for account in Account.query.all():
         if account.nickname != 'no.name':
-            get_sync(account).pull
+            get_sync(account).pull()
     return jsonify({'status': 'OK'})
