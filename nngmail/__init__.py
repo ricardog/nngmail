@@ -10,6 +10,7 @@ from flask.json import JSONEncoder
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
+from sqlalchemy.exc import NoResultFound
 
 class MySQLAlchemy(SQLAlchemy):
 
@@ -30,7 +31,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../data/nngmail.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SQLALCHEMY_ECHO'] = True
 app.json_encoder = MyJSONEncoder
-db = MySQLAlchemy(app)
+db = SQLAlchemy(app)
 zync = dict()
 get_sync = lambda account: GmSync.from_account(account, sync_config)
 
@@ -88,6 +89,24 @@ def import_email(email, nickname, init_cache, quiet):
         print('fetching cacheable messages')
         gmail.init_cache()
 
+@app.cli.command('accounts')
+def list_accounts():
+    """List all configured accounts.
+
+    """
+
+    try:
+        accounts = Account.query.all()
+    except NoResultFound:
+        print(f"No account configured yet.")
+        return
+    n_len = max([len(a.nickname) for a in accounts if a.nickname != 'no.name'])
+    fmt = "{nickname:" + str(n_len) + "s}: {email:s}"
+    #import pdb; pdb.set_trace()
+    for acct in [acct for acct in accounts if acct.nickname != 'no.name']:
+        print(fmt.format(nickname=acct.nickname, email=acct.email))
+    return
+
 @app.cli.command('resync')
 @click.argument('nickname', type=click.STRING)
 @click.option('--init-cache', is_flag=True, default=False)
@@ -121,7 +140,11 @@ def verify_email(nickname, quiet):
     nickname - nickname for the account
     """
 
-    account = Account.query.filter_by(nickname=nickname).one()
+    try:
+        account = Account.query.filter_by(nickname=nickname).one()
+    except NoResultFound:
+        print(f"Account {nickname} not found")
+        return
     gmail = GmSync.from_account(account, load_config(not quiet))
     gmail.verify()
 
