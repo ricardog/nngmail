@@ -290,6 +290,8 @@ properties in the local database.
                       f'{len(lmsgs)} != {len(all_ids)}')
                 import os; os._exit(-1)
         else:
+            print("No recent message found in DB.  Needs re-sync.")
+            return
             assert len(all_ids) == 0
         bar = self.bar(leave=True, total=len(all_ids), desc='verify')
         for gid in all_ids:
