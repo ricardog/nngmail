@@ -69,7 +69,7 @@ def lookup_by_name(account, label, view_func):
         label_id = None
     else:
         abort(404)
-    return view_func(account_id, label_id)
+    return view_func(**{'account_id': account_id, 'label_id': label_id})
 
 
 label_view = LabelAPI.as_view('label')

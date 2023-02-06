@@ -147,13 +147,13 @@ message_view = MessageAPI.as_view('message')
               methods=['GET', 'PUT', 'DELETE'])
 def messages(nickname):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(account.id, None)
+    return message_view(**{'account_id': account.id, 'article_id': None})
 
 @api_bp.route(acct_nick_base + '/messages/<int:article_id>',
               methods=['GET', 'PUT', 'DELETE'])
 def message_by_id(nickname, article_id):
     account = Account.query.filter_by(nickname=nickname).first_or_404()
-    return message_view(account.id, article_id)
+    return message_view(**{'account_id': account.id, 'article_id': article_id})
 
 @api_bp.route(acct_nick_base + '/messages/<string:message_id>',
               methods=['GET'])

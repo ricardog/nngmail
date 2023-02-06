@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import collections
+from collections.abc import MutableMapping
 from datetime import datetime, timedelta
 import email
 import logging
@@ -61,7 +61,7 @@ Gmail REST API client provides message data.
             items = []
             for k, v in d.items():
                 new_key = parent_key + sep + k if parent_key else k
-                if isinstance(v, collections.MutableMapping):
+                if isinstance(v, MutableMapping):
                     items.extend(flatten(v, new_key, sep=sep).items())
                 else:
                     items.append((new_key, v))
@@ -149,9 +149,10 @@ more than one account.
         gids = sorted(gids, key=lambda gid: int(gid, 16))
         for chunk in chunks(gids, 10000):
             if skip_ok:
-                exist = sum(self.account.messages.\
+                rows = self.account.messages.\
                             filter(Message.google_id.in_(chunk)).\
-                            with_entities(Message.google_id).all(), ())
+                            with_entities(Message.google_id).all()
+                exist = sum(map(lambda x: (x['google_id'], ), rows), ())
                 chunk = list(set(chunk) - set(exist))
                 if not chunk:
                     ## Skip this chunk if all messages already exist
@@ -170,7 +171,7 @@ more than one account.
                                        values(values))
                 except exc.SQLAlchemyError as ex:
                     #pdb.set_trace()
-                    import os; os_exit(-1)
+                    import os; os.exit(-1)
                     pass
             
     def process_gmail_message(self, session, mid, msg):
@@ -378,8 +379,8 @@ When undefer is True, read the raw message body (if available).
         """Find messages by Google id."""
         if not gids:
             return
-        return sum(self.query_by_gid(gids).with_entities(Message.id).all(),
-                   ())
+        rows = self.query_by_gid(gids).with_entities(Message.id).all()
+        return sum(map(lambda x: (x['id'], ), rows), ())
 
     def find_cacheable(self):
         """Return a list of cacheable message id's."""
@@ -392,7 +393,10 @@ When undefer is True, read the raw message body (if available).
         query = self.account.messages.with_entities(Message.id).\
                 filter(or_(Message.date > td, Message.modified > td,
                            Message.labels.any(Label.name == 'STARRED')))
-        return sum(query.all(), ())
+        emails = query.all()
+        if not emails:
+            return ()
+        return emails
 
     def expire_cache(self):
         """Remove message body for messages that have expired."""

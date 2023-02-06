@@ -63,7 +63,10 @@ point (messages received after the timestamp are nuseen).
     ##  - Created after last sync, i.e. new
     ##  - Have an article ID > than what the client knows about
     ##  - Modified since last sync
-    all_mids = sum(query.all(), ())
+    xxx = query.all()
+    #if not all([isinstance(el, int) for el in xxx]):
+    #    import pdb; pdb.set_trace()
+    all_mids = sum([(el.article_id, ) for el in xxx], ())
 
     ## Find any messages that are marked as unread in the list above.
     unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
