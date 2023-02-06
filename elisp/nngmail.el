@@ -820,7 +820,7 @@ but I may implement support for other marks in the future."
 					   (cdr (assoc 'unseen marks))
 					   unseen))
 	)
-      (loop for mark in '(unexist unseen tick expire) do
+      (cl-loop for mark in '(unexist unseen tick expire) do
 	    (when (not (assoc mark marks))
 	      (push (cons mark nil) marks))
 	    )
