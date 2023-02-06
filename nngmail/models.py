@@ -105,6 +105,7 @@ class HexInt(types.TypeDecorator):
     """
 
     impl = types.INT
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         return int(value, 16)
@@ -166,7 +167,7 @@ class Account(UniqueMixin, TimestampMixin, db.Model, Serializeable):
                       can_send=None):
         return query.filter(Account.email == email)
 
-    def __repr__(self):
+    def __str__(self):
         return '%2d: %s <%s>' % (self.id, self.nickname, self.email)
 
 class Contact(UniqueMixin, db.Model, Serializeable):
@@ -176,9 +177,9 @@ class Contact(UniqueMixin, db.Model, Serializeable):
     name = db.Column(db.String)
     email = db.Column(db.String, index=True)
 
-    _received = db.relationship('ToAddressee')
-    _cced = db.relationship('CcAddressee')
-    _bcced = db.relationship('BccAddressee')
+    _received = db.relationship('ToAddressee', back_populates='contact')
+    _cced = db.relationship('CcAddressee', back_populates='contact')
+    _bcced = db.relationship('BccAddressee', back_populates='contact')
 
     received = association_proxy('_received', 'message')
     cced = association_proxy('_cced', 'message')
@@ -216,8 +217,8 @@ class Addressee(db.Model, Serializeable):
                            nullable=False)
     type_ = db.Column('type_', db.Enum(AddresseeEnum))
 
-    contact = db.relationship('Contact')
-    message = db.relationship('Message', backref='addressees')
+    #contact = db.relationship('Contact')
+    #message = db.relationship('Message', backref='addressees')
 
     name = association_proxy('contact', 'name')
     email = association_proxy('contact', 'email')
@@ -231,16 +232,25 @@ class Addressee(db.Model, Serializeable):
 
 
 class ToAddressee(Addressee):
+    contact = db.relationship('Contact', back_populates='_received')
+    message = db.relationship('Message', back_populates='to_')
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.to
     }
 
 class CcAddressee(Addressee):
+    contact = db.relationship('Contact', back_populates='_cced')
+    message = db.relationship('Message', back_populates='cc')
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.cc
       }
 
 class BccAddressee(Addressee):
+    contact = db.relationship('Contact', back_populates='_bcced')
+    message = db.relationship('Message', back_populates='bcc')
+
     __mapper_args__ = {
         'polymorphic_identity': AddresseeEnum.bcc
       }
@@ -358,9 +368,12 @@ class Message(TimestampMixin, Serializeable, db.Model):
     sender = db.relationship(Contact, foreign_keys=[from_id], backref='sent',
                              innerjoin=True)
 
-    to_ = db.relationship('ToAddressee', cascade='all,delete')
-    cc = db.relationship('CcAddressee', cascade='all,delete')
-    bcc = db.relationship('BccAddressee', cascade='all,delete')
+    to_ = db.relationship('ToAddressee', cascade='all,delete',
+                          back_populates='message')
+    cc = db.relationship('CcAddressee', cascade='all,delete',
+                          back_populates='message')
+    bcc = db.relationship('BccAddressee', cascade='all,delete',
+                          back_populates='message')
 
     label_names = association_proxy('labels', 'name')
     tos = association_proxy('to_', 'contact',
