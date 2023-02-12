@@ -8,6 +8,12 @@ from nngmail.api import api_bp
 from nngmail.models import Account, label_association, Label, Message
 from nngmail.api.utils import acct_base, acct_nick_base
 
+## To split a string on whitespace but preserving quoted sub-strings:
+##   re.findall(r'[^"\s]\S*|".+?"', line)
+##
+## Use dateutil.relativetimedelta to add relative dates
+##   datetime.now() + rdelta.relativedelta(days-10)
+
 class QueryAPI(MethodView):
     def get(self, account_id):
         #import pdb; pdb.set_trace()
