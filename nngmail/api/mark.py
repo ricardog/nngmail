@@ -69,10 +69,11 @@ point (messages received after the timestamp are nuseen).
     all_mids = sum([(el.article_id, ) for el in xxx], ())
 
     ## Find any messages that are marked as unread in the list above.
-    unread = sum(label.account.labels.filter_by(name='UNREAD').one().\
-                 messages.filter(Message.article_id.in_(all_mids)).\
-                 with_entities(Message.article_id).\
-                 all(), ())
+    article_ids = label.account.labels.filter_by(name='UNREAD').one().\
+        messages.filter(Message.article_id.in_(all_mids)).\
+        with_entities(Message.article_id).\
+        all()
+    unread = sum(((el.article_id, ) for el in article_ids), ())
 
     ## Find any messages that are marked as starred in the list above.
     starred = sum(label.account.labels.filter_by(name='STARRED').one().\
